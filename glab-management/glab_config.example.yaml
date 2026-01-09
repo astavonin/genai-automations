@@ -1,0 +1,61 @@
+# GitLab Epic and Issues Management Configuration - EXAMPLE FILE
+#
+# This is an example configuration file. To use it:
+# 1. Copy this file to your project directory as "glab_config.yaml"
+# 2. Update the settings to match your project's requirements
+#
+# Config file resolution:
+# 1. If --config is specified: use that path
+# 2. Otherwise: use ./glab_config.yaml in the current working directory
+# Note: glab_config.example.yaml is documentation/template only (not a runtime fallback).
+#
+# All settings can be overridden via:
+# - Command-line arguments (highest priority)
+# - YAML issue definition files
+# - This config file (lowest priority)
+
+# Default GitLab group path
+gitlab:
+  # Default group path for epic operations (e.g., "group/subgroup")
+  # Required for linking issues to epics
+  default_group: "your/default/group"
+
+# Default labels to apply to all issues
+# Individual issues can override or extend these labels
+labels:
+  # Default labels applied to every issue if not specified
+  default:
+    - "type::feature"
+    - "development-status::backlog"
+    - "product::__name__"
+
+  # Allowed labels list for validation
+  # If specified, script validates that all labels in YAML files are in this list
+  # If empty or not specified, validation is skipped
+  allowed_labels:
+    # Type labels
+    - "type::feature"
+    - "type::bug"
+    # Development status labels
+    - "development-status::backlog"
+    - "development-status::completed"
+    # Product/vertical labels
+    - "product::__name__"
+    # Special purpose labels
+    - "Architecture & Research"
+    - "integration-tests"
+    # Component labels
+    - "CI"
+    - "logging"
+    - "Backend integration"
+
+# Issue template structure
+# Script validates that issue descriptions contain required sections
+issue_template:
+  sections:
+    - name: "Description"
+      required: true
+    - name: "Acceptance Criteria"
+      required: true
+    - name: "Additional Notes"
+      required: false
