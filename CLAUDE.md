@@ -10,13 +10,13 @@ Personal collection of tools and processes for managing GenAI-related workflows 
 
 #### glab-management
 
-GitLab automation tool (`glab-management/glab_tasks_management.py`) - Python wrapper around `glab` CLI for managing epics and issues programmatically.
+GitLab automation tool (`glab-management/glab_tasks_management.py`) - Python wrapper around `glab` CLI for managing epics, issues, and milestones programmatically.
 
 ## glab-management: Core Architecture
 
 ### Main Components
 
-- **`glab_tasks_management.py`**: Single-file Python CLI tool (~1800 lines) that wraps `glab` CLI
+- **`glab_tasks_management.py`**: Single-file Python CLI tool (~2060 lines) that wraps `glab` CLI
 - **Config Management**: YAML-based configuration (`glab_config.yaml`) for defaults and validation rules
 - **YAML Templates**: Issue/epic definitions with dependency tracking (`epic_template.yaml`)
 
@@ -32,14 +32,16 @@ GitLab automation tool (`glab-management/glab_tasks_management.py`) - Python wra
    - Validates labels against `allowed_labels` from config
    - Validates issue descriptions contain required sections
 
-3. **`TicketLoader`**: Loads issue/epic information from GitLab
-   - Parses references: URLs, issue numbers, `#123`, `&456` (epic)
-   - Outputs markdown format for issues and epics
+3. **`TicketLoader`**: Loads issue/epic/milestone information from GitLab
+   - Parses references: URLs, issue numbers, `#123`, `&456` (epic), `%789` (milestone)
+   - Outputs markdown format for issues, epics, and milestones
    - Includes dependency relationships (blocking/blocked_by)
+   - Milestone view includes epic breakdown (groups issues by their epic)
 
-4. **`SearchHandler`**: Searches issues and epics by text query
+4. **`SearchHandler`**: Searches issues, epics, and milestones by text query
    - Uses GitLab API via `glab api` command
    - Outputs plain text format
+   - Milestone search supports state filters: active, closed, all
 
 ## glab-management: Common Commands
 
@@ -69,10 +71,16 @@ python3 glab_tasks_management.py load https://gitlab.example.com/group/project/-
 python3 glab_tasks_management.py load &21
 python3 glab_tasks_management.py load 21 --type epic
 
-# Search for issues or epics (text output)
+# Load milestone with epic breakdown (markdown output)
+python3 glab_tasks_management.py load %123
+python3 glab_tasks_management.py load 123 --type milestone
+
+# Search for issues, epics, or milestones (text output)
 python3 glab_tasks_management.py search issues "streaming"
 python3 glab_tasks_management.py search issues "bug" --state opened --limit 10
 python3 glab_tasks_management.py search epics "video"
+python3 glab_tasks_management.py search milestones "v1.0"
+python3 glab_tasks_management.py search milestones "release" --state active
 ```
 
 ### Testing
@@ -158,12 +166,39 @@ The tool uses `glab api` command for operations not supported by native `glab` c
 - **Epic creation**: `POST /groups/:id/epics`
 - **Epic-issue linking**: `POST /groups/:id/epics/:epic_iid/issues/:issue_id`
 - **Issue dependency links**: `POST /projects/:id/issues/:iid/links` with `link_type=blocks`
-- **Issue/epic queries**: Various `GET` endpoints
+- **Milestone queries**: `GET /projects/:id/milestones/:milestone_id` and `/milestones/:milestone_id/issues`
+- **Issue/epic/milestone queries**: Various `GET` endpoints
 
 Key details:
 - Epic operations require group path (from config or URL)
 - Issue linking requires global issue ID (not project-scoped IID)
 - URLs are properly encoded using `urllib.parse.quote()`
+
+## glab-management: Milestone Epic Breakdown
+
+When loading a milestone, the tool provides a view of how issues are organized by epics:
+
+```markdown
+# Milestone %123: Title
+**Progress:** X/Y issues closed
+
+## Epic Breakdown
+
+### Epic &21: Epic Title
+- #45 Issue title `[opened]`
+- #67 Another issue `[closed]`
+
+### Epic &22: Another Epic
+- #89 Issue title `[opened]`
+
+### No Epic
+- #12 Standalone issue `[opened]`
+```
+
+This view is useful for:
+- Understanding milestone→epic mapping
+- Tracking epic progress within a milestone
+- Identifying standalone issues not associated with epics
 
 ## glab-management: Validation Rules
 
