@@ -5,7 +5,8 @@ This script provides commands to:
 - Create issues from YAML definitions and link them to epics
 - Load ticket (issue) information and related epic from GitLab (markdown output)
 - Load epic information with all associated issues (markdown output)
-- Search for issues and epics by text query (text output)
+- Load milestone information with all associated issues and epics (markdown output)
+- Search for issues, epics, and milestones by text query (text output)
 
 Example:
     # Create issues from YAML
@@ -21,9 +22,15 @@ Example:
     $ python glab_tasks_management.py load https://gitlab.example.com/groups/mygroup/-/epics/21
     $ python glab_tasks_management.py load 21 --type epic
 
-    # Search issues and epics (outputs text)
+    # Load milestone information (includes all issues and epics, outputs markdown)
+    $ python glab_tasks_management.py load %123
+    $ python glab_tasks_management.py load https://gitlab.example.com/group/project/-/milestones/123
+    $ python glab_tasks_management.py load 123 --type milestone
+
+    # Search issues, epics, and milestones (outputs text)
     $ python glab_tasks_management.py search issues "streaming"
     $ python glab_tasks_management.py search epics "video"
+    $ python glab_tasks_management.py search milestones "v1.0" --state active
     $ python glab_tasks_management.py search issues "SRT" --state opened --limit 10
 """
 
@@ -946,6 +953,63 @@ class TicketLoader:
 
         raise ValueError(f"Cannot parse epic reference: {epic_ref}")
 
+    def _parse_milestone_reference(self, milestone_ref: str) -> tuple:
+        """Parse milestone reference to extract project/group path, iid, and milestone type.
+
+        Args:
+            milestone_ref: Milestone reference (number, URL, or %number format).
+
+        Returns:
+            Tuple of (project_or_group_path, iid, is_group_milestone).
+            project_or_group_path may be None if not in URL.
+
+        Raises:
+            ValueError: If milestone reference cannot be parsed.
+        """
+        # URL format for group milestone: https://gitlab.../groups/mygroup/-/milestones/123
+        if '/groups/' in milestone_ref and '/-/milestones/' in milestone_ref:
+            parts = milestone_ref.split('/-/milestones/')
+            if len(parts) == 2:
+                group_url = parts[0]
+                iid = parts[1].split('/')[0].split('?')[0]
+
+                # Extract group path from URL
+                # Format: https://gitlab.example.com/groups/mygroup/subgroup
+                if '/groups/' in group_url:
+                    group_path = group_url.split('/groups/')[-1]
+                elif '//' in group_url:
+                    # Fallback: take everything after the domain
+                    group_path = '/'.join(group_url.split('//')[1].split('/')[1:])
+                else:
+                    group_path = group_url
+
+                return (group_path, iid, True)
+
+        # URL format for project milestone: https://gitlab.../group/project/-/milestones/123
+        if '/-/milestones/' in milestone_ref:
+            parts = milestone_ref.split('/-/milestones/')
+            if len(parts) == 2:
+                project_url = parts[0]
+                iid = parts[1].split('/')[0].split('?')[0]
+
+                # Extract project path from URL
+                if '//' in project_url:
+                    project_path = '/'.join(project_url.split('//')[1].split('/')[1:])
+                else:
+                    project_path = project_url
+
+                return (project_path, iid, False)
+
+        # %123 format (GitLab milestone reference)
+        if milestone_ref.startswith('%'):
+            return (None, milestone_ref[1:], None)
+
+        # Plain number
+        if milestone_ref.isdigit():
+            return (None, milestone_ref, None)
+
+        raise ValueError(f"Cannot parse milestone reference: {milestone_ref}")
+
     def load_issue(self, issue_ref: str) -> Dict[str, Any]:
         """Load issue information from GitLab.
 
@@ -989,6 +1053,38 @@ class TicketLoader:
 
         output = self._run_glab_command(['api', api_endpoint])
         return json.loads(output)
+
+    def _get_group_milestone_id(self, group_path: str, milestone_iid: str) -> Optional[str]:
+        """Convert group milestone iid to id.
+
+        Group milestone API requires id, not iid.
+        List all milestones and find the one matching the iid.
+
+        Args:
+            group_path: GitLab group path.
+            milestone_iid: Milestone iid within the group.
+
+        Returns:
+            Milestone id as string, or None if not found.
+
+        Raises:
+            GlabError: If API call fails.
+        """
+        encoded_group = urllib.parse.quote(group_path, safe='')
+        api_endpoint = f"groups/{encoded_group}/milestones?per_page=100"
+
+        try:
+            output = self._run_glab_command(['api', api_endpoint])
+            milestones = json.loads(output) if output else []
+
+            for ms in milestones:
+                if str(ms.get('iid')) == str(milestone_iid):
+                    return str(ms.get('id'))
+
+            return None
+        except (GlabError, json.JSONDecodeError) as e:
+            logger.warning(f"Failed to resolve milestone iid to id: {e}")
+            return None
 
     def load_epic_issues(self, group_path: str, epic_iid: int) -> List[Dict[str, Any]]:
         """Load all issues associated with an epic.
@@ -1053,6 +1149,96 @@ class TicketLoader:
         return {
             'epic': epic_data,
             'issues': issues
+        }
+
+    def load_milestone_with_issues(self, milestone_ref: str) -> Dict[str, Any]:
+        """Load milestone and all its associated issues.
+
+        Args:
+            milestone_ref: Milestone reference (number, URL, or %number format).
+
+        Returns:
+            Dictionary containing milestone, issues, and epic mapping with structure:
+            {
+                'milestone': {milestone data},
+                'issues': [list of issues],
+                'epic_map': {epic_iid: epic_data}
+            }
+
+        Raises:
+            GlabError: If loading fails.
+        """
+        # Parse milestone reference
+        parsed_path, milestone_iid, is_group_milestone = self._parse_milestone_reference(milestone_ref)
+
+        # Determine if this is a group or project milestone
+        if is_group_milestone is None:
+            # Not determined from URL, use config default
+            default_group = self.config.get_default_group()
+            is_group_milestone = bool(default_group)
+            if is_group_milestone:
+                parsed_path = default_group
+
+        if is_group_milestone:
+            # Use group milestone API
+            if parsed_path:
+                encoded_path = urllib.parse.quote(parsed_path, safe='')
+            else:
+                # Should not happen if is_group_milestone is True
+                raise ValueError(
+                    "Group path is required for group milestone.\n"
+                    "Either include the group in the URL or set 'default_group' in your glab_config.yaml file."
+                )
+
+            # Convert iid to id for group milestones (API requires id, not iid)
+            milestone_id = self._get_group_milestone_id(parsed_path, milestone_iid)
+            if not milestone_id:
+                raise GlabError(f"Milestone iid {milestone_iid} not found in group {parsed_path}")
+
+            api_endpoint = f"groups/{encoded_path}/milestones/{milestone_id}"
+            issues_endpoint = f"groups/{encoded_path}/milestones/{milestone_id}/issues?per_page=100"
+        else:
+            # Use project milestone API
+            if parsed_path:
+                encoded_path = urllib.parse.quote(parsed_path, safe='')
+            else:
+                # Use current repo via glab's :fullpath shorthand
+                encoded_path = ":fullpath"
+            api_endpoint = f"projects/{encoded_path}/milestones/{milestone_iid}"
+            issues_endpoint = f"projects/{encoded_path}/milestones/{milestone_iid}/issues?per_page=100"
+
+        # Load milestone data
+        output = self._run_glab_command(['api', api_endpoint])
+        milestone_data = json.loads(output)
+
+        # Load milestone issues
+        try:
+            issues_output = self._run_glab_command(['api', issues_endpoint])
+            issues = json.loads(issues_output) if issues_output else []
+        except GlabError as e:
+            logger.warning(f"Failed to load milestone issues: {e}")
+            issues = []
+
+        # Load epic information for each issue
+        epic_map = {}
+        for issue in issues:
+            epic_iid = issue.get('epic_iid')
+            if epic_iid and epic_iid not in epic_map:
+                # Extract group path from issue's project
+                project_path = issue.get('references', {}).get('full', '').split('#')[0]
+                if project_path:
+                    group_path = '/'.join(project_path.split('/')[:-1])
+                    if group_path:
+                        try:
+                            epic_data = self.load_epic(group_path, epic_iid)
+                            epic_map[epic_iid] = epic_data
+                        except GlabError as e:
+                            logger.warning(f"Failed to load epic {epic_iid}: {e}")
+
+        return {
+            'milestone': milestone_data,
+            'issues': issues,
+            'epic_map': epic_map
         }
 
     def load_issue_links(self, project_path: str, issue_iid: str) -> Dict[str, List[Dict]]:
@@ -1283,6 +1469,93 @@ class TicketLoader:
         print(description if description else '*No description*')
         print()
 
+    def print_milestone_info(self, data: Dict[str, Any]) -> None:
+        """Print milestone information in markdown format.
+
+        Args:
+            data: Dictionary containing milestone, issues, and epic mapping.
+        """
+        milestone = data['milestone']
+        issues = data.get('issues', [])
+        epic_map = data.get('epic_map', {})
+        self._print_milestone_markdown(milestone, issues, epic_map)
+
+    def _print_milestone_markdown(
+        self,
+        milestone: Dict[str, Any],
+        issues: List[Dict[str, Any]],
+        epic_map: Dict[int, Dict[str, Any]]
+    ) -> None:
+        """Print milestone info in markdown format."""
+        print(f"# Milestone %{milestone.get('iid')}: {milestone.get('title')}\n")
+
+        print(f"**URL:** {milestone.get('web_url')}  ")
+        print(f"**State:** {milestone.get('state')}  ")
+
+        if milestone.get('start_date'):
+            print(f"**Start Date:** {milestone['start_date']}  ")
+
+        if milestone.get('due_date'):
+            print(f"**Due Date:** {milestone['due_date']}  ")
+
+        # Calculate progress
+        total_issues = len(issues)
+        closed_issues = len([i for i in issues if i.get('state') == 'closed'])
+        print(f"**Progress:** {closed_issues}/{total_issues} issues closed  ")
+
+        print(f"\n**Created:** {milestone.get('created_at')}  ")
+        print(f"**Updated:** {milestone.get('updated_at')}  ")
+
+        # Group issues by epic
+        print(f"\n## Epic Breakdown\n")
+
+        if not issues:
+            print("*No issues in this milestone*\n")
+        else:
+            # Group issues by epic_iid
+            issues_by_epic = {}
+            issues_without_epic = []
+
+            for issue in issues:
+                epic_iid = issue.get('epic_iid')
+                if epic_iid:
+                    if epic_iid not in issues_by_epic:
+                        issues_by_epic[epic_iid] = []
+                    issues_by_epic[epic_iid].append(issue)
+                else:
+                    issues_without_epic.append(issue)
+
+            # Print issues grouped by epic
+            for epic_iid, epic_issues in sorted(issues_by_epic.items()):
+                epic_data = epic_map.get(epic_iid)
+                if epic_data:
+                    epic_title = epic_data.get('title', 'Unknown')
+                    print(f"### Epic &{epic_iid}: {epic_title}\n")
+                else:
+                    print(f"### Epic &{epic_iid}\n")
+
+                for issue in epic_issues:
+                    iid = issue.get('iid')
+                    title = issue.get('title', 'Untitled')
+                    state = issue.get('state', 'unknown')
+                    print(f"- #{iid} {title} `[{state}]`")
+                print()
+
+            # Print issues without epic
+            if issues_without_epic:
+                print("### No Epic\n")
+                for issue in issues_without_epic:
+                    iid = issue.get('iid')
+                    title = issue.get('title', 'Untitled')
+                    state = issue.get('state', 'unknown')
+                    print(f"- #{iid} {title} `[{state}]`")
+                print()
+
+        print("## Description\n")
+        description = milestone.get('description', 'No description')
+        print(description if description else '*No description*')
+        print()
+
 
 def cmd_create(args) -> int:
     """Handle the 'create' subcommand.
@@ -1333,25 +1606,33 @@ def cmd_load(args) -> int:
 
         loader = TicketLoader(config=config)
 
-        # Determine if we're loading an epic or issue
+        # Determine resource type
         reference = args.reference
-        is_epic = False
+        resource_type = 'issue'  # default
 
         # Check if --type is specified
         if hasattr(args, 'type') and args.type:
-            is_epic = (args.type == 'epic')
+            resource_type = args.type
         else:
             # Auto-detect based on reference format
             if reference.startswith('&'):
-                is_epic = True
+                resource_type = 'epic'
+            elif reference.startswith('%'):
+                resource_type = 'milestone'
             elif '/-/epics/' in reference:
-                is_epic = True
+                resource_type = 'epic'
+            elif '/-/milestones/' in reference:
+                resource_type = 'milestone'
             # Otherwise assume issue (default behavior)
 
-        if is_epic:
+        if resource_type == 'epic':
             # Load epic with issues
             data = loader.load_epic_with_issues(reference)
             loader.print_epic_info(data)
+        elif resource_type == 'milestone':
+            # Load milestone with issues and epics
+            data = loader.load_milestone_with_issues(reference)
+            loader.print_milestone_info(data)
         else:
             # Load issue with epic
             data = loader.load_ticket_with_epic(reference)
@@ -1485,6 +1766,48 @@ class SearchHandler:
 
         return json.loads(output)
 
+    def search_milestones(
+        self,
+        query: str,
+        state: str = 'all',
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """Search for milestones matching a query.
+
+        Args:
+            query: Search text for title.
+            state: Filter by state ('active', 'closed', 'all').
+            limit: Maximum number of results to return.
+
+        Returns:
+            List of milestone dictionaries.
+
+        Raises:
+            GlabError: If search fails.
+        """
+        # Use group API if default_group is configured, otherwise use project API
+        group_path = self.config.get_default_group()
+
+        if group_path:
+            # Use group milestones API
+            encoded_group = urllib.parse.quote(group_path, safe='')
+            api_endpoint = f"groups/{encoded_group}/milestones?search={urllib.parse.quote(query)}"
+        else:
+            # Use project milestones API
+            api_endpoint = f"projects/:fullpath/milestones?search={urllib.parse.quote(query)}"
+
+        if state != 'all':
+            api_endpoint += f"&state={state}"
+
+        api_endpoint += f"&per_page={limit}"
+
+        output = self._run_glab_command(['api', api_endpoint])
+
+        if not output:
+            return []
+
+        return json.loads(output)
+
     def print_issues(
         self,
         issues: List[Dict[str, Any]],
@@ -1547,6 +1870,36 @@ class SearchHandler:
 
         print(f"Found {len(epics)} epic{'s' if len(epics) != 1 else ''}")
 
+    def print_milestones(
+        self,
+        milestones: List[Dict[str, Any]],
+        query: str
+    ) -> None:
+        """Print search results for milestones in text format.
+
+        Args:
+            milestones: List of milestone dictionaries.
+            query: The search query used.
+        """
+        print(f"\n=== MILESTONES matching \"{query}\" ===\n")
+
+        if not milestones:
+            print("No milestones found")
+            return
+
+        for milestone in milestones:
+            iid = milestone.get('iid')
+            title = milestone.get('title', 'Untitled')
+            state = milestone.get('state', 'unknown')
+            url = milestone.get('web_url', '')
+            due_date = milestone.get('due_date', 'N/A')
+
+            print(f"%{iid} {title}")
+            print(f"    State: {state} | Due: {due_date}")
+            print(f"    URL: {url}\n")
+
+        print(f"Found {len(milestones)} milestone{'s' if len(milestones) != 1 else ''}")
+
 
 def cmd_search(args) -> int:
     """Handle the 'search' subcommand.
@@ -1578,6 +1931,13 @@ def cmd_search(args) -> int:
                 limit=args.limit
             )
             searcher.print_epics(results, args.query)
+        elif args.type == 'milestones':
+            results = searcher.search_milestones(
+                query=args.query,
+                state=args.state,
+                limit=args.limit
+            )
+            searcher.print_milestones(results, args.query)
         else:
             logger.error(f"Unknown search type: {args.type}")
             return 1
@@ -1615,10 +1975,16 @@ Examples:
   %(prog)s load https://gitlab.example.com/groups/mygroup/-/epics/21
   %(prog)s load 21 --type epic
 
-  # Search issues and epics (text output)
+  # Load milestone information (with all issues and epics, markdown output)
+  %(prog)s load %%123
+  %(prog)s load https://gitlab.example.com/group/project/-/milestones/123
+  %(prog)s load 123 --type milestone
+
+  # Search issues, epics, and milestones (text output)
   %(prog)s search issues "streaming"
   %(prog)s search issues "SRT" --state opened
   %(prog)s search epics "video"
+  %(prog)s search milestones "v1.0" --state active
         """
     )
 
@@ -1674,7 +2040,7 @@ YAML format:
     # Load subcommand
     load_parser = subparsers.add_parser(
         'load',
-        help='Load ticket (issue) or epic information from GitLab',
+        help='Load ticket (issue), epic, or milestone information from GitLab',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1686,18 +2052,23 @@ Examples:
   glab_tasks_management.py load &21
   glab_tasks_management.py load https://gitlab.example.com/groups/mygroup/-/epics/21
 
-  # Load epic (explicit type specification, markdown output)
+  # Load milestone (auto-detected from %% prefix or URL, markdown output)
+  glab_tasks_management.py load %%123
+  glab_tasks_management.py load https://gitlab.example.com/group/project/-/milestones/123
+
+  # Load with explicit type specification (markdown output)
   glab_tasks_management.py load 21 --type epic
+  glab_tasks_management.py load 123 --type milestone
         """
     )
     load_parser.add_argument(
         'reference',
         type=str,
-        help='Issue or epic reference: number, URL, #number (issue), or &number (epic)'
+        help='Resource reference: number, URL, #number (issue), &number (epic), or %%number (milestone)'
     )
     load_parser.add_argument(
         '--type',
-        choices=['issue', 'epic'],
+        choices=['issue', 'epic', 'milestone'],
         help='Resource type (auto-detected if not specified)'
     )
 
@@ -1705,7 +2076,7 @@ Examples:
     # Search subcommand
     search_parser = subparsers.add_parser(
         'search',
-        help='Search for issues or epics by text',
+        help='Search for issues, epics, or milestones by text',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1718,13 +2089,17 @@ Examples:
   glab_tasks_management.py search epics "video"
   glab_tasks_management.py search epics "streaming" --state opened
 
+  # Search milestones (text output)
+  glab_tasks_management.py search milestones "v1.0"
+  glab_tasks_management.py search milestones "release" --state active
+
   # Limit results
   glab_tasks_management.py search issues "camera" --limit 10
         """
     )
     search_parser.add_argument(
         'type',
-        choices=['issues', 'epics'],
+        choices=['issues', 'epics', 'milestones'],
         help='Type of resource to search'
     )
     search_parser.add_argument(
@@ -1734,9 +2109,9 @@ Examples:
     )
     search_parser.add_argument(
         '--state',
-        choices=['opened', 'closed', 'all'],
+        choices=['opened', 'closed', 'active', 'all'],
         default='all',
-        help='Filter by state (default: all)'
+        help='Filter by state (default: all). Use "active" for milestones.'
     )
     search_parser.add_argument(
         '--limit',
