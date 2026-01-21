@@ -73,14 +73,6 @@ python3 glab_tasks_management.py search milestones "v1.0"
 python3 glab_tasks_management.py search milestones "release" --state active
 ```
 
-### Testing
-
-```bash
-# Run verification tests for CLI argument validation
-cd glab-management
-./test_verification.sh
-```
-
 ## Configuration
 
 ### Config File Resolution

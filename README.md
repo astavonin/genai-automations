@@ -1,34 +1,92 @@
 # GenAI Automations
 
-Personal collection of tools and processes for managing GenAI-related workflows.
+Personal collection of GenAI assistant configurations and automation tools.
 
-## Tools
+## Repository Structure
 
-### glab-management
+### Assistant Configurations (`assistants/`)
 
-GitLab automation tool for managing epics and issues programmatically.
+Backup repository for AI assistant configurations that live in `~/.claude/` and `~/.codex/`:
 
+- **`assistants/claude/`** - Claude Code agent configurations (backup of `~/.claude/`)
+  - Workflow rules and process guidelines
+  - Planning templates
+  - Agent definitions: coder, devops-engineer, architecture-research-planner, reviewer
+
+- **`assistants/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
+
+### Tools
+
+#### glab-management
+
+GitLab automation tool for managing epics, issues, and milestones programmatically.
+
+**Features:**
 - Create issues from YAML definitions with dependency tracking
-- Load and display issue/epic information in markdown
-- Search issues and epics by text query
+- Load and display issue/epic/milestone information in markdown format
+- Search issues, epics, and milestones by text query
+- Milestone epic breakdown for progress tracking
 
-See [glab-management/](glab-management/) for details.
+**See [glab-management/CLAUDE.md](glab-management/CLAUDE.md) for detailed documentation.**
 
-#### Requirements
+**Requirements:**
+- Python 3 (PyYAML)
+- [glab CLI](https://gitlab.com/gitlab-org/cli) installed and authenticated
 
-- Python 3
-- [glab CLI](https://gitlab.com/gitlab-org/cli)
+## Agent Overview
 
-## Agent Templates
+Custom agent configurations enforce explicit quality constraints and scope responsibilities.
 
-Custom Claude agent configurations are defined under `~/.claude/agents/`. Each agent is scoped to a specific responsibility and enforces explicit quality constraints.
+### Workflow
 
-- The `coder.md` agent is used for systems programming in C++, Rust, Python, and Go. It enforces language-specific style guidelines such as the C++ Core Guidelines, PEP 8, and the Rust API Guidelines, with expectations around memory safety, algorithmic efficiency, and a minimum of 80% code coverage.
+All implementation tasks follow a structured workflow with two mandatory checkpoints:
 
-- The `devops-engineer.md` agent focuses on infrastructure, CI/CD pipelines, and containerization. It emphasizes local-CI parity, efficient resource usage, and a smooth developer experience.
+```
+┌─────────────────────┐
+│ 1. Research         │ ← architecture-research-planner
+│ 2. Design           │
+└──────────┬──────────┘
+           ↓
+    ┌──────────────┐
+    │ ⚠️  USER     │
+    │   APPROVAL   │ ← Checkpoint 1
+    └──────┬───────┘
+           ↓
+┌──────────────────────┐
+│ 3. Implementation    │ ← coder / devops-engineer
+└──────────┬───────────┘
+           ↓
+    ┌──────────────┐
+    │ ⚠️  CODE     │
+    │   REVIEW     │ ← reviewer (Checkpoint 2)
+    └──────┬───────┘
+           ↓
+┌──────────────────────┐
+│ 4. Verify & Tests    │
+│ 5. User Commits      │
+└──────────────────────┘
+```
 
-- The `architecture-research-planner.md` agent handles system design and documentation. It prioritizes concise visual artifacts over prose, producing Mermaid diagrams with a preference for the C4 model.
+**Key Principles:**
+- **Two mandatory checkpoints:** User approval before coding, code review after implementation
+- **Specialized agents:** Different agents handle specific phases based on expertise
+- **User control:** User handles all git commits and final task completion
+- **Quality gates:** No bypassing checkpoints - rejected work loops back for revision
 
-Codex skills mirror these agents for task-specific triggers in `~/.codex/skills/` (coder, devops-engineer, architecture-research-planner, writer).
+### Agent Responsibilities
 
-General Claude behavior and coding guidelines live in `~/.claude/CLAUDE.md`.
+- **`coder`** - Systems programming in C++, Go, Rust, Python, Zig
+  - Enforces: C++ Core Guidelines, PEP 8, Go style guide, Rust API Guidelines, Zig Style Guide
+  - Quality: Memory safety, algorithmic efficiency, 80% code coverage
+
+- **`devops-engineer`** - Infrastructure, CI/CD, containerization
+  - Enforces: Local-CI parity, resource efficiency, smooth developer experience
+  - Quality: Build optimization, proper documentation
+
+- **`architecture-research-planner`** - System design and documentation
+  - Enforces: Visual artifacts over prose, Mermaid diagrams, C4 model preference
+  - Quality: Concise documentation, architectural clarity
+
+- **`reviewer`** - Mandatory code review after implementation
+  - Evaluates: Supportability, Extendability, Maintainability, Testability
+  - Quality: Performance, Safety, Security, Observability
