@@ -15,6 +15,9 @@ planning/
 │   │
 │   ├── milestone-XX-<name>/              # One folder per milestone
 │   │   ├── status.md                     # Milestone progress tracking
+│   │   ├── design/                       # Temporary design/architecture docs
+│   │   │   ├── <feature>-design.md      # Design proposals
+│   │   │   └── <component>-analysis.md  # Research findings
 │   │   ├── epic-YY-<name>.md            # Epic details (when needed)
 │   │   └── ...                           # Additional epic files
 │   │
@@ -107,6 +110,35 @@ planning/
 
 ---
 
+### `milestone-XX-<name>/design/`
+
+**Purpose:** Temporary design and research artifacts for the milestone
+**Updated:** During research and design phases
+**Format:** Architecture docs, diagrams, analysis
+
+**Contains:**
+- Research findings and codebase analysis
+- Architecture diagrams (Mermaid)
+- Design proposals and alternatives
+- Technical decision rationale
+- Implementation approach details
+
+**Style:** Detailed technical content with diagrams
+
+**Key Difference from status.md:**
+- `status.md` = WHAT to do (task list, progress %)
+- `design/` = HOW to do it (architecture, approach, diagrams)
+
+**When to create:**
+- Research phase produces analysis documents
+- Design phase produces design proposals
+- Complex features need architecture diagrams
+- Technical decisions need documentation
+
+**Lifecycle:** Temporary - archived or deleted after milestone completion
+
+---
+
 ### `milestone-XX-<name>/epic-YY-<name>.md`
 
 **Purpose:** Detailed tracking for complex epics
@@ -142,9 +174,32 @@ cat planning/progress.md
 
 # Check active milestone status
 cat planning/<goal>/milestone-XX-<name>/status.md
+
+# Check design docs if they exist
+ls planning/<goal>/milestone-XX-<name>/design/
 ```
 
-### 2. Daily Work
+### 2. Research & Design Phase
+
+**When starting a new feature/epic:**
+```bash
+# Create design directory
+mkdir -p planning/<goal>/milestone-XX-<name>/design/
+
+# Research phase (architecture-research-planner agent)
+# Output: planning/<goal>/milestone-XX-<name>/design/<feature>-analysis.md
+# Contains: codebase analysis, diagrams, findings
+
+# Design phase
+# Output: planning/<goal>/milestone-XX-<name>/design/<feature>-design.md
+# Contains: approach, architecture, diagrams, alternatives
+```
+
+**Keep separate:**
+- `status.md` = Brief reference to design doc + task checklist
+- `design/<feature>.md` = Detailed architecture and approach
+
+### 3. Daily Work
 
 **Update `progress.md`:**
 - Mark tasks in progress
@@ -152,7 +207,7 @@ cat planning/<goal>/milestone-XX-<name>/status.md
 - Update next steps
 - Timestamp changes
 
-### 3. Milestone Progress
+### 4. Milestone Progress
 
 **Update `milestone-XX-<name>/status.md`:**
 - When epic/issue completed
@@ -160,15 +215,16 @@ cat planning/<goal>/milestone-XX-<name>/status.md
 - Weekly status check
 - Risk changes
 
-### 4. Milestone Completion
+### 5. Milestone Completion
 
 **Actions:**
 1. Update milestone status.md (100% complete)
 2. Update goal overview.md (mark milestone ✅)
-3. Archive or move epic files (optional)
-4. Update progress.md (next milestone)
+3. Archive or delete design/ folder (temporary artifacts)
+4. Archive or move epic files (optional)
+5. Update progress.md (next milestone)
 
-### 5. New Milestone
+### 6. New Milestone
 
 **Actions:**
 1. Create `milestone-XX-<name>/` folder
@@ -299,10 +355,12 @@ None
 - Creating epic files for simple work
 - Use milestone status.md for simple tracking
 
-❌ **Implementation details in planning**
-- Code snippets
-- Architecture diagrams (put in design docs)
-- Step-by-step instructions (use task checklists)
+❌ **Implementation details in status tracking**
+- Don't put architecture diagrams in status.md
+- Don't put code snippets in status.md or progress.md
+- Don't put detailed design in status.md
+- ✅ DO: Put architecture/design in milestone-XX/design/ folder
+- ✅ DO: Keep status.md as task checklists only
 
 ---
 
@@ -311,7 +369,10 @@ None
 **Key Points:**
 
 1. **Three-level structure:** progress.md → overview.md → status.md
-2. **Concise over comprehensive:** Task checklists, not detailed plans
-3. **Focus on WHAT:** Not HOW to implement
+2. **Separate tracking from design:**
+   - status.md = WHAT (task checklists, progress %)
+   - design/ = HOW (architecture, diagrams, approach)
+3. **Concise over comprehensive:** Task checklists in status, details in design/
 4. **Update frequently:** progress.md daily, status.md weekly
 5. **Epic files:** Only when needed for complex tracking
+6. **Design artifacts:** Temporary, milestone-scoped, archived after completion

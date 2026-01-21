@@ -97,7 +97,8 @@ Always declare which agent you will use for each task:
 1. Research Phase
    Agent: architecture-research-planner
    └─> Understand existing code, patterns, requirements
-   └─> Output: Research findings
+   └─> Output: Research findings → %current_project%/planning/<goal>/milestone-XX/design/<feature>-analysis.md
+   └─> Contains: Codebase analysis, architecture diagrams (Mermaid), findings
 
 2. Design Phase
    Agent: None (main conversation)
@@ -105,7 +106,8 @@ Always declare which agent you will use for each task:
    └─> Propose implementation approach
    └─> List files to be modified/created
    └─> Explain technical rationale and trade-offs
-   └─> Output: Design proposal
+   └─> Output: Design proposal → %current_project%/planning/<goal>/milestone-XX/design/<feature>-design.md
+   └─> Contains: Approach, architecture, diagrams, alternatives, rationale
 
 3. ⚠️ CHECKPOINT 1: User Approval ⚠️
    └─> Present approach to user
@@ -141,6 +143,9 @@ Always declare which agent you will use for each task:
    └─> Explicitly propose to update %current_project%/planning/progress.md
    └─> Wait for user confirmation before updating
    └─> NEVER update progress.md automatically
+
+Note: Keep status tracking (progress.md, status.md) separate from design artifacts (design/ folder).
+Status files = WHAT to do (tasks, progress %). Design files = HOW to do it (architecture, diagrams).
 ```
 
 ## Agent Declaration Pattern

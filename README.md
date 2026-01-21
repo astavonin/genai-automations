@@ -4,16 +4,16 @@ Personal collection of GenAI assistant configurations and automation tools.
 
 ## Repository Structure
 
-### Assistant Configurations (`assistants/`)
+### Platform Configurations (`platforms/`)
 
-Backup repository for AI assistant configurations that live in `~/.claude/` and `~/.codex/`:
+Backup repository for AI platform configurations that live in `~/.claude/` and `~/.codex/`:
 
-- **`assistants/claude/`** - Claude Code agent configurations (backup of `~/.claude/`)
-  - Workflow rules and process guidelines
-  - Planning templates
+- **`platforms/claude/`** - Claude Code configurations (backup of `~/.claude/`)
+  - Workflow rules and process guidelines (CLAUDE.md)
+  - Planning templates (PLANNING-TEMPLATE.md)
   - Agent definitions: coder, devops-engineer, architecture-research-planner, reviewer
 
-- **`assistants/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
+- **`platforms/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
 
 ### Tools
 
