@@ -24,6 +24,17 @@
   - Tests: Describe the test case
 - Avoid: usage examples, complexity notes, responsibility lists (tests document usage)
 
+## Linter Suppressions
+- **ALWAYS add a comment explaining WHY** when suppressing linter warnings
+- Apply to all suppression directives in any language:
+  - C++: `// NOLINTNEXTLINE(rule-name)`
+  - Python: `# noqa`, `# type: ignore`
+  - Go: `//nolint`
+  - Rust: `#[allow(clippy::...)]`
+  - JavaScript/TypeScript: `// eslint-disable-next-line`
+- Format: `// NOLINTNEXTLINE(rule-name): Reason why suppression is needed`
+- Example: `// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Hardware register access requires reinterpret_cast`
+
 ## Formatting
 - Apply formatting using the current project's formatting tool for all files you create or modify
 
