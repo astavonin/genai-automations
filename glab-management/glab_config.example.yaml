@@ -29,6 +29,11 @@ labels:
     - "development-status::backlog"
     - "product::__name__"
 
+  # Default labels applied to every epic if not specified
+  default_epic:
+    - "type::__epic_type__"
+    - "product::__name__"
+
   # Allowed labels list for validation
   # If specified, script validates that all labels in YAML files are in this list
   # If empty or not specified, validation is skipped

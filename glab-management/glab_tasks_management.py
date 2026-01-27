@@ -143,6 +143,14 @@ class Config:
         """
         return self.config_data.get('labels', {}).get('default', [])
 
+    def get_default_epic_labels(self) -> List[str]:
+        """Get the default labels to apply to epics.
+
+        Returns:
+            List of default epic label names.
+        """
+        return self.config_data.get('labels', {}).get('default_epic', [])
+
     def get_allowed_labels(self) -> Optional[List[str]]:
         """Get the allowed labels list for validation.
 
@@ -230,6 +238,7 @@ class EpicIssueCreator:
             epic_config: Dictionary containing epic configuration with either:
                          - 'id': existing epic ID
                          - 'title' and optionally 'description': for new epic
+                         - 'labels': List of label names (merged with defaults)
 
         Returns:
             Epic ID as a string.
@@ -259,6 +268,16 @@ class EpicIssueCreator:
                 "Please set 'default_group' in your glab_config.yaml file."
             )
 
+        # Merge default epic labels from config with epic-specific labels
+        default_labels = self.config.get_default_epic_labels()
+        epic_labels = epic_config.get('labels', [])
+
+        # Combine and deduplicate labels
+        all_labels = list(dict.fromkeys(default_labels + epic_labels))
+
+        # Validate labels against allowed list (if configured)
+        self._validate_issue_labels(all_labels)  # Reuse validation logic
+
         # URL encode the group path
         encoded_group = urllib.parse.quote(self.group, safe='')
 
@@ -267,6 +286,11 @@ class EpicIssueCreator:
 
         if description:
             cmd.extend(['-f', f'description={description}'])
+
+        if all_labels:
+            # GitLab API expects labels as comma-separated string
+            labels_str = ','.join(all_labels)
+            cmd.extend(['-f', f'labels={labels_str}'])
 
         output = self._run_glab_command(cmd)
 
