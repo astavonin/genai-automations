@@ -10,12 +10,14 @@ Backup repository for AI platform configurations that live in `~/.claude/` and `
 
 - **`platforms/claude/`** - Claude Code configurations (backup of `~/.claude/`)
   - **CLAUDE.md** - Simplified reference guide for workflows and standards
-  - **commands/** - Executable workflow commands (`/start`, `/research`, `/design`, etc.)
-  - **skills/** - Modular knowledge base
-    - **languages/** - C++, Python, Go, Rust, Zig, Shell style guides
-    - **domains/** - Code quality, quality attributes, architecture, testing
-    - **workflows/** - Complete workflow reference, planning templates
-  - **agents/** - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
+  - **commands/** - Executable workflow commands (10 total)
+    - **Workflow:** `/start`, `/research`, `/design`, `/review-design`, `/implement`, `/review-code`, `/verify`, `/complete`
+    - **Utility:** `/mr` (create merge request), `/load` (load ticket info)
+  - **skills/** - Modular knowledge base (13 skills)
+    - **languages/** (6) - C++, Python, Go, Rust, Zig, Shell
+    - **domains/** (5) - Code quality, quality attributes, architecture, testing, devops
+    - **workflows/** (2) - Complete workflow reference, planning templates
+  - **agents/** (4) - coder, devops-engineer, architecture-research-planner, reviewer
   - **README.md** - Detailed documentation of structure and usage
 
 - **`platforms/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
@@ -42,9 +44,9 @@ GitLab automation tool for managing epics, issues, and milestones programmatical
 
 The Claude setup uses a modular, command-based architecture with executable workflow commands and reusable knowledge skills.
 
-### Workflow Commands
+### Commands
 
-Workflow phases are executable as commands:
+**Workflow Commands:**
 - `/start` - Load current work context
 - `/research` - Run research phase (architecture-research-planner)
 - `/design` - Create design proposal
@@ -53,6 +55,10 @@ Workflow phases are executable as commands:
 - `/review-code` - Code review checkpoint (MANDATORY)
 - `/verify` - Run tests and static analysis
 - `/complete` - Mark work complete
+
+**Utility Commands:**
+- `/mr` - Create merge request for current branch (GitLab)
+- `/load` - Load ticket information (issue/epic/milestone) using glab-management
 
 ### Workflow Phases
 
