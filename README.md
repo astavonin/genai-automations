@@ -9,9 +9,14 @@ Personal collection of GenAI assistant configurations and automation tools.
 Backup repository for AI platform configurations that live in `~/.claude/` and `~/.codex/`:
 
 - **`platforms/claude/`** - Claude Code configurations (backup of `~/.claude/`)
-  - Workflow rules and process guidelines (CLAUDE.md)
-  - Planning templates (PLANNING-TEMPLATE.md)
-  - Agent definitions: coder, devops-engineer, architecture-research-planner, reviewer
+  - **CLAUDE.md** - Simplified reference guide for workflows and standards
+  - **commands/** - Executable workflow commands (`/start`, `/research`, `/design`, etc.)
+  - **skills/** - Modular knowledge base
+    - **languages/** - C++, Python, Go, Rust, Zig, Shell style guides
+    - **domains/** - Code quality, quality attributes, architecture, testing
+    - **workflows/** - Complete workflow reference, planning templates
+  - **agents/** - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
+  - **README.md** - Detailed documentation of structure and usage
 
 - **`platforms/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
 
@@ -33,11 +38,23 @@ GitLab automation tool for managing epics, issues, and milestones programmatical
 - Python 3 (PyYAML)
 - [glab CLI](https://gitlab.com/gitlab-org/cli) installed and authenticated
 
-## Agent Overview
+## Claude Setup Overview
 
-Custom agent configurations enforce explicit quality constraints and scope responsibilities.
+The Claude setup uses a modular, command-based architecture with executable workflow commands and reusable knowledge skills.
 
-### Workflow
+### Workflow Commands
+
+Workflow phases are executable as commands:
+- `/start` - Load current work context
+- `/research` - Run research phase (architecture-research-planner)
+- `/design` - Create design proposal
+- `/review-design` - Design review checkpoint (MANDATORY)
+- `/implement` - Run implementation (coder/devops-engineer)
+- `/review-code` - Code review checkpoint (MANDATORY)
+- `/verify` - Run tests and static analysis
+- `/complete` - Mark work complete
+
+### Workflow Phases
 
 All implementation tasks follow a structured workflow with two mandatory checkpoints:
 
@@ -75,18 +92,20 @@ All implementation tasks follow a structured workflow with two mandatory checkpo
 
 ### Agent Responsibilities
 
-- **`coder`** - Systems programming in C++, Go, Rust, Python, Zig
-  - Enforces: C++ Core Guidelines, PEP 8, Go style guide, Rust API Guidelines, Zig Style Guide
-  - Quality: Memory safety, algorithmic efficiency, 80% code coverage
+- **`coder`** (sonnet) - Systems programming in C++, Go, Rust, Python, Zig
+  - Algorithmic efficiency, correctness, and architectural quality
+  - Does NOT handle infrastructure or deployment
 
-- **`devops-engineer`** - Infrastructure, CI/CD, containerization
-  - Enforces: Local-CI parity, resource efficiency, smooth developer experience
-  - Quality: Build optimization, proper documentation
+- **`devops-engineer`** (sonnet) - Infrastructure, CI/CD, containerization
+  - Docker, CI/CD pipelines, deployment scripts, environment setup
+  - Optimizes build processes and resource usage
 
-- **`architecture-research-planner`** - System design and documentation
-  - Enforces: Visual artifacts over prose, Mermaid diagrams, C4 model preference
-  - Quality: Concise documentation, architectural clarity
+- **`architecture-research-planner`** (opus) - Research, architecture, documentation
+  - Reverse engineers codebases, creates Mermaid diagrams
+  - Produces production-level architecture documentation
+  - Does NOT write production code
 
-- **`reviewer`** - Mandatory code review after implementation
-  - Evaluates: Supportability, Extendability, Maintainability, Testability
-  - Quality: Performance, Safety, Security, Observability
+- **`reviewer`** (opus) - Quality reviews (design and code)
+  - MANDATORY before implementation (design review) and after implementation (code review)
+  - Evaluates: Supportability, Extendability, Maintainability, Testability, Performance, Safety, Security, Observability
+  - NEVER writes code - only provides feedback

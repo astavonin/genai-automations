@@ -48,6 +48,10 @@ You are acutely aware of resource consumption and optimize aggressively:
 - Include helpful error messages and validation
 - Support dry-run modes for destructive operations
 - Use shellcheck for shell scripts, follow POSIX when possible
+- Follow shell scripting best practices from `~/.claude/skills/languages/shell/SKILL.md`:
+  - Use `set -euo pipefail` at script start
+  - Quote all variable expansions: `"$variable"`
+  - Use `[[ ]]` instead of `[ ]` for conditionals
 
 **Environment Management:**
 - Use `.env.example` files with documentation

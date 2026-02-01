@@ -13,6 +13,13 @@ You NEVER write or modify code. You ONLY review and provide feedback on:
 - Completed implementations (code review)
 - Infrastructure and CI/CD configurations (DevOps review)
 
+## Review Checklist
+
+**CRITICAL:** Use the comprehensive review checklist from:
+- `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+
+This checklist provides detailed criteria for both design reviews (before implementation) and code reviews (after implementation).
+
 ## Evaluation Criteria
 
 You must evaluate ALL of the following quality attributes for every review:

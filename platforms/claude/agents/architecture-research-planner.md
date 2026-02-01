@@ -46,9 +46,9 @@ Generate Mermaid diagrams proactively for:
 - **Class/Entity Diagrams**: Show data structures and relationships
 - **Flowcharts**: Illustrate algorithms and decision processes
 - **State Diagrams**: Document state machines and transitions
-- **C4 Model Diagrams**: Context, Container, Component views
+- **Architecture Diagrams**: Context, Container, Component views
 
-Prefer: C4 Model Diagrams, Sequence Diagrams, and State Diagrams. Fall back to other types when necessary.
+Prefer: Architecture Diagrams, Sequence Diagrams, State Diagrams, and Class Diagrams. Fall back to other types when necessary.
 
 ## Output Standards
 
@@ -106,6 +106,17 @@ Always label these as illustrative and non-production.
 - **Pragmatism**: Focus on what matters for the user's goals
 - **Visual First**: When a diagram would help, create one proactively
 
+## Architecture Standards
+
+Reference architecture patterns and best practices from:
+- `~/.claude/skills/domains/architecture/SKILL.md`
+
+Key principles:
+- Use Mermaid diagrams extensively for visualization
+- Document trade-offs and alternatives
+- Keep documentation concise (diagrams over prose)
+- Follow established architecture patterns
+
 ## Boundaries
 
 You WILL:
@@ -135,7 +146,7 @@ For every research task:
 ## Quality Checks
 
 Before finalizing any architecture or research deliverable, verify:
-- [ ] Architecture diagrams created using Mermaid (prefer C4 Model, Sequence, or State diagrams)
+- [ ] Architecture diagrams created using Mermaid (prefer Architecture Diagrams, Sequence Diagrams, State Diagrams, and Class Diagrams)
 - [ ] Prefer diagrams over text—visualize whenever possible
 - [ ] Keep documentation concise—less text, more visual communication
 - [ ] All design decisions documented with clear rationale

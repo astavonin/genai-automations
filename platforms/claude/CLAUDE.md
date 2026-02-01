@@ -7,309 +7,137 @@
 # Coding Standards
 
 ## Language-Specific Guidelines
+
+Reference: `~/.claude/skills/languages/`
+
 - **C++**: Strictly follow The C++ Core Guidelines
 - **Python**: Follow PEP 8 and Google Python Style Guide
 - **Go**: Follow Effective Go, Go Code Review Comments, and official Go style guide
 - **Rust**: Follow Rust API Guidelines
 - **Zig**: Follow Zig Style Guide
+- **Shell**: Follow shell scripting best practices
 
-## Code Comments
+See language skills for detailed guidelines, patterns, and examples.
+
+## Code Quality
+
+Reference: `~/.claude/skills/domains/code-quality/`
+
 - Write self-documenting code that needs minimal comments
-- Before adding a comment, reevaluate the code: why is it unclear?
-- When comments are necessary:
-  - Be concise and focus on intent
-  - Classes: 1-2 line summary
-  - Methods: Inline purpose if non-obvious
-  - TODOs: For future work
-  - Tests: Describe the test case
-- Avoid: usage examples, complexity notes, responsibility lists (tests document usage)
-
-## Linter Suppressions
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings
-- Apply to all suppression directives in any language:
-  - C++: `// NOLINTNEXTLINE(rule-name)`
-  - Python: `# noqa`, `# type: ignore`
-  - Go: `//nolint`
-  - Rust: `#[allow(clippy::...)]`
-  - JavaScript/TypeScript: `// eslint-disable-next-line`
-- Format: `// NOLINTNEXTLINE(rule-name): Reason why suppression is needed`
-- Example: `// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Hardware register access requires reinterpret_cast`
-
-## Formatting
 - Apply formatting using the current project's formatting tool for all files you create or modify
 
-# Complete Workflow
+# Workflow
 
-**Planning Structure:** See `~/.claude/PLANNING-TEMPLATE.md` for planning directory structure and file organization.
+Reference: `~/.claude/skills/workflows/complete-workflow/`
 
-**CRITICAL:**
-- NEVER create git commits - user will always handle commits
-- NEVER automatically update progress.md - always propose explicitly and wait for user confirmation
+## Available Commands
 
-## Agent Assignment
+### Workflow Commands
 
-Always declare which agent you will use for each task:
-- **architecture-research-planner**: Research and design tasks
-- **coder**: Implementation tasks (non-CI code)
-- **devops-engineer**: CI/CD, Docker, infrastructure tasks
-- **reviewer**: Mandatory quality reviews (design and code reviews)
+- `/start` - Load current work context from planning files
+- `/research` - Run research phase (architecture-research-planner agent)
+- `/design` - Create design proposal
+- `/review-design` - Review design before implementation (MANDATORY)
+- `/implement` - Run implementation (coder or devops-engineer agent)
+- `/review-code` - Review code after implementation (MANDATORY)
+- `/verify` - Run verification (tests, linters, static analysis)
+- `/complete` - Mark work complete and update progress tracking
 
-## Workflow Phases
+### Utility Commands
+
+- `/mr` - Create merge request for current branch (GitLab)
+- `/load` - Load ticket information (issue/epic/milestone) from ticket management system
+
+## Quick Reference
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ 0. Start Work                                                       │
-│    → Check current progress and planning files                      │
-│    → Load context from progress.md and status.md                    │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. Research Phase                                                   │
-│    Agent: architecture-research-planner                             │
-│    → Investigate existing code, patterns, requirements              │
-│    → Ask clarifying questions if requirements unclear               │
-│    Output: %current_project%/planning/<goal>/milestone-XX/design/   │
-│           <feature>-analysis.md                                     │
-│    Contains: Codebase analysis, architecture diagrams, findings     │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 2. Design Phase                                                     │
-│    Agent: None (main conversation)                                  │
-│    → Analyze requirements and constraints                           │
-│    → Propose implementation approach                                │
-│    → List files to be modified/created                              │
-│    → Explain technical rationale and trade-offs                     │
-│    Output: %current_project%/planning/<goal>/milestone-XX/design/   │
-│           <feature>-design.md                                       │
-│    Contains: Approach, architecture, diagrams, alternatives         │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 3. ⚠️ CHECKPOINT 1: User Approval (MANDATORY) ⚠️                    │
-│    Who: User                                                        │
-│    → Present complete design approach to user                       │
-│    → Wait for explicit user confirmation                            │
-│    → DO NOT proceed without approval                                │
-│    → If rejected: revise design (return to step 2)                  │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 4. Implementation Phase                                             │
-│    Agent: coder (code) OR devops-engineer (CI/CD)                   │
-│    → Write code following approved design                           │
-│    → Include comprehensive unit tests                               │
-│    → Verify build passes after each change                          │
-│    → Follow language-specific style guides                          │
-│    Output: Implementation complete (code + tests)                   │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 5. ⚠️ CHECKPOINT 2: Code Review (MANDATORY) ⚠️                      │
-│    Agent: reviewer                                                  │
-│    → Use review checklist: ~/.claude/review-checklist.md           │
-│    → Evaluate: Supportability, Extendability, Maintainability,     │
-│                Testability, Performance, Safety, Security,          │
-│                Observability                                         │
-│    → Check: Design adherence, code quality, test coverage          │
-│    Assessment: ✅ Approve / ⚠️ Request Changes / ❌ Reject          │
-│    → If not approved: fix issues (return to step 5)                │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 6. Verification Phase                                               │
-│    → Run all unit tests                                             │
-│    → Run integration tests (if applicable)                          │
-│    → Run static analysis (clang-tidy, pylint, etc.)                │
-│    → Verify no regressions                                          │
-│    → All checks must pass                                           │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 7. Commit Phase                                                     │
-│    ⚠️ NEVER create commits automatically ⚠️                         │
-│    → User will handle all git commits                               │
-│    → Only proceed here after review approval and all checks pass    │
-└─────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│ 8. Completion Phase                                                 │
-│    → After user confirms issue is complete                          │
-│    → Explicitly propose to update progress.md                       │
-│    → Wait for user confirmation before updating                     │
-│    → Update milestone status.md if needed                           │
-│    ⚠️ NEVER update planning files automatically ⚠️                  │
-└─────────────────────────────────────────────────────────────────────┘
+1. Start:      /start → load progress.md, status.md
+2. Research:   /research → architecture-research-planner → analysis.md
+3. Design:     /design → create design.md → /review-design
+4. Implement:  /implement → coder/devops-engineer → code + tests
+5. Review:     /review-code → reviewer → approve/changes/reject
+6. Verify:     /verify → tests + linters + static analysis
+7. Commit:     User handles git commits (NEVER automatic)
+8. Complete:   /complete → update progress.md (propose & confirm)
 ```
 
-## Phase Details
+## Critical Rules
+
+- **NEVER create git commits** - user always handles commits
+- **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
+- **ALL implementations require design review BEFORE code** (Phase 3)
+- **ALL code requires code review AFTER implementation** (Phase 5)
+
+## Workflow Execution
+
+For ANY implementation task, automatically follow these phases:
 
 ### Phase 0: Start Work
-
-**Always begin by checking:**
+Load context from planning files:
 ```bash
-# Read current progress
 cat planning/progress.md
-
-# Check active milestone status
-cat planning/<goal>/milestone-XX-<name>/status.md
-
-# Check design docs if they exist
-ls planning/<goal>/milestone-XX-<name>/design/
+cat planning/<goal>/milestone-XX/status.md
+ls planning/<goal>/milestone-XX/design/
 ```
 
 ### Phase 1: Research
-
-**Agent:** `architecture-research-planner`
-
-**Actions:**
-- Investigate existing codebase patterns
-- Understand current architecture
-- Identify integration points and dependencies
-- Ask clarifying questions if requirements are unclear
-
-**Output:** `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
-- Codebase analysis
-- Architecture diagrams (Mermaid)
-- Research findings
-- Integration points
+- Use architecture-research-planner agent
+- Investigate existing codebase patterns and architecture
+- Output: `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
 
 ### Phase 2: Design
-
-**Agent:** Main conversation (no specialized agent)
-
-**Actions:**
-- Analyze requirements and constraints
-- Propose implementation approach
+- Main conversation (no agent)
+- Propose implementation approach with architecture diagrams
 - List files to be modified/created
-- Explain technical rationale
-- Document trade-offs and alternatives
+- Explain rationale and trade-offs
+- Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
 
-**Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
-- Proposed approach
-- Architecture diagrams
-- Alternative approaches considered
-- Design rationale
-- File modification list
-
-**Key:** Design files = HOW to implement (architecture, approach)
-
-### Phase 3: Checkpoint 1 - User Approval
-
-**Who:** User (mandatory)
-
-**Present:**
-- Complete design approach
-- Files to be modified/created
-- Technical rationale and trade-offs
-- Expected changes summary
-
-**Requirements:**
-- User MUST explicitly approve before any code changes
-- NO code implementation without approval
-- If rejected: revise design and return to Phase 2
+### Phase 3: Design Review (CHECKPOINT 1)
+- Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+- Present design to user
+- Wait for explicit user approval
+- DO NOT proceed without approval
+- If rejected: return to Phase 2
 
 ### Phase 4: Implementation
+- Use coder agent (code) OR devops-engineer agent (CI/CD)
+- Follow approved design
+- Include comprehensive unit tests
+- Verify build passes
+- Apply formatting
 
-**Agent:** `coder` (application code) OR `devops-engineer` (CI/CD/infrastructure)
-
-**Actions:**
-- Write code following approved design
-- Include comprehensive unit tests (mandatory)
-- Verify build passes after each change
-- Follow language-specific style guides (C++ Core Guidelines, PEP 8, etc.)
-- Apply code formatting (clang-format, black, etc.)
-
-**Output:** Implementation complete (code + tests)
-
-### Phase 5: Checkpoint 2 - Code Review
-
-**Agent:** `reviewer` (mandatory)
-
-**Review Checklist:** `~/.claude/review-checklist.md`
-
-**Evaluate:**
-- **Supportability:** Logging, error messages, debugging
-- **Extendability:** Modularity, abstractions, future-proofing
-- **Maintainability:** Code clarity, naming, complexity
-- **Testability:** Unit tests, test coverage, edge cases
-- **Performance:** No bottlenecks, efficient algorithms
-- **Safety:** Error handling, resource management, thread safety
-- **Security:** Input validation, no vulnerabilities
-- **Observability:** Logging, metrics, tracing
-
-**Also Check:**
-- Design adherence (matches approved design)
-- Code quality and standards
-- Test coverage and quality
-- Static analysis compliance
-
-**Assessment:**
-- ✅ **Approve:** Proceed to verification
-- ⚠️ **Request Changes:** Fix issues and return for re-review
-- ❌ **Reject:** Fundamental problems, redesign needed
-
-**How to invoke:**
-```
-"I'll use the reviewer agent to perform code review. Please use the Code Review
-Checklist from ~/.claude/review-checklist.md to evaluate the implementation."
-```
+### Phase 5: Code Review (CHECKPOINT 2)
+- Use reviewer agent with review checklist
+- Evaluate all 8 quality attributes
+- Block until approved
+- If rejected: fix and return for re-review
 
 ### Phase 6: Verification
-
-**Actions:**
 - Run all unit tests
 - Run integration tests (if applicable)
 - Run static analysis (clang-tidy, pylint, clippy, etc.)
-- Verify no regressions in existing functionality
+- Verify no regressions
 - All checks must pass
 
-**Requirements:**
-- Zero test failures
-- Zero static analysis errors
-- No breaking changes (or properly documented)
-
 ### Phase 7: Commit
-
-**CRITICAL:**
-- NEVER create git commits automatically
-- User will handle all commit operations
-- Only proceed here after:
-  - Review approval received
-  - All verification checks pass
+- User handles all git commits
+- NEVER create commits automatically
 
 ### Phase 8: Completion
+- After user confirms work complete
+- Explicitly propose updating `planning/progress.md`
+- Wait for user confirmation
+- Update `status.md` if needed
 
-**After user confirms issue is complete:**
+# Agents
 
-**Actions:**
-1. Explicitly propose to update `planning/progress.md`
-2. Wait for user confirmation
-3. Update progress.md only after confirmation
-4. Update `planning/<goal>/milestone-XX/status.md` if needed
-5. Archive design documents if milestone complete
+Reference: `~/.claude/agents/`
 
-**Key:** Status files = WHAT to do (task checklists, progress %)
-
-**NEVER:**
-- Update planning files automatically
-- Assume work is complete without user confirmation
-
-## Review Checklist Usage
-
-**Location:** `~/.claude/review-checklist.md`
-
-**Design Review (Before Implementation):**
-```
-"I'll use the reviewer agent to review this design. Please use the Design Review
-Checklist from ~/.claude/review-checklist.md to evaluate the approach."
-```
-
-**Code Review (After Implementation):**
-```
-"I'll use the reviewer agent to perform code review. Please use the Code Review
-Checklist from ~/.claude/review-checklist.md to evaluate the implementation."
-```
+- **architecture-research-planner** (opus): Research, architecture, documentation
+- **coder** (sonnet): Implementation (C++, Go, Rust, Python)
+- **devops-engineer** (sonnet): CI/CD, Docker, infrastructure
+- **reviewer** (opus): Quality reviews (design and code reviews)
 
 ## Agent Declaration Pattern
 
@@ -323,4 +151,23 @@ For EVERY task, explicitly state agent usage:
 - "I'll use architecture-research-planner agent to investigate existing error handling patterns..."
 - "I'll use coder agent to implement the authentication module following the approved design..."
 - "I'll use devops-engineer agent to create the CI pipeline configuration..."
-- "I'll use reviewer agent for code review. Please use the Code Review Checklist from ~/.claude/review-checklist.md..."
+- "I'll use reviewer agent for code review. Please use the Code Review Checklist from ~/.claude/skills/domains/quality-attributes/references/review-checklist.md..."
+
+# Planning Structure
+
+Reference: `~/.claude/skills/workflows/planning/`
+
+**Directory structure:**
+```
+planning/
+├── progress.md                      # Current work (updated daily)
+├── <goal>/
+│   ├── overview.md                  # Milestone roadmap
+│   └── milestone-XX/
+│       ├── status.md                # Progress tracking (WHAT to do)
+│       └── design/                  # Design docs (HOW to do it)
+```
+
+**Key principle:** Separate tracking from design
+- `status.md` = WHAT to do (task checklists, progress %)
+- `design/` = HOW to do it (architecture, diagrams, approach)
