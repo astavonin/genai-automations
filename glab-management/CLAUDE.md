@@ -1,6 +1,13 @@
 # glab-management
 
-GitLab automation tool (`glab_tasks_management.py`) - Python wrapper around `glab` CLI for managing epics, issues, and milestones programmatically.
+GitLab automation tool (`glab_tasks_management.py`) - Python wrapper around `glab` CLI for managing epics, issues, milestones, and merge requests programmatically.
+
+## Recent Updates
+
+**New capabilities added:**
+- **MR Loading**: View merge request details in markdown format
+- **Review Comments**: Post code review comments from YAML files to MRs
+- **MR Creation**: Create merge requests from current branch with reviewers, labels, etc.
 
 ## Core Architecture
 
@@ -22,11 +29,12 @@ GitLab automation tool (`glab_tasks_management.py`) - Python wrapper around `gla
    - Validates labels against `allowed_labels` from config
    - Validates issue descriptions contain required sections
 
-3. **`TicketLoader`**: Loads issue/epic/milestone information from GitLab
-   - Parses references: URLs, issue numbers, `#123`, `&456` (epic), `%789` (milestone)
-   - Outputs markdown format for issues, epics, and milestones
-   - Includes dependency relationships (blocking/blocked_by)
+3. **`TicketLoader`**: Loads issue/epic/milestone/MR information from GitLab
+   - Parses references: URLs, issue numbers, `#123`, `&456` (epic), `%789` (milestone), `!134` (MR)
+   - Outputs markdown format for issues, epics, milestones, and merge requests
+   - Includes dependency relationships (blocking/blocked_by) for issues
    - Milestone view includes epic breakdown (groups issues by their epic)
+   - MR view includes branches, reviewers, assignees, pipeline status
 
 4. **`SearchHandler`**: Searches issues, epics, and milestones by text query
    - Uses GitLab API via `glab api` command
@@ -71,6 +79,22 @@ python3 glab_tasks_management.py search issues "bug" --state opened --limit 10
 python3 glab_tasks_management.py search epics "video"
 python3 glab_tasks_management.py search milestones "v1.0"
 python3 glab_tasks_management.py search milestones "release" --state active
+
+# Load merge request (markdown output)
+python3 glab_tasks_management.py load !134
+python3 glab_tasks_management.py load 134 --type mr
+python3 glab_tasks_management.py load https://gitlab.example.com/group/project/-/merge_requests/134
+
+# Post review comment from YAML to merge request
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml --mr 134
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml --dry-run
+
+# Create merge request from current branch
+python3 glab_tasks_management.py create-mr --title "Add streaming support" --draft
+python3 glab_tasks_management.py create-mr --fill --reviewer alice --label "type::feature"
+python3 glab_tasks_management.py create-mr --target-branch develop --milestone "v2.0"
+python3 glab_tasks_management.py create-mr --dry-run
 ```
 
 ## Configuration
@@ -143,8 +167,14 @@ The tool creates GitLab issue links with `link_type=blocks` after all issues are
 
 ## GitLab API Usage
 
-The tool uses `glab api` command for operations not supported by native `glab` commands:
+The tool uses both native `glab` commands and `glab api` for operations:
 
+**Native glab commands:**
+- **MR operations**: `glab mr view`, `glab mr comment`, `glab mr create`
+- **Issue operations**: `glab issue view`, `glab issue list`
+- **Epic operations**: Limited support (most use API)
+
+**glab api for advanced operations:**
 - **Epic creation**: `POST /groups/:id/epics`
 - **Epic-issue linking**: `POST /groups/:id/epics/:epic_iid/issues/:issue_id`
 - **Issue dependency links**: `POST /projects/:id/issues/:iid/links` with `link_type=blocks`
@@ -155,6 +185,7 @@ Key details:
 - Epic operations require group path (from config or URL)
 - Issue linking requires global issue ID (not project-scoped IID)
 - URLs are properly encoded using `urllib.parse.quote()`
+- MR operations use JSON output from `glab mr view --output json`
 
 ## Milestone Epic Breakdown
 
@@ -181,6 +212,123 @@ This view is useful for:
 - Understanding milestone→epic mapping
 - Tracking epic progress within a milestone
 - Identifying standalone issues not associated with epics
+
+## Merge Request Operations
+
+### Loading MRs
+
+Load merge request information in markdown format:
+
+```python
+# Reference formats supported:
+# - !134 (exclamation prefix)
+# - 134 --type mr (explicit type)
+# - URL: https://gitlab.../merge_requests/134
+loader.load_mr('!134')
+```
+
+Output includes:
+- Title, state, author
+- Source and target branches
+- Draft status
+- Labels, assignees, reviewers
+- Milestone
+- Created/updated/merged timestamps
+- Pipeline status
+- Description
+
+### Posting Review Comments
+
+Post code review comments from YAML files to merge requests:
+
+**YAML Format:**
+```yaml
+mr_number: 134
+title: "Draft: DMS refactoring"
+review_date: "2026-02-04"
+
+findings:
+  - severity: Critical  # or High, Medium, Low
+    title: "Brief issue description"
+    description: |
+      Detailed explanation with technical context.
+      Explains WHY it's an issue, not just WHAT.
+    location: "path/to/file.cc:123"
+    # OR for multiple locations:
+    # locations:
+    #   - "file1.cc:123"
+    #   - "file2.h:456"
+    fix: |
+      Concrete fix recommendation with code example.
+    guideline: "C++ Core Guidelines F.53"  # Optional, use null if none
+```
+
+**Required YAML Fields:**
+- `mr_number` (integer) - MR number
+- `title` (string) - MR title
+- `review_date` (string) - YYYY-MM-DD format
+- `findings` (list) - List of finding objects
+
+**Each Finding:**
+- `severity` - One of: Critical, High, Medium, Low
+- `title` - Brief problem statement
+- `description` - Technical explanation (multiline with `|`)
+- `location` OR `locations` - File path(s) with line numbers
+- `fix` - Concrete recommendation (optional)
+- `guideline` - Standards reference (optional, use `null` if none)
+
+**Comment Formatting:**
+The tool automatically formats findings into markdown:
+- Groups by severity (Critical → High → Medium → Low)
+- Numbers all findings sequentially
+- Includes code blocks for fix suggestions
+- Adds location references
+
+**Usage:**
+```bash
+# Post review (MR number from YAML)
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml
+
+# Override MR number
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml --mr 135
+
+# Preview without posting
+python3 glab_tasks_management.py comment planning/reviews/MR134-review.yaml --dry-run
+```
+
+### Creating Merge Requests
+
+Create MRs from current branch with full metadata:
+
+**Options:**
+- `--title` - MR title
+- `--description` - MR description
+- `--draft` - Mark as draft
+- `--fill` - Auto-fill title/description from commits
+- `--assignee` - Assignee username (repeatable)
+- `--reviewer` - Reviewer username (repeatable)
+- `--label` - Label to add (repeatable)
+- `--milestone` - Milestone title
+- `--target-branch` - Target branch (default: repo default branch)
+- `--web` - Open MR in browser after creation
+- `--dry-run` - Preview command without creating
+
+**Examples:**
+```bash
+# Interactive mode
+python3 glab_tasks_management.py create-mr
+
+# With metadata
+python3 glab_tasks_management.py create-mr \
+  --title "Fix memory leak in encoder" \
+  --description "Addresses issue #123" \
+  --reviewer alice --reviewer bob \
+  --label "type::bug" --label "priority::high" \
+  --milestone "v2.0"
+
+# Draft MR with auto-fill
+python3 glab_tasks_management.py create-mr --draft --fill
+```
 
 ## Validation Rules
 
@@ -219,9 +367,62 @@ From `epic_template.yaml`, the project follows these conventions:
 - **[Impl]**: Implementation tasks (must include "Unit tests added and passing" in acceptance criteria)
 - **[Test]**: Integration/system tests only (unit tests are part of [Impl])
 
+## File Organization
+
+### Review Files
+
+Review YAML files should be stored in `planning/reviews/` directory:
+
+```
+project-root/
+├── planning/
+│   ├── reviews/
+│   │   ├── MR134-review.yaml
+│   │   ├── MR135-review.yaml
+│   │   └── ...
+│   ├── epic1.yaml
+│   └── epic2.yaml
+└── glab_config.yaml
+```
+
+**Naming convention:** `MR<number>-review.yaml`
+
+### Project Integration
+
+When using this tool from a project (e.g., openpilot):
+
+1. **Config location**: `./glab_config.yaml` in project root
+2. **Epic definitions**: `planning/*.yaml`
+3. **Review files**: `planning/reviews/MR*-review.yaml`
+4. **Documentation**: `planning/glab-management.md` (project-specific guide)
+
+## Code Structure
+
+### Main Functions (~2400 lines total)
+
+- **`cmd_create()`**: Handle issue/epic creation from YAML
+- **`cmd_load()`**: Handle loading of issues/epics/milestones/MRs
+- **`cmd_search()`**: Handle search operations
+- **`cmd_comment()`**: Handle posting review comments to MRs (NEW)
+- **`cmd_create_mr()`**: Handle MR creation from current branch (NEW)
+
+### Helper Functions
+
+- **`format_review_comment()`**: Convert YAML review to markdown comment (NEW)
+- Groups findings by severity
+- Formats code blocks and locations
+- Numbers findings sequentially
+
+### Class Methods
+
+**TicketLoader additions:**
+- `load_mr()`: Load MR via `glab mr view --output json`
+- `print_mr_info()`: Format MR info as markdown
+
 ## Code Style
 
 - Python code follows PEP 8
 - Type hints used throughout (Python 3.7+)
 - Comprehensive docstrings for classes and methods
 - Logging via Python `logging` module
+- Single-file design for easy deployment (~2400 lines)

@@ -6,7 +6,10 @@ This script provides commands to:
 - Load ticket (issue) information and related epic from GitLab (markdown output)
 - Load epic information with all associated issues (markdown output)
 - Load milestone information with all associated issues and epics (markdown output)
+- Load merge request (MR) information from GitLab (markdown output)
 - Search for issues, epics, and milestones by text query (text output)
+- Post review comments from YAML files to merge requests
+- Create merge requests from current branch
 
 Example:
     # Create issues from YAML
@@ -27,11 +30,24 @@ Example:
     $ python glab_tasks_management.py load https://gitlab.example.com/group/project/-/milestones/123
     $ python glab_tasks_management.py load 123 --type milestone
 
+    # Load merge request information (outputs markdown)
+    $ python glab_tasks_management.py load !134
+    $ python glab_tasks_management.py load 134 --type mr
+    $ python glab_tasks_management.py load https://gitlab.example.com/group/project/-/merge_requests/134
+
     # Search issues, epics, and milestones (outputs text)
     $ python glab_tasks_management.py search issues "streaming"
     $ python glab_tasks_management.py search epics "video"
     $ python glab_tasks_management.py search milestones "v1.0" --state active
     $ python glab_tasks_management.py search issues "SRT" --state opened --limit 10
+
+    # Post review comment from YAML to merge request
+    $ python glab_tasks_management.py comment planning/reviews/MR134-review.yaml
+    $ python glab_tasks_management.py comment planning/reviews/MR134-review.yaml --mr 134
+
+    # Create merge request
+    $ python glab_tasks_management.py create-mr --title "Add feature" --draft
+    $ python glab_tasks_management.py create-mr --fill --reviewer alice
 """
 
 import argparse
@@ -1580,6 +1596,97 @@ class TicketLoader:
         print(description if description else '*No description*')
         print()
 
+    def load_mr(self, mr_ref: str) -> Dict[str, Any]:
+        """Load merge request information from GitLab.
+
+        Args:
+            mr_ref: MR reference (number, URL, or !number format).
+
+        Returns:
+            Dictionary containing MR data.
+
+        Raises:
+            GlabError: If loading fails.
+        """
+        # Remove ! prefix if present
+        if mr_ref.startswith('!'):
+            mr_ref = mr_ref[1:]
+
+        # Parse URL if provided
+        if '://' in mr_ref:
+            # Extract MR number from URL
+            # Format: https://gitlab.../group/project/-/merge_requests/123
+            if '/-/merge_requests/' in mr_ref:
+                mr_ref = mr_ref.split('/-/merge_requests/')[-1].split('/')[0].split('?')[0]
+            else:
+                raise ValueError(f"Invalid MR URL format: {mr_ref}")
+
+        if not mr_ref.isdigit():
+            raise ValueError(f"Invalid MR reference: {mr_ref}")
+
+        logger.debug(f"Loading MR !{mr_ref}")
+
+        # Use glab mr view command
+        cmd = ['mr', 'view', mr_ref, '--output', 'json']
+        output = self._run_glab_command(cmd)
+        mr_data = json.loads(output)
+
+        return {'mr': mr_data}
+
+    def print_mr_info(self, data: Dict[str, Any]) -> None:
+        """Print merge request information in markdown format.
+
+        Args:
+            data: Dictionary containing MR data.
+        """
+        mr = data['mr']
+        print(f"# MR !{mr.get('iid')}: {mr.get('title')}\n")
+
+        print(f"**URL:** {mr.get('web_url')}  ")
+        print(f"**State:** {mr.get('state')}  ")
+        print(f"**Author:** {mr.get('author', {}).get('name', 'Unknown')}  ")
+
+        if mr.get('draft'):
+            print(f"**Draft:** Yes  ")
+
+        if mr.get('source_branch'):
+            print(f"**Source Branch:** `{mr['source_branch']}`  ")
+
+        if mr.get('target_branch'):
+            print(f"**Target Branch:** `{mr['target_branch']}`  ")
+
+        labels = mr.get('labels', [])
+        if labels:
+            print(f"**Labels:** {', '.join([f'`{l}`' for l in labels])}  ")
+
+        assignees = mr.get('assignees', [])
+        if assignees:
+            names = [a.get('name', a.get('username')) for a in assignees]
+            print(f"**Assignees:** {', '.join(names)}  ")
+
+        reviewers = mr.get('reviewers', [])
+        if reviewers:
+            names = [r.get('name', r.get('username')) for r in reviewers]
+            print(f"**Reviewers:** {', '.join(names)}  ")
+
+        if mr.get('milestone'):
+            print(f"**Milestone:** {mr['milestone'].get('title')}  ")
+
+        print(f"\n**Created:** {mr.get('created_at')}  ")
+        print(f"**Updated:** {mr.get('updated_at')}  ")
+
+        if mr.get('merged_at'):
+            print(f"**Merged:** {mr['merged_at']}  ")
+
+        if mr.get('pipeline'):
+            pipeline_status = mr['pipeline'].get('status', 'unknown')
+            print(f"**Pipeline Status:** {pipeline_status}  ")
+
+        print("\n## Description\n")
+        description = mr.get('description', 'No description')
+        print(description if description else '*No description*')
+        print()
+
 
 def cmd_create(args) -> int:
     """Handle the 'create' subcommand.
@@ -1639,17 +1746,25 @@ def cmd_load(args) -> int:
             resource_type = args.type
         else:
             # Auto-detect based on reference format
-            if reference.startswith('&'):
+            if reference.startswith('!'):
+                resource_type = 'mr'
+            elif reference.startswith('&'):
                 resource_type = 'epic'
             elif reference.startswith('%'):
                 resource_type = 'milestone'
+            elif '/-/merge_requests/' in reference:
+                resource_type = 'mr'
             elif '/-/epics/' in reference:
                 resource_type = 'epic'
             elif '/-/milestones/' in reference:
                 resource_type = 'milestone'
             # Otherwise assume issue (default behavior)
 
-        if resource_type == 'epic':
+        if resource_type == 'mr':
+            # Load merge request
+            data = loader.load_mr(reference)
+            loader.print_mr_info(data)
+        elif resource_type == 'epic':
             # Load epic with issues
             data = loader.load_epic_with_issues(reference)
             loader.print_epic_info(data)
@@ -1975,6 +2090,420 @@ def cmd_search(args) -> int:
         return 1
 
 
+def cmd_comment(args) -> int:
+    """Handle the 'comment' subcommand - post review from YAML file to MR.
+
+    Posts individual comments on specific lines in the MR diff for each finding.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Exit code (0 for success, 1 for error).
+    """
+    try:
+        # Check if review file exists
+        review_file = Path(args.review_file)
+        if not review_file.exists():
+            logger.error(f"Review file not found: {review_file}")
+            return 1
+
+        # Load review YAML
+        with open(review_file, 'r') as f:
+            review_data = yaml.safe_load(f)
+
+        # Validate required fields
+        if 'findings' not in review_data:
+            logger.error("Review YAML must contain 'findings' field")
+            return 1
+
+        # Get MR number from args or from YAML
+        mr_number = args.mr_number
+        if mr_number is None:
+            mr_number = review_data.get('mr_number')
+        if mr_number is None:
+            logger.error("MR number must be specified via --mr or in review YAML")
+            return 1
+
+        # Get MR details to obtain commit SHAs
+        logger.debug(f"Fetching MR !{mr_number} details")
+        mr_info_cmd = ['glab', 'mr', 'view', str(mr_number), '--output', 'json']
+        result = subprocess.run(mr_info_cmd, capture_output=True, text=True, check=True)
+        mr_info = json.loads(result.stdout)
+
+        # Extract commit SHAs for posting diff comments
+        head_sha = mr_info.get('sha') or mr_info.get('diff_refs', {}).get('head_sha')
+        base_sha = mr_info.get('diff_refs', {}).get('base_sha')
+
+        if not head_sha or not base_sha:
+            logger.error("Could not get commit SHAs from MR. Falling back to general comment.")
+            # Fallback to single comment
+            return post_general_comment(mr_number, review_data, args.dry_run)
+
+        # All findings with locations become inline comments
+        # If no line number specified, use line 1
+        # Group locations by file to avoid duplicate comments
+        findings = review_data.get('findings', [])
+        inline_findings = []
+
+        for finding in findings:
+            # Get locations (could be single 'location' or multiple 'locations')
+            locations = finding.get('locations', [])
+            if 'location' in finding:
+                locations = [finding['location']]
+
+            if not locations:
+                logger.warning(f"Finding '{finding.get('title')}' has no location, skipping")
+                continue
+
+            # Add line numbers if missing (default to line 1)
+            normalized_locations = []
+            for loc in locations:
+                if ':' not in loc:
+                    # No line number, add :1
+                    normalized_locations.append(f"{loc}:1")
+                else:
+                    normalized_locations.append(loc)
+
+            # Group locations by file to avoid duplicates
+            # For each file, only post one comment on the first location
+            files_seen = {}
+            for loc in normalized_locations:
+                file_path = loc.rsplit(':', 1)[0]
+                if file_path not in files_seen:
+                    files_seen[file_path] = loc
+                    # Create a modified finding with all locations in this file
+                    file_locations = [l for l in normalized_locations if l.startswith(file_path + ':')]
+                    modified_finding = finding.copy()
+                    if len(file_locations) > 1:
+                        # Add note about other lines in the same file
+                        modified_finding['_extra_locations'] = file_locations[1:]
+                    inline_findings.append((modified_finding, [files_seen[file_path]]))
+
+        # Post all findings as inline comments
+        posted_count = 0
+        failed_count = 0
+
+        for finding, locations in inline_findings:
+            for location in locations:
+                success = post_inline_comment(
+                    mr_number=mr_number,
+                    finding=finding,
+                    location=location,
+                    base_sha=base_sha,
+                    head_sha=head_sha,
+                    dry_run=args.dry_run
+                )
+
+                if success:
+                    posted_count += 1
+                else:
+                    failed_count += 1
+
+        if args.dry_run:
+            print(f"\n[DRY RUN] Would post {posted_count} inline comments to MR !{mr_number}")
+            if failed_count > 0:
+                print(f"[DRY RUN] {failed_count} comments would fail to post")
+            return 0
+
+        logger.info(f"✓ Posted {posted_count} inline comments to MR !{mr_number}")
+        if failed_count > 0:
+            logger.warning(f"⚠ {failed_count} inline comments failed to post")
+
+        return 0
+
+    except FileNotFoundError as e:
+        logger.error(f"File error: {e}")
+        return 1
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command failed: {e.stderr}")
+        return 1
+    except (ValueError, yaml.YAMLError, json.JSONDecodeError) as e:
+        logger.error(f"Error: {e}")
+        return 1
+
+
+def post_inline_comment(
+    mr_number: int,
+    finding: Dict[str, Any],
+    location: str,
+    base_sha: str,
+    head_sha: str,
+    dry_run: bool = False
+) -> bool:
+    """Post an inline comment on a specific line in the MR diff.
+
+    Args:
+        mr_number: MR number
+        finding: Finding dictionary from review YAML
+        location: File location string (e.g., "path/to/file.cc:123")
+        base_sha: Base commit SHA
+        head_sha: Head commit SHA
+        dry_run: If True, only print what would be done
+
+    Returns:
+        True if comment posted successfully, False otherwise
+    """
+    try:
+        # Parse location (format: "path/to/file.cc:123" or "path/to/file.cc:123-145")
+        if ':' not in location:
+            logger.warning(f"Invalid location format: {location} (expected 'file:line')")
+            return False
+
+        file_path, line_part = location.rsplit(':', 1)
+
+        # Handle line ranges (use start line)
+        if '-' in line_part:
+            line_num = int(line_part.split('-')[0])
+        else:
+            line_num = int(line_part)
+
+        # Format comment body
+        severity = finding.get('severity', 'Unknown')
+        title = finding.get('title', 'Untitled')
+        description = finding.get('description', '').strip()
+        fix = finding.get('fix', '').strip()
+        extra_locations = finding.get('_extra_locations', [])
+
+        comment_body = f"**{severity}: {title}**\n\n{description}"
+
+        # Add other affected lines in the same file
+        if extra_locations:
+            lines = [loc.split(':')[-1] for loc in extra_locations]
+            comment_body += f"\n\n**Also affects lines:** {', '.join(lines)}"
+
+        if fix:
+            comment_body += f"\n\n**Fix:**\n```\n{fix}\n```"
+
+        if dry_run:
+            print(f"\n[DRY RUN] Would post comment on {file_path}:{line_num}")
+            print(f"  Severity: {severity}")
+            print(f"  Title: {title}")
+            return True
+
+        # Prepare JSON payload with position data including old_line: null
+        import json as json_module
+        payload = {
+            "body": comment_body,
+            "position": {
+                "position_type": "text",
+                "old_path": file_path,
+                "new_path": file_path,
+                "old_line": None,  # null for new files
+                "new_line": line_num,
+                "base_sha": base_sha,
+                "start_sha": base_sha,
+                "head_sha": head_sha
+            }
+        }
+
+        # Post using GitLab API via glab with JSON input and Content-Type header
+        cmd = [
+            'glab', 'api',
+            f'projects/:id/merge_requests/{mr_number}/discussions',
+            '--method', 'POST',
+            '--header', 'Content-Type: application/json',
+            '--input', '-'
+        ]
+
+        logger.debug(f"Posting comment to {file_path}:{line_num}")
+        result = subprocess.run(
+            cmd,
+            input=json_module.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        logger.info(f"✓ Posted comment on {file_path}:{line_num}")
+        return True
+
+    except ValueError as e:
+        logger.error(f"Invalid line number in location: {location}: {e}")
+        return False
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to post comment on {location}: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"Error posting comment on {location}: {e}")
+        return False
+
+
+def post_general_comment(mr_number: int, review_data: Dict[str, Any], dry_run: bool = False) -> int:
+    """Post a general comment with all findings (fallback when inline comments fail).
+
+    Args:
+        mr_number: MR number
+        review_data: Review data from YAML
+        dry_run: If True, only print what would be done
+
+    Returns:
+        Exit code (0 for success, 1 for error)
+    """
+    try:
+        comment = format_review_comment(review_data)
+
+        if dry_run:
+            print(f"[DRY RUN] Would post general comment to MR !{mr_number}:")
+            print("=" * 80)
+            print(comment)
+            print("=" * 80)
+            return 0
+
+        cmd = ['glab', 'mr', 'comment', str(mr_number), '--message', comment]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+        logger.info(f"✓ Posted general comment to MR !{mr_number}")
+        print(f"Comment posted: {result.stdout.strip()}")
+        return 0
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to post general comment: {e.stderr}")
+        return 1
+
+
+def format_review_comment(review_data: Dict[str, Any]) -> str:
+    """Format review YAML data into a markdown comment.
+
+    Args:
+        review_data: Review data from YAML file.
+
+    Returns:
+        Formatted markdown comment.
+    """
+    lines = []
+
+    # Header
+    title = review_data.get('title', 'Code Review')
+    review_date = review_data.get('review_date', '')
+    lines.append(f"# Code Review: {title}")
+    if review_date:
+        lines.append(f"**Review Date:** {review_date}")
+    lines.append("")
+
+    # Group findings by severity
+    findings = review_data.get('findings', [])
+    severity_groups = {}
+    for finding in findings:
+        severity = finding.get('severity', 'Unknown')
+        if severity not in severity_groups:
+            severity_groups[severity] = []
+        severity_groups[severity].append(finding)
+
+    # Output findings by severity (Critical, High, Medium, Low)
+    severity_order = ['Critical', 'High', 'Medium', 'Low']
+    finding_num = 1
+
+    for severity in severity_order:
+        if severity not in severity_groups:
+            continue
+
+        lines.append(f"## {severity} Priority Issues")
+        lines.append("")
+
+        for finding in severity_groups[severity]:
+            title = finding.get('title', 'Untitled')
+            description = finding.get('description', '').strip()
+            location = finding.get('location')
+            locations = finding.get('locations', [])
+            fix = finding.get('fix', '').strip()
+
+            lines.append(f"### {finding_num}. {title}")
+            finding_num += 1
+
+            if description:
+                lines.append(f"{description}")
+                lines.append("")
+
+            if location:
+                lines.append(f"**Location:** `{location}`")
+            elif locations:
+                lines.append(f"**Locations:**")
+                for loc in locations:
+                    lines.append(f"- `{loc}`")
+
+            if fix:
+                lines.append(f"\n**Fix:**")
+                lines.append(f"```")
+                lines.append(fix)
+                lines.append(f"```")
+
+            lines.append("")
+
+    return "\n".join(lines)
+
+
+def cmd_create_mr(args) -> int:
+    """Handle the 'create-mr' subcommand - create merge request from current branch.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Exit code (0 for success, 1 for error).
+    """
+    try:
+        # Build glab mr create command
+        cmd = ['glab', 'mr', 'create']
+
+        if args.title:
+            cmd.extend(['--title', args.title])
+
+        if args.description:
+            cmd.extend(['--description', args.description])
+
+        if args.draft:
+            cmd.append('--draft')
+
+        if args.assignee:
+            for assignee in args.assignee:
+                cmd.extend(['--assignee', assignee])
+
+        if args.reviewer:
+            for reviewer in args.reviewer:
+                cmd.extend(['--reviewer', reviewer])
+
+        if args.label:
+            for label in args.label:
+                cmd.extend(['--label', label])
+
+        if args.milestone:
+            cmd.extend(['--milestone', args.milestone])
+
+        if args.target_branch:
+            cmd.extend(['--target-branch', args.target_branch])
+
+        if args.fill:
+            cmd.append('--fill')
+
+        if args.web:
+            cmd.append('--web')
+
+        if args.dry_run:
+            print(f"[DRY RUN] Would execute: {' '.join(cmd)}")
+            return 0
+
+        # Execute command
+        logger.debug(f"Executing: {' '.join(cmd)}")
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        logger.info("✓ Merge request created")
+        print(result.stdout.strip())
+        return 0
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Command failed: {e.stderr}")
+        return 1
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return 1
+
+
 def main() -> int:
     """Main entry point for the script.
 
@@ -2004,11 +2533,24 @@ Examples:
   %(prog)s load https://gitlab.example.com/group/project/-/milestones/123
   %(prog)s load 123 --type milestone
 
+  # Load merge request information (markdown output)
+  %(prog)s load !134
+  %(prog)s load 134 --type mr
+  %(prog)s load https://gitlab.example.com/group/project/-/merge_requests/134
+
   # Search issues, epics, and milestones (text output)
   %(prog)s search issues "streaming"
   %(prog)s search issues "SRT" --state opened
   %(prog)s search epics "video"
   %(prog)s search milestones "v1.0" --state active
+
+  # Post review comment from YAML to merge request
+  %(prog)s comment planning/reviews/MR134-review.yaml
+  %(prog)s comment planning/reviews/MR134-review.yaml --mr 134 --dry-run
+
+  # Create merge request from current branch
+  %(prog)s create-mr --title "Add feature X" --draft
+  %(prog)s create-mr --fill --reviewer alice --label "type::feature"
         """
     )
 
@@ -2092,7 +2634,7 @@ Examples:
     )
     load_parser.add_argument(
         '--type',
-        choices=['issue', 'epic', 'milestone'],
+        choices=['issue', 'epic', 'milestone', 'mr'],
         help='Resource type (auto-detected if not specified)'
     )
 
@@ -2144,6 +2686,119 @@ Examples:
         help='Maximum number of results (default: 20)'
     )
 
+    # Comment subcommand
+    comment_parser = subparsers.add_parser(
+        'comment',
+        help='Post review comment from YAML file to merge request',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Post review to MR (MR number from YAML)
+  glab_tasks_management.py comment planning/reviews/MR134-review.yaml
+
+  # Post review to specific MR (override YAML)
+  glab_tasks_management.py comment planning/reviews/MR134-review.yaml --mr 134
+
+  # Preview comment without posting
+  glab_tasks_management.py comment planning/reviews/MR134-review.yaml --dry-run
+        """
+    )
+    comment_parser.add_argument(
+        'review_file',
+        type=str,
+        help='Path to review YAML file (e.g., planning/reviews/MR134-review.yaml)'
+    )
+    comment_parser.add_argument(
+        '--mr',
+        dest='mr_number',
+        type=int,
+        help='MR number (overrides value from YAML)'
+    )
+    comment_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Preview comment without posting'
+    )
+
+    # Create-MR subcommand
+    create_mr_parser = subparsers.add_parser(
+        'create-mr',
+        help='Create merge request from current branch',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create MR with interactive prompts
+  glab_tasks_management.py create-mr
+
+  # Create MR with title and description
+  glab_tasks_management.py create-mr --title "Add feature X" --description "Implements feature X"
+
+  # Create draft MR
+  glab_tasks_management.py create-mr --draft --fill
+
+  # Create MR with reviewers and labels
+  glab_tasks_management.py create-mr --reviewer alice --reviewer bob --label "type::feature"
+
+  # Preview without creating
+  glab_tasks_management.py create-mr --title "Test" --dry-run
+        """
+    )
+    create_mr_parser.add_argument(
+        '--title',
+        type=str,
+        help='MR title'
+    )
+    create_mr_parser.add_argument(
+        '--description',
+        type=str,
+        help='MR description'
+    )
+    create_mr_parser.add_argument(
+        '--draft',
+        action='store_true',
+        help='Mark MR as draft'
+    )
+    create_mr_parser.add_argument(
+        '--assignee',
+        action='append',
+        help='Assignee username (can be repeated)'
+    )
+    create_mr_parser.add_argument(
+        '--reviewer',
+        action='append',
+        help='Reviewer username (can be repeated)'
+    )
+    create_mr_parser.add_argument(
+        '--label',
+        action='append',
+        help='Label to add (can be repeated)'
+    )
+    create_mr_parser.add_argument(
+        '--milestone',
+        type=str,
+        help='Milestone title'
+    )
+    create_mr_parser.add_argument(
+        '--target-branch',
+        type=str,
+        help='Target branch (default: default branch)'
+    )
+    create_mr_parser.add_argument(
+        '--fill',
+        action='store_true',
+        help='Fill in title and description from commits'
+    )
+    create_mr_parser.add_argument(
+        '--web',
+        action='store_true',
+        help='Open MR in web browser after creation'
+    )
+    create_mr_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Preview command without creating MR'
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -2160,6 +2815,10 @@ Examples:
             return cmd_load(args)
         elif args.command == 'search':
             return cmd_search(args)
+        elif args.command == 'comment':
+            return cmd_comment(args)
+        elif args.command == 'create-mr':
+            return cmd_create_mr(args)
         else:
             parser.print_help()
             return 1
