@@ -22,6 +22,31 @@ Backup repository for AI platform configurations that live in `~/.claude/` and `
 
 - **`platforms/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
 
+#### Sync Script
+
+**`sync-configs.sh`** - Two-way sync utility for platform configurations
+
+**Backup configurations (home → repo):**
+```bash
+./sync-configs.sh sync              # Backup all configs
+./sync-configs.sh sync --dry-run    # Preview changes
+./sync-configs.sh sync --claude     # Backup Claude only
+```
+
+**Restore configurations (repo → home):**
+```bash
+./sync-configs.sh install --dry-run   # Preview restore (safe)
+./sync-configs.sh install --claude    # Restore Claude only (interactive)
+./sync-configs.sh install --force     # Restore without prompts (dangerous!)
+```
+
+**Features:**
+- Two-way sync (backup and restore)
+- Selective platform sync (Claude and/or Codex)
+- Dry-run mode for safe preview
+- Interactive confirmation for installs
+- Automatic exclusion of sensitive files (credentials, history, cache)
+
 ### Tools
 
 #### glab-management

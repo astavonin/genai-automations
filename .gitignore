@@ -42,6 +42,9 @@ glab_config.yaml
 !CLAUDE.md
 !AGENTS.md
 
+# Codex system skills (built-in, not user-created)
+platforms/codex/skills/.system/
+
 # Logs
 *.log
 
