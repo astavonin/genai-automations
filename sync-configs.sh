@@ -260,6 +260,8 @@ main() {
         # Include patterns for Codex
         local codex_includes=(
             '*.md'
+            'agents/***'
+            'commands/***'
             'skills/***'
         )
 
