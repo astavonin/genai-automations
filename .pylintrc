@@ -1,0 +1,104 @@
+[MASTER]
+# Use multiple processes to speed up Pylint
+jobs=4
+
+# Python code to execute, usually for sys.path manipulation
+init-hook='import sys; sys.path.append(".")'
+
+# Files or directories to be skipped
+ignore=CVS,.git,__pycache__,.venv,venv,build,dist
+
+# Pickle collected data for later comparisons
+persistent=yes
+
+[MESSAGES CONTROL]
+# Disable specific warnings that are not applicable or too noisy
+disable=
+    # Import related
+    import-error,
+    no-name-in-module,
+    # Formatting (handled by black/autopep8)
+    line-too-long,
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    # Code duplication (will be resolved in Phase 2 refactoring)
+    duplicate-code
+
+[REPORTS]
+# Set the output format
+output-format=colorized
+
+# Include message ID in output
+msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
+
+# Reports
+reports=no
+score=yes
+
+[BASIC]
+# Good variable names
+good-names=i,j,k,ex,_,id,iid
+
+# Regular expression for variable names
+variable-rgx=[a-z_][a-z0-9_]{1,30}$
+
+# Regular expression for constant names
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+[FORMAT]
+# Maximum number of characters on a single line (black uses 88)
+max-line-length=120
+
+# Maximum number of lines in a module
+max-module-lines=1200
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=10
+
+# Maximum number of locals for function / method body
+max-locals=20
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of branch for function / method body
+max-branches=15
+
+# Maximum number of statements in function / method body
+max-statements=50
+
+# Maximum number of attributes for a class
+max-attributes=15
+
+[SIMILARITIES]
+# Minimum lines number of a similarity
+min-similarity-lines=10
+
+# Ignore comments when computing similarities
+ignore-comments=yes
+
+# Ignore docstrings when computing similarities
+ignore-docstrings=yes
+
+# Ignore imports when computing similarities
+ignore-imports=yes
+
+[TYPECHECK]
+# List of members which are set dynamically and should be ignored
+ignored-classes=SQLObject,optparse.Values,thread._local,_thread._local
+
+# List of method names used to declare instance attributes
+defining-attr-methods=__init__,__new__,setUp
+
+[VARIABLES]
+# Tells whether we should check for unused import in __init__ files
+init-import=no
+
+# A regular expression matching the name of dummy variables
+dummy-variables-rgx=_|dummy
+
+[EXCEPTIONS]
+# Exceptions that will emit a warning when caught
+overgeneral-exceptions=builtins.Exception

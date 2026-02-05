@@ -27,6 +27,16 @@ env/
 ENV/
 .venv
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking and linting
+.mypy_cache/
+.ruff_cache/
+
 # IDE
 .vscode/
 .idea/
@@ -34,6 +44,10 @@ ENV/
 *.swo
 *~
 .session.vim
+
+# Backup files
+*.backup
+*.bak
 
 # Configuration files (keep examples)
 glab_config.yaml

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """GitLab Epic and Issue management tool using the glab CLI.
 
+LEGACY VERSION: This is the original working version kept for safety while
+the new modular version (ci_platform_manager) is being tested. This file
+will be replaced with a deprecation wrapper once the new version is fully
+verified and tested in production.
+
 This script provides commands to:
 - Create issues from YAML definitions and link them to epics
 - Load ticket (issue) information and related epic from GitLab (markdown output)
