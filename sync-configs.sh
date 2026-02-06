@@ -241,9 +241,12 @@ main() {
         # Include patterns for Claude
         local claude_includes=(
             'CLAUDE.md'
-            'agents/***'
-            'commands/***'
-            'skills/***'
+            'agents/'
+            'agents/**'
+            'commands/'
+            'commands/**'
+            'skills/'
+            'skills/**'
         )
 
         if ! sync_platform "Claude" \
@@ -260,9 +263,12 @@ main() {
         # Include patterns for Codex
         local codex_includes=(
             '*.md'
-            'agents/***'
-            'commands/***'
-            'skills/***'
+            'agents/'
+            'agents/**'
+            'commands/'
+            'commands/**'
+            'skills/'
+            'skills/**'
         )
 
         # Exclude .system directories (built-in Codex skills)
