@@ -23,8 +23,6 @@ setup(
     entry_points={
         'console_scripts': [
             'ci-platform-manager=ci_platform_manager.cli:main',
-            'glab-mgmt=ci_platform_manager.cli:main',  # Alias
-            'glab_tasks_management=ci_platform_manager.cli:main',  # Legacy compatibility
         ],
     },
     classifiers=[

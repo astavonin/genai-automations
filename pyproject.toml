@@ -42,8 +42,6 @@ dev = [
 
 [project.scripts]
 ci-platform-manager = "ci_platform_manager.cli:main"
-glab-mgmt = "ci_platform_manager.cli:main"
-glab_tasks_management = "ci_platform_manager.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/genai-automations/ci-platform-manager"
