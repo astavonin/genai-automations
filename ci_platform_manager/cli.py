@@ -20,6 +20,7 @@ from .exceptions import PlatformError
 from .handlers.creator import EpicIssueCreator
 from .handlers.loader import TicketLoader
 from .handlers.search import SearchHandler
+from .handlers.sync import PlanningSyncHandler
 
 
 logger = logging.getLogger(__name__)
@@ -599,6 +600,39 @@ def cmd_create_mr(args) -> int:
         return 1
 
 
+def cmd_sync(args) -> int:
+    """Handle the 'sync' subcommand - sync planning folder with Google Drive.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Exit code (0 for success, 1 for error).
+    """
+    try:
+        # Load configuration
+        config_path = Path(args.config) if args.config else None
+        config = Config(config_path)
+
+        handler = PlanningSyncHandler(config, dry_run=args.dry_run)
+
+        if args.sync_command == 'push':
+            handler.push()
+        elif args.sync_command == 'pull':
+            handler.pull()
+        else:
+            logger.error("Unknown sync command: %s", args.sync_command)
+            return 1
+
+        return 0
+    except FileNotFoundError as err:
+        logger.error(str(err))
+        return 1
+    except (PlatformError, ValueError) as err:
+        logger.error("Error: %s", err)
+        return 1
+
+
 def main() -> int:
     """Main entry point for the script.
 
@@ -646,6 +680,11 @@ Examples:
   # Create merge request from current branch
   %(prog)s create-mr --title "Add feature X" --draft
   %(prog)s create-mr --fill --reviewer alice --label "type::feature"
+
+  # Sync planning folder with Google Drive
+  %(prog)s sync push
+  %(prog)s sync pull
+  %(prog)s sync push --dry-run
         """
     )
 
@@ -893,6 +932,54 @@ Examples:
         help='Preview command without creating MR'
     )
 
+    # Sync subcommand
+    sync_parser = subparsers.add_parser(
+        'sync',
+        help='Sync planning folder for current repository with Google Drive',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Push local planning folder to Google Drive
+  ci-platform-manager sync push
+
+  # Pull planning folder from Google Drive to local
+  ci-platform-manager sync pull
+
+  # Preview sync operation without executing
+  ci-platform-manager sync push --dry-run
+  ci-platform-manager sync pull --dry-run
+
+Notes:
+  - Auto-detects current repository name from git
+  - Planning folder must be ./planning/ in repository root
+  - Google Drive path configured in config file (planning_sync.gdrive_base)
+  - Uses rsync for efficient synchronization (last write wins)
+        """
+    )
+    sync_subparsers = sync_parser.add_subparsers(dest='sync_command', required=True)
+
+    # Push subcommand
+    push_parser = sync_subparsers.add_parser(
+        'push',
+        help='Push local planning folder to Google Drive'
+    )
+    push_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Preview sync without executing'
+    )
+
+    # Pull subcommand
+    pull_parser = sync_subparsers.add_parser(
+        'pull',
+        help='Pull planning folder from Google Drive to local'
+    )
+    pull_parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Preview sync without executing'
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
@@ -909,6 +996,7 @@ Examples:
         'search': cmd_search,
         'comment': cmd_comment,
         'create-mr': cmd_create_mr,
+        'sync': cmd_sync,
     }
 
     try:

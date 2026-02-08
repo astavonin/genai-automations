@@ -12,8 +12,18 @@ Backup of AI platform configurations:
   - `agents/*.md` - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
 - **`codex/`** - Codex configurations and skills
 
-### `glab-management/`
-GitLab automation tool - Python wrapper around `glab` CLI for managing epics, issues, and milestones.
+### `ci_platform_manager/`
+Multi-platform CI automation tool - Python package for GitLab/GitHub workflow management.
 
-**See `glab-management/CLAUDE.md` for detailed usage instructions.**
+**Features:**
+- Epic, issue, milestone, and merge request management
+- Multi-platform support (GitLab, GitHub)
+- Planning folder synchronization with Google Drive
+- Modular architecture with specialized handlers
 
+**See `ci_platform_manager/CLAUDE.md` for detailed usage instructions.**
+
+### `glab-management/` (Legacy)
+Original GitLab automation tool (deprecated in favor of `ci_platform_manager`)
+
+**See `glab-management/CLAUDE.md` for legacy documentation.**

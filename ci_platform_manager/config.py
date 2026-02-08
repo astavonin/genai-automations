@@ -47,9 +47,11 @@ class Config:
         """
         self.config_data: Dict[str, Any] = {}
         self.loaded_config_path: Optional[Path] = None
+        self.planning_sync: Dict[str, Any] = {}
 
         self.config_data = self._load_config_with_legacy_support(config_path)
         self.platform = platform or self.config_data.get('platform', 'gitlab')
+        self._load_planning_sync()
 
     def _load_config_with_legacy_support(self, config_path: Optional[Path]) -> Dict[str, Any]:
         """Load config with automatic legacy format detection.
@@ -248,3 +250,16 @@ class Config:
         # Fallback to legacy format
         allowed = self.config_data.get('labels', {}).get('allowed_labels', [])
         return allowed if allowed else None  # type: ignore[no-any-return]
+
+    def _load_planning_sync(self) -> None:
+        """Load planning sync configuration from config file.
+
+        Loads the 'planning_sync' section if present, which contains:
+        - gdrive_base: Base path to Google Drive mount point
+        """
+        if 'planning_sync' in self.config_data:
+            self.planning_sync = self.config_data['planning_sync']
+            logger.debug("Loaded planning_sync config: %s", self.planning_sync)
+        else:
+            self.planning_sync = {}
+            logger.debug("No planning_sync section in config")
