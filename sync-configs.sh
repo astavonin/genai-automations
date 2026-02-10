@@ -183,7 +183,39 @@ sync_platform() {
         rsync_cmd+=(--dry-run)
     fi
 
-    # Add exclude patterns FIRST (rsync uses first match)
+    # Add common exclude patterns for all platforms (backup files, temp files, etc.)
+    local common_excludes=(
+        '*.backup*'
+        '*.bak'
+        '*~'
+        '*.swp'
+        '.*.swp'
+        '*.tmp'
+        '.DS_Store'
+        'cache/'
+        'debug/'
+        'downloads/'
+        'file-history/'
+        'history.jsonl'
+        'ide/'
+        'paste-cache/'
+        'plans/'
+        'plugins/'
+        'projects/'
+        'session-env/'
+        'settings.json'
+        'settings.local.json'
+        '.credentials.json'
+        'shell-snapshots/'
+        'stats-cache.json'
+    )
+
+    # Add common excludes first
+    for pattern in "${common_excludes[@]}"; do
+        rsync_cmd+=(--exclude="$pattern")
+    done
+
+    # Add platform-specific exclude patterns (rsync uses first match)
     for pattern in "${excludes[@]}"; do
         rsync_cmd+=(--exclude="$pattern")
     done

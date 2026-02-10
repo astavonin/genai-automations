@@ -1,6 +1,6 @@
 ---
 name: load
-description: Load ticket information using ticket management tool
+description: Load ticket information via ci-platform-manager
 ---
 
 # Load Ticket Command
@@ -9,48 +9,60 @@ Load issue, epic, or milestone information from ticket management systems.
 
 ## Supported Systems
 
-### GitLab (via glab-management)
+### Multi-Platform Support (via ci-platform-manager)
 
-Load issues, epics, and milestones with full details and dependencies.
+Load issues, epics, milestones, and merge requests with full details and dependencies.
 
-**Tool:** `glab-management/glab_tasks_management.py`
+**Tool:** `ci-platform-manager` (supports GitLab and GitHub)
 
 ## Usage Patterns
 
 ### Load Issue
 ```bash
 # By issue number
-python3 glab-management/glab_tasks_management.py load 113
+ci-platform-manager load 113
 
 # By URL
-python3 glab-management/glab_tasks_management.py load https://gitlab.com/group/project/-/issues/113
+ci-platform-manager load https://gitlab.com/group/project/-/issues/113
 
 # With # prefix
-python3 glab-management/glab_tasks_management.py load #113
+ci-platform-manager load #113
 ```
 
 ### Load Epic
 ```bash
 # By epic number with & prefix
-python3 glab-management/glab_tasks_management.py load &21
+ci-platform-manager load &21
 
 # By number with --type flag
-python3 glab-management/glab_tasks_management.py load 21 --type epic
+ci-platform-manager load 21 --type epic
 
 # By URL
-python3 glab-management/glab_tasks_management.py load https://gitlab.com/groups/group/-/epics/21
+ci-platform-manager load https://gitlab.com/groups/group/-/epics/21
 ```
 
 ### Load Milestone
 ```bash
 # By milestone number with % prefix
-python3 glab-management/glab_tasks_management.py load %123
+ci-platform-manager load %123
 
 # By number with --type flag
-python3 glab-management/glab_tasks_management.py load 123 --type milestone
+ci-platform-manager load 123 --type milestone
 
 # By URL
-python3 glab-management/glab_tasks_management.py load https://gitlab.com/group/project/-/milestones/123
+ci-platform-manager load https://gitlab.com/group/project/-/milestones/123
+```
+
+### Load Merge Request
+```bash
+# By MR number with ! prefix
+ci-platform-manager load !134
+
+# By number with --type flag
+ci-platform-manager load 134 --type mr
+
+# By URL
+ci-platform-manager load https://gitlab.com/group/project/-/merge_requests/134
 ```
 
 ## Actions
@@ -60,7 +72,7 @@ python3 glab-management/glab_tasks_management.py load https://gitlab.com/group/p
    - Extract ticket number
 
 2. **Load ticket data:**
-   - Use appropriate tool (glab-management for GitLab)
+   - Use ci-platform-manager (supports GitLab and GitHub)
    - Fetch full ticket information including:
      - Title and description
      - Status and labels
@@ -130,19 +142,29 @@ python3 glab-management/glab_tasks_management.py load https://gitlab.com/group/p
 
 ## Configuration
 
-The glab-management tool requires `glab_config.yaml`:
+The ci-platform-manager tool uses `config.yaml` or `glab_config.yaml` (legacy):
 
 ```yaml
+# Platform selection
+platform: gitlab  # or github
+
+# GitLab-specific settings
 gitlab:
   default_group: "your/group/path"  # Required for epic operations
+  labels:
+    default: ["type::feature", "development-status::backlog"]
 
-labels:
-  default:
-    - "type::feature"
-    - "development-status::backlog"
+# GitHub-specific settings (future)
+github:
+  default_org: "organization"
 ```
 
-**Config file location:** `./glab_config.yaml` in current directory
+**Config file resolution (first found wins):**
+1. `--config` flag (explicit path)
+2. `./glab_config.yaml` (project-local, legacy)
+3. `./config.yaml` (project-local, new)
+4. `~/.config/ci_platform_manager/config.yaml` (user-wide)
+5. `~/.config/glab_config.yaml` (legacy)
 
 ## Error Handling
 
@@ -150,11 +172,15 @@ labels:
 - If tool not available: suggest installation
 - If config missing: show configuration requirements
 
-## Other Ticket Systems
+## Platform Support
 
-**GitHub:** Use `gh issue view <number>` or `gh pr view <number>`
+**Supported Platforms:**
+- **GitLab:** Full support via ci-platform-manager
+- **GitHub:** Full support via ci-platform-manager (future)
 
-**Jira:** (Add Jira support as needed)
+**Alternative Tools:**
+- **GitHub:** Use `gh issue view <number>` or `gh pr view <number>` (native CLI)
+- **Jira:** (Add Jira support as needed)
 
 ## Examples
 

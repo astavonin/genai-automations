@@ -1,18 +1,18 @@
 ---
 name: mr
-description: Create merge request for current branch via glab-management
+description: Create merge request for current branch via ci-platform-manager
 ---
 
 # Merge Request Command
 
-Create a GitLab merge request from the current branch using glab-management tool.
+Create a merge request from the current branch using ci-platform-manager (supports GitLab and GitHub).
 
 ## Prerequisites
 
 - Current branch has commits
 - Branch is pushed to remote (or will be pushed)
-- `glab` CLI installed and authenticated
-- `glab-management/glab_tasks_management.py` available
+- `ci-platform-manager` installed and configured
+- Platform CLI authenticated (`glab` for GitLab, `gh` for GitHub)
 
 ## Workflow
 
@@ -79,7 +79,7 @@ cat planning/mr-draft.yaml
 
 Wait for user confirmation before proceeding.
 
-### 4. Create MR via glab-management
+### 4. Create MR via ci-platform-manager
 
 After user confirms YAML, create the MR:
 
@@ -87,26 +87,33 @@ After user confirms YAML, create the MR:
 # Push branch if needed
 git push -u origin $(git branch --show-current)
 
-# Create MR using glab-management
-cd glab-management
-python3 glab_tasks_management.py create-mr \
-  --title "$(yq '.title' ../planning/mr-draft.yaml)" \
-  --description "$(yq '.description' ../planning/mr-draft.yaml)" \
-  $(yq -r '.draft // false | if . then "--draft" else "" end' ../planning/mr-draft.yaml) \
-  $(yq -r '.reviewers[]? | "--reviewer " + .' ../planning/mr-draft.yaml) \
-  $(yq -r '.labels[]? | "--label " + .' ../planning/mr-draft.yaml) \
-  $(yq -r '.milestone // "" | if . != "" then "--milestone " + . else "" end' ../planning/mr-draft.yaml)
+# Create MR using ci-platform-manager
+ci-platform-manager create-mr \
+  --title "$(yq '.title' planning/mr-draft.yaml)" \
+  --description "$(yq '.description' planning/mr-draft.yaml)" \
+  $(yq -r '.draft // false | if . then "--draft" else "" end' planning/mr-draft.yaml) \
+  $(yq -r '.reviewers[]? | "--reviewer " + .' planning/mr-draft.yaml) \
+  $(yq -r '.labels[]? | "--label " + .' planning/mr-draft.yaml) \
+  $(yq -r '.milestone // "" | if . != "" then "--milestone " + . else "" end' planning/mr-draft.yaml) \
+  $(yq -r '.target_branch // "" | if . != "" then "--target-branch " + . else "" end' planning/mr-draft.yaml)
 ```
 
 **Alternative (if yq not available):**
 Parse YAML manually and build command:
 ```bash
-python3 glab_tasks_management.py create-mr \
+ci-platform-manager create-mr \
   --title "MR title from YAML" \
   --description "MR description from YAML" \
   --draft \
   --reviewer alice --reviewer bob \
-  --label "type::feature" --label "priority::medium"
+  --label "type::feature" --label "priority::medium" \
+  --milestone "v2.0" \
+  --target-branch main
+```
+
+**Quick option (use git history to auto-generate):**
+```bash
+ci-platform-manager create-mr --fill --draft
 ```
 
 Return the MR URL to the user.

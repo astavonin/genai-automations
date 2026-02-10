@@ -16,7 +16,7 @@ Phase 2: Design             → Create design proposal
 Phase 3: Design Review      → reviewer agent (MANDATORY CHECKPOINT)
 Phase 4: Implementation     → coder or devops-engineer agent
 Phase 5: Code Review        → reviewer agent (MANDATORY CHECKPOINT)
-Phase 6: Verification       → Run tests and static analysis
+Phase 6: Verification       → Run linters, tests, and static analysis
 Phase 7: Commit             → User handles git commits
 Phase 8: Completion         → Update progress tracking
 ```
@@ -97,11 +97,20 @@ Review code against 8 quality attributes and design adherence.
 ### Phase 6: Verification
 **Command:** `/verify`
 
-Run all checks:
-- Unit tests (must pass)
-- Integration tests (if applicable)
-- Static analysis (zero errors)
-- No regressions
+Run all checks in this order:
+1. **Linters** (FIRST - must pass before tests):
+   - Python: pylint, flake8, mypy (type checking)
+   - C++: clang-tidy, cppcheck
+   - Go: golangci-lint, go vet
+   - Rust: clippy
+   - Shell: shellcheck
+   - Apply auto-formatting if needed
+2. **Unit tests** (must pass)
+3. **Integration tests** (if applicable)
+4. **Static analysis** (zero errors)
+5. **Regression check** (no existing functionality broken)
+
+**Critical:** Linting MUST be run before tests. Fix all linter errors and warnings before proceeding.
 
 ### Phase 7: Commit
 **User handles all git commits**

@@ -62,8 +62,8 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ### Utility Commands
 
-- `/mr` - Create merge request for current branch (GitLab)
-- `/load` - Load ticket information (issue/epic/milestone) from ticket management system
+- `/mr` - Create merge request for current branch via ci-platform-manager
+- `/load` - Load ticket information (issue/epic/milestone) via ci-platform-manager
 
 ## Quick Reference
 
@@ -187,3 +187,21 @@ planning/
 **Key principle:** Separate tracking from design
 - `status.md` = WHAT to do (task checklists, progress %)
 - `design/` = HOW to do it (architecture, diagrams, approach)
+
+# CI Platform Management
+
+**Tool:** `ci_platform_manager` (Python package)
+
+For ALL managerial tasks related to GitLab/GitHub, use `ci_platform_manager`:
+- Creating/updating issues, epics, milestones
+- Creating merge requests (MRs) or pull requests (PRs)
+- Loading ticket information
+- Synchronizing planning folders with Google Drive
+- Multi-platform workflow automation
+
+**Usage Instructions:**
+- Run `ci-platform-manager --help` to see usage examples and find the full path to CLAUDE.md documentation
+- The `--help` output includes a "Documentation:" section with the absolute path to comprehensive usage instructions
+- Invoke via `/mr` and `/load` commands, which internally use ci-platform-manager
+
+**Note:** `glab-management` is deprecated and should NOT be used.

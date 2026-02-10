@@ -639,10 +639,13 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for error).
     """
+    # Compute path to CLAUDE.md documentation
+    claude_md_path = (Path(__file__).parent / "CLAUDE.md").resolve()
+
     parser = argparse.ArgumentParser(
         description='GitLab Epic and Issue management tool',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
   # Create issues from YAML
   %(prog)s create epic_definition.yaml
@@ -685,6 +688,10 @@ Examples:
   %(prog)s sync push
   %(prog)s sync pull
   %(prog)s sync push --dry-run
+
+Documentation:
+  For comprehensive usage instructions, architecture details, and troubleshooting:
+  {claude_md_path}
         """
     )
 
