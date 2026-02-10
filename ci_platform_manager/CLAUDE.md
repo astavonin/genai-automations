@@ -198,13 +198,118 @@ issues:
 - `assignee` (string, optional) - GitLab username
 - `milestone` (string, optional) - Milestone title (not ID)
 - `due_date` (string, optional) - Due date in YYYY-MM-DD format
-- `dependencies` (list, optional) - List of YAML IDs this issue depends on
+- `dependencies` (list, optional) - Issues this issue depends on (blocks this issue)
 
-**Important Notes:**
+  **Three Reference Formats Supported:**
+
+  1. **YAML-local IDs** - Reference issues in the same YAML file
+     - Format: `["research-task", "design-task"]`
+     - Uses the `id` field from other issues in same YAML
+     - Includes numeric strings like `"123"` (treated as YAML IDs)
+
+  2. **GitLab IIDs (integer)** - Reference existing GitLab issues
+     - Format: `[13, 42]`
+     - Direct integer values are GitLab issue IIDs
+
+  3. **GitLab IIDs (string)** - Reference existing GitLab issues
+     - Format: `["#13", "#42"]`
+     - String format with `#` prefix
+
+  **Usage Patterns:**
+
+  - **Mixed References** - Combine all formats
+    - Format: `["design-task", 13, "#42"]`
+    - YAML-local IDs and GitLab IIDs together
+
+  **Examples:**
+
+  ```yaml
+  # Example 1: YAML-local dependencies only (existing behavior)
+  issues:
+    - id: "research"
+      title: "Research Architecture"
+      description: |
+        # Description
+        Research existing patterns
+
+        # Acceptance Criteria
+        - Research complete
+
+    - id: "design"
+      title: "Create Design"
+      dependencies: ["research"]  # Blocked by research task
+      description: |
+        # Description
+        Design based on research
+
+        # Acceptance Criteria
+        - Design approved
+
+  # Example 2: External GitLab issue dependencies
+  issues:
+    - id: "new-feature"
+      title: "Implement New Feature"
+      dependencies:
+        - 13    # Depends on existing issue #13
+        - "#42" # Depends on existing issue #42
+      description: |
+        # Description
+        Feature implementation
+
+        # Acceptance Criteria
+        - Feature complete
+
+  # Example 3: Mixed dependencies (YAML + external)
+  issues:
+    - id: "integration"
+      title: "Integration Testing"
+      dependencies:
+        - "new-feature"  # YAML-local: depends on issue in this file
+        - 13             # External: depends on existing GitLab issue #13
+        - "#25"          # External: depends on existing GitLab issue #25
+      description: |
+        # Description
+        Integration tests
+
+        # Acceptance Criteria
+        - Tests pass
+
+  # Example 4: Numeric string IDs (YAML-local, not external)
+  issues:
+    - id: "123"  # Valid YAML ID (string)
+      title: "Task 123"
+      description: |
+        # Description
+        Task content
+
+        # Acceptance Criteria
+        - Complete
+
+    - id: "follow-up"
+      title: "Follow-up Task"
+      dependencies: ["123"]  # References YAML ID "123", NOT issue #123
+      description: |
+        # Description
+        Depends on task above
+
+        # Acceptance Criteria
+        - Complete
+  ```
+
+  **Important Notes:**
+  - YAML-local IDs require the `id` field on referenced issues
+  - Numeric strings like `"123"` are treated as YAML-local IDs, not external IIDs
+  - Use `#` prefix (`"#123"`) or integer (`123`) for external GitLab issue references
+  - External GitLab IIDs reference issues in the same project
+  - External dependencies are validated before issue creation
+  - Invalid external references will fail with clear error messages
+  - Use `ci-platform-manager load #13` to verify external issues exist
+
+**General Important Notes:**
 1. Epic must have EITHER `id` (existing) OR `title` (new)
 2. Issue descriptions MUST contain required sections from config
 3. Labels are automatically merged with config defaults
-4. Dependencies use YAML-local IDs (the `id` field), not GitLab IIDs
+4. Dependencies support both YAML-local IDs and external GitLab IIDs (see above)
 5. Use `--dry-run` to preview before creating
 6. Replace example values (alice, v2.0, etc.) with your actual project values
 

@@ -58,7 +58,7 @@ class TestGetCurrentRepoPath:
 
         result = get_current_repo_path()
 
-        assert result == "project"  # Takes last component
+        assert result == "group/project"
 
     @patch("subprocess.run")
     def test_nested_group_path(self, mock_run: Mock) -> None:

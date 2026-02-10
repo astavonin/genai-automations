@@ -111,7 +111,7 @@ class TestCreateIssue:
             "description": "# Description\n\nTest description\n\n# Acceptance Criteria\n\n- AC1",
         }
 
-        creator.create_issue(issue_config, epic_iid=None)
+        creator.create_issue(issue_config, epic_id=None)
 
         # Verify glab issue create was called
         mock_run.assert_called_once()
@@ -139,7 +139,7 @@ class TestCreateIssue:
             "due_date": "2026-03-01",
         }
 
-        creator.create_issue(issue_config, epic_iid=None)
+        creator.create_issue(issue_config, epic_id=None)
 
         # Verify metadata was passed in command
         call_args = mock_run.call_args[0][0]
@@ -164,22 +164,22 @@ class TestCreateIssue:
         }
 
         with pytest.raises(PlatformError, match="Command failed"):
-            creator.create_issue(issue_config, epic_iid=None)
+            creator.create_issue(issue_config, epic_id=None)
 
 
 class TestLoadYAML:
     """Test YAML file loading."""
 
     def test_load_valid_yaml(self, new_config_path: Path, sample_issue_yaml_path: Path) -> None:
-        """Load valid YAML file successfully."""
+        """Load valid YAML file successfully in dry-run mode."""
         config = Config(new_config_path)
-        creator = EpicIssueCreator(config)
+        creator = EpicIssueCreator(config, dry_run=True)
 
-        data = creator.load_yaml_file(sample_issue_yaml_path)
+        # Test in dry-run mode to avoid complex mocking
+        creator.process_yaml_file(sample_issue_yaml_path)
 
-        assert "epic" in data
-        assert "issues" in data
-        assert len(data["issues"]) == 2
+        # In dry-run mode, should track created issues
+        assert len(creator.created_issues) == 2
 
     def test_load_nonexistent_yaml(self, new_config_path: Path, temp_dir: Path) -> None:
         """Loading nonexistent file raises FileNotFoundError."""
@@ -189,7 +189,7 @@ class TestLoadYAML:
         nonexistent = temp_dir / "nonexistent.yaml"
 
         with pytest.raises(FileNotFoundError):
-            creator.load_yaml_file(nonexistent)
+            creator.process_yaml_file(nonexistent)
 
     def test_load_invalid_yaml(self, new_config_path: Path, temp_dir: Path) -> None:
         """Loading invalid YAML raises appropriate error."""
@@ -200,7 +200,7 @@ class TestLoadYAML:
         invalid_yaml.write_text("invalid: yaml: content: [[[")
 
         with pytest.raises(yaml.YAMLError):
-            creator.load_yaml_file(invalid_yaml)
+            creator.process_yaml_file(invalid_yaml)
 
 
 class TestValidation:
@@ -214,7 +214,7 @@ class TestValidation:
         labels = ["type::feature", "type::bug"]
 
         # Should not raise
-        creator.validate_labels(labels)
+        creator._validate_issue_labels(labels)
 
     def test_validate_labels_unknown(self, new_config_path: Path) -> None:
         """Unknown labels raise ValueError."""
@@ -224,27 +224,33 @@ class TestValidation:
         labels = ["unknown::label"]
 
         with pytest.raises(ValueError, match="Unknown labels"):
-            creator.validate_labels(labels)
+            creator._validate_issue_labels(labels)
 
     def test_validate_description_success(self, new_config_path: Path) -> None:
         """Valid description passes validation."""
         config = Config(new_config_path)
         creator = EpicIssueCreator(config)
 
-        description = "# Description\n\nContent\n\n# Acceptance Criteria\n\n- AC1"
+        issue_config = {
+            "title": "Test Issue",
+            "description": "# Description\n\nContent\n\n# Acceptance Criteria\n\n- AC1",
+        }
 
         # Should not raise
-        creator.validate_issue_description(description, "Test Issue")
+        creator._validate_issue_description(issue_config)
 
     def test_validate_description_missing_sections(self, new_config_path: Path) -> None:
         """Description missing required sections raises ValueError."""
         config = Config(new_config_path)
         creator = EpicIssueCreator(config)
 
-        description = "# Description\n\nOnly description"
+        issue_config = {
+            "title": "Test Issue",
+            "description": "# Description\n\nOnly description",
+        }
 
         with pytest.raises(ValueError, match="missing required sections"):
-            creator.validate_issue_description(description, "Test Issue")
+            creator._validate_issue_description(issue_config)
 
 
 class TestDryRun:
@@ -262,6 +268,6 @@ class TestDryRun:
         }
 
         # Should not raise and should not call subprocess
-        creator.create_issue(issue_config, epic_iid=None)
+        creator.create_issue(issue_config, epic_id=None)
 
         mock_run.assert_not_called()

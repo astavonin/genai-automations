@@ -5,7 +5,7 @@ import logging
 import subprocess
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 try:
     import yaml
@@ -15,18 +15,13 @@ except ImportError as exc:
 from ..config import Config
 from ..exceptions import PlatformError
 
-
 logger = logging.getLogger(__name__)
 
 
 class EpicIssueCreator:
     """Creates GitLab epics and issues using the glab CLI."""
 
-    def __init__(
-        self,
-        config: Config,
-        dry_run: bool = False
-    ) -> None:
+    def __init__(self, config: Config, dry_run: bool = False) -> None:
         """Initialize the creator.
 
         Args:
@@ -51,20 +46,15 @@ class EpicIssueCreator:
         Raises:
             PlatformError: If the command fails.
         """
-        full_cmd = ['glab'] + cmd
+        full_cmd = ["glab"] + cmd
 
         if self.dry_run:
-            logger.info("[DRY RUN] Would execute: %s", ' '.join(full_cmd))
+            logger.info("[DRY RUN] Would execute: %s", " ".join(full_cmd))
             return ""
 
         try:
-            logger.debug("Executing: %s", ' '.join(full_cmd))
-            result = subprocess.run(
-                full_cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            logger.debug("Executing: %s", " ".join(full_cmd))
+            result = subprocess.run(full_cmd, capture_output=True, text=True, check=True)
             return result.stdout.strip()
         except subprocess.CalledProcessError as err:
             error_msg = f"Command failed: {' '.join(full_cmd)}\n{err.stderr}"
@@ -91,16 +81,16 @@ class EpicIssueCreator:
             PlatformError: If epic creation fails.
             ValueError: If epic_config is invalid.
         """
-        if 'id' in epic_config:
-            epic_id = str(epic_config['id'])
+        if "id" in epic_config:
+            epic_id = str(epic_config["id"])
             logger.info("Using existing epic ID: %s", epic_id)
             return epic_id
 
-        if 'title' not in epic_config:
+        if "title" not in epic_config:
             raise ValueError("Epic must have either 'id' or 'title' field")
 
-        title = epic_config['title']
-        description = epic_config.get('description', '')
+        title = epic_config["title"]
+        description = epic_config.get("description", "")
 
         logger.info("Creating epic: %s", title)
         # Use GitLab API to create epic (glab epic create doesn't exist)
@@ -113,7 +103,7 @@ class EpicIssueCreator:
 
         # Merge default epic labels from config with epic-specific labels
         default_labels = self.config.get_default_epic_labels()
-        epic_labels = epic_config.get('labels', [])
+        epic_labels = epic_config.get("labels", [])
 
         # Combine and deduplicate labels
         all_labels = list(dict.fromkeys(default_labels + epic_labels))
@@ -122,18 +112,17 @@ class EpicIssueCreator:
         self._validate_issue_labels(all_labels)  # Reuse validation logic
 
         # URL encode the group path
-        encoded_group = urllib.parse.quote(self.group, safe='')
+        encoded_group = urllib.parse.quote(self.group, safe="")
 
-        cmd = ['api', '-X', 'POST', f'groups/{encoded_group}/epics',
-               '-f', f'title={title}']
+        cmd = ["api", "-X", "POST", f"groups/{encoded_group}/epics", "-f", f"title={title}"]
 
         if description:
-            cmd.extend(['-f', f'description={description}'])
+            cmd.extend(["-f", f"description={description}"])
 
         if all_labels:
             # GitLab API expects labels as comma-separated string
-            labels_str = ','.join(all_labels)
-            cmd.extend(['-f', f'labels={labels_str}'])
+            labels_str = ",".join(all_labels)
+            cmd.extend(["-f", f"labels={labels_str}"])
 
         output = self._run_glab_command(cmd)
 
@@ -144,8 +133,8 @@ class EpicIssueCreator:
         # The linking API requires the IID, not the global ID
         try:
             response = json.loads(output)
-            epic_iid = str(response['iid'])
-            epic_id = str(response['id'])
+            epic_iid = str(response["iid"])
+            epic_id = str(response["id"])
             logger.info("Created epic with ID: %s, IID: %s", epic_id, epic_iid)
             return epic_iid  # Return IID for linking
         except (json.JSONDecodeError, KeyError) as err:
@@ -166,15 +155,15 @@ class EpicIssueCreator:
             PlatformError: If epic ID cannot be extracted.
         """
         # Try to extract from URL format first
-        if 'epics/' in output:
-            parts = output.split('epics/')
+        if "epics/" in output:
+            parts = output.split("epics/")
             if len(parts) > 1:
                 epic_id = parts[1].split()[0].strip()
                 return epic_id
 
         # Try to extract from #ID format
-        if '#' in output:
-            parts = output.split('#')
+        if "#" in output:
+            parts = output.split("#")
             if len(parts) > 1:
                 epic_id = parts[1].split()[0].strip()
                 return epic_id
@@ -194,9 +183,9 @@ class EpicIssueCreator:
         if not required_sections:
             return
 
-        description = issue_config.get('description', '')
+        description = issue_config.get("description", "")
         if not description:
-            missing = ', '.join(required_sections)
+            missing = ", ".join(required_sections)
             raise ValueError(
                 f"Issue '{issue_config.get('title', 'unknown')}' has no description. "
                 f"Required sections: {missing}"
@@ -209,7 +198,7 @@ class EpicIssueCreator:
                 missing_sections.append(section)
 
         if missing_sections:
-            missing = ', '.join(missing_sections)
+            missing = ", ".join(missing_sections)
             raise ValueError(
                 f"Issue '{issue_config.get('title', 'unknown')}' missing required sections: {missing}"
             )
@@ -248,11 +237,7 @@ class EpicIssueCreator:
                 f"Allowed labels are: {', '.join(allowed_labels)}"
             )
 
-    def create_issue(
-        self,
-        issue_config: Dict[str, Any],
-        epic_id: Optional[str] = None
-    ) -> str:
+    def create_issue(self, issue_config: Dict[str, Any], epic_id: Optional[str] = None) -> str:
         """Create a GitLab issue.
 
         Args:
@@ -274,26 +259,26 @@ class EpicIssueCreator:
             PlatformError: If issue creation fails.
             ValueError: If issue_config is invalid.
         """
-        if 'title' not in issue_config:
+        if "title" not in issue_config:
             raise ValueError("Issue must have a 'title' field")
 
         # Validate required sections in description
         self._validate_issue_description(issue_config)
 
-        title = issue_config['title']
-        yaml_id = issue_config.get('id')
+        title = issue_config["title"]
+        yaml_id = issue_config.get("id")
         id_suffix = f" (id: {yaml_id})" if yaml_id else ""
         logger.info("Creating issue: %s%s", title, id_suffix)
 
-        cmd = ['issue', 'create', '--title', title]
+        cmd = ["issue", "create", "--title", title]
 
         # Add optional fields
-        if 'description' in issue_config:
-            cmd.extend(['--description', issue_config['description']])
+        if "description" in issue_config:
+            cmd.extend(["--description", issue_config["description"]])
 
         # Merge default labels from config with issue-specific labels
         default_labels = self.config.get_default_labels()
-        issue_labels = issue_config.get('labels', [])
+        issue_labels = issue_config.get("labels", [])
 
         # Combine and deduplicate labels
         all_labels = list(dict.fromkeys(default_labels + issue_labels))
@@ -302,34 +287,31 @@ class EpicIssueCreator:
         self._validate_issue_labels(all_labels)
 
         if all_labels:
-            labels = ','.join(all_labels)
-            cmd.extend(['--label', labels])
+            labels = ",".join(all_labels)
+            cmd.extend(["--label", labels])
 
-        if 'assignee' in issue_config:
-            cmd.extend(['--assignee', issue_config['assignee']])
+        if "assignee" in issue_config:
+            cmd.extend(["--assignee", issue_config["assignee"]])
 
-        if 'milestone' in issue_config:
-            cmd.extend(['--milestone', issue_config['milestone']])
+        if "milestone" in issue_config:
+            cmd.extend(["--milestone", issue_config["milestone"]])
 
-        if 'due_date' in issue_config:
+        if "due_date" in issue_config:
             # glab uses --due flag for due date
-            cmd.extend(['--due', issue_config['due_date']])
+            cmd.extend(["--due", issue_config["due_date"]])
 
         output = self._run_glab_command(cmd)
 
         if self.dry_run:
-            issue_url = 'DRY_RUN_ISSUE_URL'
-            issue_iid = 'DRY_RUN_IID'
+            issue_url = "DRY_RUN_ISSUE_URL"
+            issue_iid = "DRY_RUN_IID"
             # Track the yaml_id mapping for dependency linking
             if yaml_id:
-                self.issue_id_mapping[yaml_id] = {'url': issue_url, 'iid': issue_iid}
+                self.issue_id_mapping[yaml_id] = {"url": issue_url, "iid": issue_iid}
             # Still show the linking command in dry-run mode
             if epic_id:
                 self._link_issue_to_epic(issue_url, epic_id)
-            issue_info = {
-                'title': title,
-                'id': issue_url
-            }
+            issue_info = {"title": title, "id": issue_url}
             self.created_issues.append(issue_info)
             return issue_url
 
@@ -341,16 +323,13 @@ class EpicIssueCreator:
 
         # Track the yaml_id mapping for dependency linking
         if yaml_id:
-            self.issue_id_mapping[yaml_id] = {'url': issue_url, 'iid': issue_iid}
+            self.issue_id_mapping[yaml_id] = {"url": issue_url, "iid": issue_iid}
             logger.debug("Mapped YAML ID '%s' to issue #%s", yaml_id, issue_iid)
         # Link to epic if provided
         if epic_id:
             self._link_issue_to_epic(issue_url, epic_id)
 
-        issue_info = {
-            'title': title,
-            'id': issue_url
-        }
+        issue_info = {"title": title, "id": issue_url}
         self.created_issues.append(issue_info)
         return issue_url
 
@@ -386,15 +365,15 @@ class EpicIssueCreator:
             PlatformError: If iid cannot be extracted.
         """
         # URL format: https://gitlab.../group/project/-/issues/123
-        if '/-/issues/' in issue_url:
-            parts = issue_url.split('/-/issues/')
+        if "/-/issues/" in issue_url:
+            parts = issue_url.split("/-/issues/")
             if len(parts) == 2:
-                iid = parts[1].split('/')[0].split('?')[0]
+                iid = parts[1].split("/")[0].split("?")[0]
                 return iid
 
         # Fallback: try to extract from #ID format
-        if '#' in issue_url:
-            return issue_url.split('#')[-1].split()[0]
+        if "#" in issue_url:
+            return issue_url.split("#")[-1].split()[0]
 
         # If already a number, return it
         if issue_url.isdigit():
@@ -424,27 +403,27 @@ class EpicIssueCreator:
         """
         # Extract project path and iid from URL
         # URL format: https://gitlab.../group/project/-/issues/123
-        if '/-/issues/' in issue_id:
-            parts = issue_id.split('/-/issues/')
+        if "/-/issues/" in issue_id:
+            parts = issue_id.split("/-/issues/")
             if len(parts) == 2:
                 project_url = parts[0]
-                iid = parts[1].split('/')[0].split('?')[0]
+                iid = parts[1].split("/")[0].split("?")[0]
 
                 # Extract project path from URL
                 # Format: https://gitlab.example.com/group/subgroup/project
-                if '//' in project_url:
-                    project_path = '/'.join(project_url.split('//')[1].split('/')[1:])
+                if "//" in project_url:
+                    project_path = "/".join(project_url.split("//")[1].split("/")[1:])
                 else:
                     project_path = project_url
 
-                encoded_project = urllib.parse.quote(project_path, safe='')
+                encoded_project = urllib.parse.quote(project_path, safe="")
                 api_endpoint = f"projects/{encoded_project}/issues/{iid}"
 
                 try:
-                    output = self._run_glab_command(['api', api_endpoint])
+                    output = self._run_glab_command(["api", api_endpoint])
                     if output:
                         data = json.loads(output)
-                        return str(data.get('id'))
+                        return str(data.get("id"))
                 except (PlatformError, json.JSONDecodeError) as err:
                     logger.warning("Failed to get global issue ID: %s", err)
                     return None
@@ -479,20 +458,20 @@ class EpicIssueCreator:
         global_issue_id = self._get_global_issue_id(issue_id)
         if not global_issue_id:
             # Fallback: try using the ID directly (might work if already global)
-            if '#' in issue_id:
-                global_issue_id = issue_id.split('#')[-1].split()[0]
-            elif '/' in issue_id:
-                global_issue_id = issue_id.rstrip('/').split('/')[-1]
+            if "#" in issue_id:
+                global_issue_id = issue_id.split("#")[-1].split()[0]
+            elif "/" in issue_id:
+                global_issue_id = issue_id.rstrip("/").split("/")[-1]
             else:
                 global_issue_id = issue_id
             logger.debug("Using issue ID directly: %s", global_issue_id)
         # URL-encode the group path for the API endpoint
-        encoded_group = urllib.parse.quote(group_path, safe='')
+        encoded_group = urllib.parse.quote(group_path, safe="")
 
         # Build the API endpoint
         api_endpoint = f"groups/{encoded_group}/epics/{epic_id}/issues/{global_issue_id}"
 
-        cmd = ['api', '-X', 'POST', api_endpoint]
+        cmd = ["api", "-X", "POST", api_endpoint]
 
         try:
             self._run_glab_command(cmd)
@@ -502,10 +481,7 @@ class EpicIssueCreator:
             # Don't fail the whole operation if linking fails
 
     def _create_issue_dependency_link(
-        self,
-        blocking_issue_iid: str,
-        blocked_issue_iid: str,
-        project_id: str
+        self, blocking_issue_iid: str, blocked_issue_iid: str, project_id: str
     ) -> None:
         """Create a dependency link between two issues.
 
@@ -522,24 +498,27 @@ class EpicIssueCreator:
             PlatformError: If linking fails.
         """
         logger.info(
-            "Creating dependency: issue #%s blocks #%s",
-            blocking_issue_iid, blocked_issue_iid
+            "Creating dependency: issue #%s blocks #%s", blocking_issue_iid, blocked_issue_iid
         )
 
         # URL-encode the project path
-        encoded_project = urllib.parse.quote(project_id, safe='')
+        encoded_project = urllib.parse.quote(project_id, safe="")
 
         # Build the API endpoint for the blocking issue
         api_endpoint = f"projects/{encoded_project}/issues/{blocking_issue_iid}/links"
 
         # The link_type=blocks means: blocking_issue blocks blocked_issue
         cmd = [
-            'api',
-            '-X', 'POST',
+            "api",
+            "-X",
+            "POST",
             api_endpoint,
-            '-f', f'target_project_id={project_id}',
-            '-f', f'target_issue_iid={blocked_issue_iid}',
-            '-f', 'link_type=blocks'
+            "-f",
+            f"target_project_id={project_id}",
+            "-f",
+            f"target_issue_iid={blocked_issue_iid}",
+            "-f",
+            "link_type=blocks",
         ]
 
         try:
@@ -548,6 +527,105 @@ class EpicIssueCreator:
         except PlatformError as err:
             logger.warning("Failed to create dependency link: %s", err)
             # Don't fail the whole operation if linking fails
+
+    def _parse_dependency_reference(self, dep_ref: Union[str, int]) -> Tuple[str, bool]:
+        """Parse dependency reference into (identifier, is_external).
+
+        Args:
+            dep_ref: Dependency reference (YAML ID, IID, or #IID)
+
+        Returns:
+            Tuple of (identifier, is_external_flag)
+            - For YAML ID: ("yaml-id", False)
+            - For GitLab IID: ("13", True)
+
+        Raises:
+            ValueError: If external IID is not a valid positive integer
+
+        Examples:
+            "design-task" -> ("design-task", False)
+            13 -> ("13", True)
+            "#42" -> ("42", True)
+            "123" -> ("123", False)  # Treated as YAML-local ID
+        """
+        # Integer: external IID
+        if isinstance(dep_ref, int):
+            if dep_ref <= 0:
+                raise ValueError(f"External IID must be positive integer, got: {dep_ref}")
+            identifier = str(dep_ref)
+            logger.debug("Parsed dependency reference %s as external IID #%s", dep_ref, identifier)
+            return (identifier, True)
+
+        # String starting with #: external IID
+        if isinstance(dep_ref, str) and dep_ref.startswith("#"):
+            identifier = dep_ref[1:]
+            if not identifier or not identifier.isdigit() or int(identifier) <= 0:
+                raise ValueError(f"Invalid external IID format: {dep_ref}")
+            logger.debug(
+                "Parsed dependency reference '%s' as external IID #%s", dep_ref, identifier
+            )
+            return (identifier, True)
+
+        # All other strings: YAML-local ID (including numeric strings like "123")
+        logger.debug("Parsed dependency reference '%s' as YAML-local ID", dep_ref)
+        return (dep_ref, False)
+
+    def _validate_external_issue_exists(self, issue_iid: str, project_id: str) -> bool:
+        """Verify that external GitLab issue exists.
+
+        Args:
+            issue_iid: GitLab issue IID (validated positive integer as string)
+            project_id: Project path (namespace/project)
+
+        Returns:
+            True if issue exists, False otherwise
+        """
+        encoded_project = urllib.parse.quote(project_id, safe="")
+        api_endpoint = f"projects/{encoded_project}/issues/{issue_iid}"
+
+        try:
+            self._run_glab_command(["api", api_endpoint])
+            logger.debug("Validated external issue #%s exists", issue_iid)
+            return True
+        except PlatformError:
+            logger.warning("External issue #%s not found in project %s", issue_iid, project_id)
+            return False
+
+    def _validate_external_dependencies(
+        self, issues: List[Dict[str, Any]], project_id: str
+    ) -> List[str]:
+        """Validate all external dependencies upfront before creating issues.
+
+        Args:
+            issues: List of issue configurations from YAML
+            project_id: Project path (namespace/project)
+
+        Returns:
+            List of validation error messages (empty if all valid)
+        """
+        validation_errors = []
+        checked_iids = set()  # Cache to avoid redundant API calls (both success and failure)
+
+        for issue_config in issues:
+            yaml_id = issue_config.get("id")
+            dependencies = issue_config.get("dependencies", [])
+
+            for dep_ref in dependencies:
+                try:
+                    identifier, is_external = self._parse_dependency_reference(dep_ref)
+
+                    if is_external and identifier not in checked_iids:
+                        # Validate this external IID
+                        if not self._validate_external_issue_exists(identifier, project_id):
+                            error_msg = f"External issue #{identifier} (dependency of '{yaml_id}') not found"
+                            validation_errors.append(error_msg)
+                        checked_iids.add(identifier)  # Cache regardless of outcome
+
+                except ValueError as err:
+                    error_msg = f"Invalid dependency reference in '{yaml_id}': {err}"
+                    validation_errors.append(error_msg)
+
+        return validation_errors
 
     def process_yaml_file(self, yaml_path: Path) -> None:
         """Process a YAML file and create epic and issues.
@@ -560,24 +638,39 @@ class EpicIssueCreator:
             ValueError: If YAML structure is invalid.
         """
         logger.info("Loading configuration from: %s", yaml_path)
-        with open(yaml_path, 'r', encoding='utf-8') as yaml_file:
+        with open(yaml_path, "r", encoding="utf-8") as yaml_file:
             config = yaml.safe_load(yaml_file)
 
         if not config:
             raise ValueError("YAML file is empty")
 
-        if 'epic' not in config:
+        if "epic" not in config:
             raise ValueError("YAML must contain 'epic' section")
 
-        if 'issues' not in config or not config['issues']:
+        if "issues" not in config or not config["issues"]:
             raise ValueError("YAML must contain 'issues' section with at least one issue")
 
         # Create or get epic
-        epic_config = config['epic']
+        epic_config = config["epic"]
         epic_id = self.create_epic(epic_config)
 
+        # Validate external dependencies upfront before creating issues
+        issues = config["issues"]
+
+        # Extract project ID for validation (need a placeholder for dry-run)
+        if not self.dry_run:
+            # For validation, we need the project ID before creating any issues
+            # We can extract it from the repo config or use the group path
+            project_id = self._get_project_id_for_validation()
+            if project_id:
+                validation_errors = self._validate_external_dependencies(issues, project_id)
+                if validation_errors:
+                    logger.error("External dependency validation failed:")
+                    for error in validation_errors:
+                        logger.error("  - %s", error)
+                    raise PlatformError("Cannot proceed with invalid external dependencies")
+
         # Create issues
-        issues = config['issues']
         logger.info("Creating %s issues...", len(issues))
         for idx, issue_config in enumerate(issues, 1):
             try:
@@ -593,61 +686,97 @@ class EpicIssueCreator:
         logger.info("Successfully completed all operations")
 
     def _create_dependency_links(self, issues: List[Dict[str, Any]]) -> None:
-        """Create dependency links between issues based on YAML configuration.
+        """Create dependency links with support for external GitLab issues.
 
         Args:
             issues: List of issue configurations from YAML.
         """
         logger.info("Creating dependency links...")
 
-        # Get the project ID from the first created issue URL
         project_id = self._extract_project_id_from_url()
         if not project_id:
             logger.warning("Cannot create dependency links: unable to determine project ID")
             return
 
         dependency_count = 0
+        link_errors = []
+
         for issue_config in issues:
-            yaml_id = issue_config.get('id')
-            dependencies = issue_config.get('dependencies', [])
+            yaml_id = issue_config.get("id")
+            dependencies = issue_config.get("dependencies", [])
 
             if not yaml_id or not dependencies:
                 continue
 
-            # Get the GitLab iid for this issue
             blocked_issue = self.issue_id_mapping.get(yaml_id)
             if not blocked_issue:
                 logger.warning("Issue with YAML ID '%s' not found in mapping", yaml_id)
                 continue
 
-            blocked_iid = blocked_issue['iid']
+            blocked_iid = blocked_issue["iid"]
 
-            # Create links for each dependency
-            for dep_yaml_id in dependencies:
-                blocking_issue = self.issue_id_mapping.get(dep_yaml_id)
-                if not blocking_issue:
-                    logger.warning(
-                        "Dependency '%s' for issue '%s' not found in mapping",
-                        dep_yaml_id, yaml_id
-                    )
-                    continue
-
-                blocking_iid = blocking_issue['iid']
-
+            # Process each dependency
+            for dep_ref in dependencies:
                 try:
-                    self._create_issue_dependency_link(
-                        blocking_iid,
-                        blocked_iid,
-                        project_id
-                    )
+                    # Parse dependency reference
+                    identifier, is_external = self._parse_dependency_reference(dep_ref)
+
+                    if is_external:
+                        # External GitLab issue reference (already validated upfront)
+                        blocking_iid = identifier
+                    else:
+                        # YAML-local ID (existing behavior)
+                        blocking_issue = self.issue_id_mapping.get(identifier)
+                        if not blocking_issue:
+                            logger.warning(
+                                "Dependency '%s' for issue '%s' not found in mapping",
+                                identifier,
+                                yaml_id,
+                            )
+                            continue
+
+                        blocking_iid = blocking_issue["iid"]
+
+                    # Create the dependency link
+                    self._create_issue_dependency_link(blocking_iid, blocked_iid, project_id)
                     dependency_count += 1
+                    logger.info("Linked issue #%s blocks #%s", blocking_iid, blocked_iid)
+
+                except ValueError as err:
+                    error_msg = f"Invalid dependency in '{yaml_id}': {err}"
+                    link_errors.append(error_msg)
+                    logger.error(error_msg)
                 except PlatformError as err:
-                    logger.warning(
-                        "Failed to create dependency link from '%s' to '%s': %s",
-                        dep_yaml_id, yaml_id, err
-                    )
+                    error_msg = f"Failed to create dependency link for '{yaml_id}': {err}"
+                    link_errors.append(error_msg)
+                    logger.warning(error_msg)
 
         logger.info("Created %s dependency links", dependency_count)
+
+        if link_errors:
+            logger.warning("Dependency creation encountered %s errors:", len(link_errors))
+            for error in link_errors:
+                logger.warning("  - %s", error)
+
+    def _get_project_id_for_validation(self) -> Optional[str]:
+        """Get project ID for external dependency validation.
+
+        This attempts to determine the current project path before any issues are created.
+        Uses git remote URL to extract the project namespace/name.
+
+        Returns:
+            Project path (namespace/project) or None if unable to determine.
+        """
+        # Import here to avoid circular dependency
+        from ..utils.git_helpers import get_current_repo_path  # pylint: disable=import-outside-toplevel
+
+        project_id = get_current_repo_path()
+        if project_id:
+            logger.debug("Extracted project ID for validation: %s", project_id)
+        else:
+            logger.debug("Could not determine project ID from git remote")
+
+        return project_id
 
     def _extract_project_id_from_url(self) -> Optional[str]:
         """Extract project ID from the first created issue URL.
@@ -658,10 +787,10 @@ class EpicIssueCreator:
         if not self.created_issues:
             return None
 
-        first_issue_url = self.created_issues[0]['id']
+        first_issue_url = self.created_issues[0]["id"]
 
         # Handle dry-run mode
-        if first_issue_url == 'DRY_RUN_ISSUE_URL':
+        if first_issue_url == "DRY_RUN_ISSUE_URL":
             # Use the group path if available as project path for dry-run
             if self.group:
                 # Use generic project name for dry-run demonstration
@@ -669,13 +798,13 @@ class EpicIssueCreator:
             return "DRY_RUN_PROJECT_ID"
 
         # URL format: https://gitlab.com/group/subgroup/project/-/issues/123
-        if '/-/issues/' in first_issue_url:
-            parts = first_issue_url.split('/-/issues/')
+        if "/-/issues/" in first_issue_url:
+            parts = first_issue_url.split("/-/issues/")
             if len(parts) == 2:
                 project_url = parts[0]
                 # Extract project path from URL
-                if '//' in project_url:
-                    project_path = '/'.join(project_url.split('//')[1].split('/')[1:])
+                if "//" in project_url:
+                    project_path = "/".join(project_url.split("//")[1].split("/")[1:])
                     return project_path
 
         return None
