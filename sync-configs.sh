@@ -52,11 +52,11 @@ Two-way sync for GenAI platform configurations
 
 MODES:
   sync         Backup configurations from home directory to repository (default)
-               ~/.claude → platforms/claude/
+               ~/.claude → platforms/claude/ (includes memory/)
                ~/.codex → platforms/codex/
 
   install      Restore configurations from repository to home directory
-               platforms/claude/ → ~/.claude
+               platforms/claude/ → ~/.claude (includes memory/)
                platforms/codex/ → ~/.codex
 
 OPTIONS:
@@ -279,12 +279,21 @@ main() {
             'commands/**'
             'skills/'
             'skills/**'
+            'memory/'
+            'memory/**'
+        )
+
+        # Exclude personal learning data (not in git)
+        local claude_excludes=(
+            'memory/*-log.md'
         )
 
         if ! sync_platform "Claude" \
             "$HOME/.claude" \
             "$SCRIPT_DIR/platforms/claude" \
-            "${claude_includes[@]}"; then
+            "${claude_includes[@]}" \
+            --excludes \
+            "${claude_excludes[@]}"; then
             exit_code=1
         fi
         echo ""

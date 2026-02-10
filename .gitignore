@@ -59,6 +59,9 @@ glab_config.yaml
 # Codex system skills (built-in, not user-created)
 platforms/codex/skills/.system/
 
+# Personal learning data (not synced)
+platforms/claude/memory/*-log.md
+
 # Logs
 *.log
 

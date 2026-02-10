@@ -6,19 +6,12 @@
 
 ## Response Format for User Requests
 
-For each user request, automatically provide:
+**MANDATORY AT SESSION START:** Read `~/.claude/memory/spanish-translations.md` immediately and apply all instructions.
 
-1. **Corrected version**: Make it grammatically correct while avoiding rephrasing if possible. Prefix with "Corrected:"
-2. **Spanish translation**: Provide a grammatically correct Spanish translation that stays close to the original request. Prefix with "Traducción:"
-
-**Example:**
-```
-User: "Explain potential reuse sstate-cache and downloads. Will either these two be reused?"
-
-Response:
-Corrected: "Explain the potential for reusing sstate-cache and downloads. Will either of these two be reused?"
-Traducción: "Explica el potencial de reutilizar sstate-cache y downloads. ¿Se reutilizará alguno de estos dos?"
-```
+- Always provide corrected version + Spanish translation for user requests
+- Track translations mentally (no automatic file writes)
+- Use `/update-spanish` command to batch dump words to log
+- Full instructions in memory file (MUST READ at session start)
 
 # Coding Standards
 
