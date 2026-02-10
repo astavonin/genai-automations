@@ -51,14 +51,14 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ### Workflow Commands
 
-- `/start` - Load current work context from planning files
+- `/start` - Sync planning from backup, load current work context, reverify knowledge
 - `/research` - Run research phase (architecture-research-planner agent)
 - `/design` - Create design proposal
 - `/review-design` - Review design before implementation (MANDATORY)
 - `/implement` - Run implementation (coder or devops-engineer agent)
 - `/review-code` - Review code after implementation (MANDATORY)
 - `/verify` - Run verification (tests, linters, static analysis)
-- `/complete` - Mark work complete and update progress tracking
+- `/complete` - Mark work complete, update progress tracking, backup planning state
 
 ### Utility Commands
 
@@ -68,14 +68,14 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 ## Quick Reference
 
 ```
-1. Start:      /start → load progress.md, status.md
+1. Start:      /start → sync pull → load progress.md, status.md → reverify
 2. Research:   /research → architecture-research-planner → analysis.md
 3. Design:     /design → create design.md → /review-design
 4. Implement:  /implement → coder/devops-engineer → code + tests
 5. Review:     /review-code → reviewer → approve/changes/reject
 6. Verify:     /verify → tests + linters + static analysis
 7. Commit:     User handles git commits (NEVER automatic)
-8. Complete:   /complete → update progress.md (propose & confirm)
+8. Complete:   /complete → update progress.md (propose & confirm) → sync push
 ```
 
 ## Critical Rules
@@ -90,12 +90,26 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 For ANY implementation task, automatically follow these phases:
 
 ### Phase 0: Start Work
-Load context from planning files:
+**Step 1: Sync Planning State (Multi-Machine Support)**
+```bash
+# Pull latest planning state from Google Drive backup
+ci-platform-manager sync pull
+
+# Verify sync successful
+echo "✓ Planning state synchronized from backup"
+```
+
+**Step 2: Load Context**
 ```bash
 cat planning/progress.md
 cat planning/<goal>/milestone-XX/status.md
 ls planning/<goal>/milestone-XX/design/
 ```
+
+**Step 3: Reverify Knowledge**
+- Check if any planning files were updated from backup
+- Review any changes made on other machines
+- Confirm understanding of current work state
 
 ### Phase 1: Research
 - Use architecture-research-planner agent
@@ -141,10 +155,22 @@ ls planning/<goal>/milestone-XX/design/
 - NEVER create commits automatically
 
 ### Phase 8: Completion
+**Step 1: Update Planning Files**
 - After user confirms work complete
 - Explicitly propose updating `planning/progress.md`
 - Wait for user confirmation
 - Update `status.md` if needed
+
+**Step 2: Backup Planning State (Multi-Machine Support)**
+```bash
+# Push updated planning to Google Drive backup
+ci-platform-manager sync push
+
+# Verify sync successful
+echo "✓ Planning backup complete - available on all machines"
+```
+
+**Purpose:** Ensures planning state is backed up and available across machines after completing work
 
 # Agents
 

@@ -10,7 +10,7 @@ Complete 8-phase workflow for software development with mandatory checkpoints.
 ## Workflow Phases
 
 ```
-Phase 0: Start Work         → Load context from planning files
+Phase 0: Start Work         → Sync planning → Load context → Reverify knowledge
 Phase 1: Research           → architecture-research-planner agent
 Phase 2: Design             → Create design proposal
 Phase 3: Design Review      → reviewer agent (MANDATORY CHECKPOINT)
@@ -18,31 +18,43 @@ Phase 4: Implementation     → coder or devops-engineer agent
 Phase 5: Code Review        → reviewer agent (MANDATORY CHECKPOINT)
 Phase 6: Verification       → Run linters, tests, and static analysis
 Phase 7: Commit             → User handles git commits
-Phase 8: Completion         → Update progress tracking
+Phase 8: Completion         → Update progress tracking → Backup planning
 ```
 
 ## Commands
 
 Use these commands to execute workflow phases:
 
-- `/start` - Phase 0: Load current work context
+- `/start` - Phase 0: Sync planning, load context, reverify knowledge
 - `/research` - Phase 1: Run research phase
 - `/design` - Phase 2: Create design proposal
 - `/review-design` - Phase 3: Design review (MANDATORY)
 - `/implement` - Phase 4: Implementation
 - `/review-code` - Phase 5: Code review (MANDATORY)
 - `/verify` - Phase 6: Verification
-- `/complete` - Phase 8: Mark work complete
+- `/complete` - Phase 8: Mark work complete, backup planning
 
 ## Phase Details
 
 ### Phase 0: Start Work
 **Command:** `/start`
 
+**Step 1: Sync Planning State (Multi-Machine Support)**
+```bash
+ci-platform-manager sync pull
+```
+Pulls latest planning state from Google Drive backup to ensure you have the most recent work from all machines.
+
+**Step 2: Load Context**
 Load context from planning files:
 - `planning/progress.md` - Current active work
 - `planning/<goal>/milestone-XX/status.md` - Milestone status
 - `planning/<goal>/milestone-XX/design/` - Design docs
+
+**Step 3: Reverify Knowledge**
+- Check if any planning files were updated from backup
+- Review any changes made on other machines
+- Confirm understanding of current work state
 
 ### Phase 1: Research
 **Command:** `/research`
@@ -120,11 +132,19 @@ Run all checks in this order:
 ### Phase 8: Completion
 **Command:** `/complete`
 
-Update progress tracking:
+**Step 1: Update Progress Tracking**
 1. Explicitly propose update to `progress.md`
 2. Wait for user confirmation
 3. Update `progress.md` only after confirmation
 4. Update `status.md` if needed
+
+**Step 2: Backup Planning State (Multi-Machine Support)**
+```bash
+ci-platform-manager sync push
+```
+Pushes updated planning to Google Drive backup, making it available on all machines.
+
+**Purpose:** Ensures planning state is backed up and synchronized after completing work
 
 ## Critical Rules
 
