@@ -151,15 +151,25 @@ class Config:
         old_template = old_config.get('issue_template', {})
         new_template = transform_issue_template(old_template)
 
+        # Extract labels section
+        labels_config = old_config.get('labels', {})
+
+        # Build labels dictionary, making default_epic optional
+        labels = {
+            'default': labels_config.get('default', []),
+            'default_epic': labels_config.get('default_epic', []),  # Optional
+        }
+
+        # Handle both 'allowed' and 'allowed_labels' for backward compatibility
+        allowed = labels_config.get('allowed', labels_config.get('allowed_labels', []))
+        if allowed:
+            labels['allowed'] = allowed
+
         return {
             'platform': 'gitlab',
             'gitlab': {
-                'default_group': old_config['gitlab']['default_group'],
-                'labels': {
-                    'default': old_config['labels']['default'],
-                    'default_epic': old_config['labels']['default_epic'],
-                    'allowed': old_config['labels']['allowed_labels']
-                }
+                'default_group': old_config.get('gitlab', {}).get('default_group', ''),
+                'labels': labels
             },
             'common': {
                 'issue_template': new_template

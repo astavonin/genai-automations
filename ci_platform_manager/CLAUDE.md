@@ -68,11 +68,11 @@ platform: gitlab  # or github
 
 # GitLab-specific settings
 gitlab:
-  default_group: "group/project"
+  default_group: "group/project"  # REQUIRED for epic operations
   labels:
-    default: ["type::feature", "development-status::backlog"]
-    default_epic: ["type::epic"]
-    allowed: []  # Empty = no validation
+    default: ["type::feature", "development-status::backlog"]  # REQUIRED
+    default_epic: ["type::epic"]  # OPTIONAL (only for creating epics)
+    allowed: []  # OPTIONAL (empty = no validation)
 
 # GitHub-specific settings (future)
 github:
@@ -90,6 +90,24 @@ planning_sync:
   gdrive_base: ~/GoogleDrive  # Machine-specific path
 ```
 
+**Required vs Optional Fields:**
+
+**REQUIRED:**
+- `gitlab.default_group` - Needed for epic and group-level operations
+- `labels.default` - Default labels applied to new issues
+
+**OPTIONAL:**
+- `labels.default_epic` - Only needed when *creating* epics (not for loading)
+- `labels.allowed` (or `allowed_labels` for legacy configs) - For label validation
+- All other sections depend on features used
+
+**Legacy Config Support:**
+
+The tool automatically handles legacy `glab_config.yaml` format:
+- Accepts `allowed_labels` (converts to `allowed`)
+- Makes `default_epic` optional (defaults to empty list)
+- Transforms old config structure to new format in-memory
+
 ## Commands
 
 ### Issue/Epic Management
@@ -100,6 +118,95 @@ ci-platform-manager create epic_definition.yaml
 ci-platform-manager create --dry-run epic_definition.yaml
 ci-platform-manager create --config custom_config.yaml epic_definition.yaml
 ```
+
+**YAML Structure for Creating Issues:**
+
+The YAML file must contain two top-level sections: `epic` and `issues`.
+
+```yaml
+# ============================================================
+# EPIC SECTION (REQUIRED)
+# ============================================================
+epic:
+  # Option 1: Link to existing epic (recommended for adding issues to existing epics)
+  id: 12  # IID of existing epic (use: ci-platform-manager load &12 to verify)
+
+  # Option 2: Create new epic
+  # title: "Epic Title"  # REQUIRED if creating new epic
+  # description: "Epic description"  # Optional
+  # labels: ["type::epic", "component::feature"]  # Optional, merged with config defaults
+
+# ============================================================
+# ISSUES SECTION (REQUIRED - at least one issue)
+# ============================================================
+issues:
+  # ---- Example 1: Minimal issue ----
+  - title: "Simple Issue Title"  # REQUIRED
+    description: |  # REQUIRED (must contain required sections from config)
+      # Description
+      Brief description of the issue
+
+      # Acceptance Criteria
+      - Criteria 1
+      - Criteria 2
+
+  # ---- Example 2: Full-featured issue ----
+  - id: "issue-1"  # Optional YAML-local ID for dependency tracking
+    title: "[Impl] Feature Implementation"  # REQUIRED
+    description: |  # REQUIRED
+      # Description
+      Detailed description of what needs to be implemented
+
+      # Acceptance Criteria
+      - Unit tests pass
+      - Integration tests pass
+      - Documentation updated
+
+      # Additional Notes
+      This is optional if configured
+    labels: ["priority::high", "component::backend"]  # Optional, merged with defaults
+    assignee: "alice"  # Optional - GitLab username
+    milestone: "v2.0"  # Optional - milestone title
+    due_date: "2026-03-15"  # Optional - YYYY-MM-DD format
+
+  # ---- Example 3: Issue with dependencies ----
+  - id: "issue-2"  # REQUIRED if using dependencies
+    title: "Dependent Issue"
+    description: |
+      # Description
+      This issue depends on issue-1 being completed first
+
+      # Acceptance Criteria
+      - Dependency resolved
+      - Feature implemented
+    dependencies: ["issue-1"]  # List of YAML IDs this issue depends on
+```
+
+**Field Reference:**
+
+**Epic Section:**
+- `id` (int, REQUIRED if using existing epic) - IID of existing epic
+- `title` (string, REQUIRED if creating new epic) - Epic title
+- `description` (string, optional) - Epic description (markdown)
+- `labels` (list, optional) - Labels to add (merged with `config.labels.default_epic`)
+
+**Issue Section (each item):**
+- `id` (string, optional) - YAML-local identifier for dependency tracking
+- `title` (string, REQUIRED) - Issue title
+- `description` (string, REQUIRED) - Issue description with required sections
+- `labels` (list, optional) - Labels to add (merged with `config.labels.default`)
+- `assignee` (string, optional) - GitLab username
+- `milestone` (string, optional) - Milestone title (not ID)
+- `due_date` (string, optional) - Due date in YYYY-MM-DD format
+- `dependencies` (list, optional) - List of YAML IDs this issue depends on
+
+**Important Notes:**
+1. Epic must have EITHER `id` (existing) OR `title` (new)
+2. Issue descriptions MUST contain required sections from config
+3. Labels are automatically merged with config defaults
+4. Dependencies use YAML-local IDs (the `id` field), not GitLab IIDs
+5. Use `--dry-run` to preview before creating
+6. Replace example values (alice, v2.0, etc.) with your actual project values
 
 **Load information:**
 ```bash
@@ -454,6 +561,24 @@ Solution: Last write wins. Pull latest, manually merge if needed, push
 **Issue: Config file not found**
 ```
 Solution: Create config.yaml in project root or use --config flag
+```
+
+**Issue: KeyError: 'default_epic' when loading config**
+```
+Solution: This is a legacy config issue. Update to latest version where default_epic is optional.
+The tool now handles configs without default_epic automatically.
+```
+
+**Issue: Legacy config with allowed_labels not working**
+```
+Solution: Both 'allowed' and 'allowed_labels' are now supported automatically.
+No manual config changes needed - the tool handles both formats.
+```
+
+**Issue: Cannot load epic**
+```
+Solution: Ensure gitlab.default_group is set in config.
+default_epic labels are NOT required for loading epics (only for creating them).
 ```
 
 **Issue: Command not found**
