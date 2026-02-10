@@ -206,3 +206,54 @@ class TestPlatformOverride:
 
         config = Config(config_path)
         assert config.platform == "gitlab"
+
+
+class TestPlanningSyncConfig:
+    """Test planning_sync configuration."""
+
+    def test_planning_sync_in_new_format(self, temp_dir: Path) -> None:
+        """planning_sync config is loaded in new format."""
+        config_data = {
+            "platform": "gitlab",
+            "gitlab": {"default_group": "test/project"},
+            "planning_sync": {"gdrive_base": "~/GoogleDrive"}
+        }
+        config_path = temp_dir / "config.yaml"
+        with open(config_path, "w", encoding="utf-8") as file:
+            yaml.dump(config_data, file)
+
+        config = Config(config_path)
+        assert config.planning_sync == {"gdrive_base": "~/GoogleDrive"}
+
+    def test_planning_sync_in_legacy_format(self, temp_dir: Path) -> None:
+        """planning_sync config is preserved during legacy transformation."""
+        legacy_config = {
+            "gitlab": {"default_group": "test/project"},
+            "labels": {
+                "default": ["type::feature"],
+                "allowed_labels": ["type::feature"]
+            },
+            "planning_sync": {"gdrive_base": "~/GoogleDrive"}
+        }
+        config_path = temp_dir / "legacy.yaml"
+        with open(config_path, "w", encoding="utf-8") as file:
+            yaml.dump(legacy_config, file)
+
+        with pytest.warns(DeprecationWarning):
+            config = Config(config_path)
+
+        # Verify planning_sync was preserved during transformation
+        assert config.planning_sync == {"gdrive_base": "~/GoogleDrive"}
+
+    def test_planning_sync_missing(self, temp_dir: Path) -> None:
+        """planning_sync is empty dict when not configured."""
+        config_data = {
+            "platform": "gitlab",
+            "gitlab": {"default_group": "test/project"}
+        }
+        config_path = temp_dir / "config.yaml"
+        with open(config_path, "w", encoding="utf-8") as file:
+            yaml.dump(config_data, file)
+
+        config = Config(config_path)
+        assert config.planning_sync == {}

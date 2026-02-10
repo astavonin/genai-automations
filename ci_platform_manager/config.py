@@ -165,7 +165,7 @@ class Config:
         if allowed:
             labels['allowed'] = allowed
 
-        return {
+        new_config = {
             'platform': 'gitlab',
             'gitlab': {
                 'default_group': old_config.get('gitlab', {}).get('default_group', ''),
@@ -175,6 +175,12 @@ class Config:
                 'issue_template': new_template
             }
         }
+
+        # Preserve planning_sync section if present
+        if 'planning_sync' in old_config:
+            new_config['planning_sync'] = old_config['planning_sync']
+
+        return new_config
 
     def get_platform_config(self, platform: str) -> Dict[str, Any]:
         """Get platform-specific configuration.
