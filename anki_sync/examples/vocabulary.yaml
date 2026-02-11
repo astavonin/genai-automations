@@ -1,0 +1,31 @@
+# Example vocabulary file for anki_sync
+
+- spanish: "sí"
+  english: "yes"
+  example: "Sí, funciona bien"
+  notes: "Affirmative response"
+  tags: ["common", "basic"]
+
+- spanish: "¿Qué tal?"
+  english: "How's it going?"
+  example: "¿Qué tal tu día?"
+  notes: "Informal greeting"
+  tags: ["greeting", "informal"]
+
+- spanish: "gracias"
+  english: "thank you"
+  example: "Muchas gracias por tu ayuda"
+  notes: "Express gratitude"
+  tags: ["common", "polite"]
+
+- spanish: "por favor"
+  english: "please"
+  example: "Una café, por favor"
+  notes: "Polite request"
+  tags: ["common", "polite"]
+
+- spanish: "de nada"
+  english: "you're welcome"
+  example: "De nada, es un placer"
+  notes: "Response to thanks"
+  tags: ["common", "polite"]

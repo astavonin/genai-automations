@@ -1,0 +1,33 @@
+# Example configuration for anki_sync
+
+anki:
+  # Anki-Connect connection
+  host: "localhost"
+  port: 8765
+  timeout: 30  # seconds
+
+  # Deck and model names
+  deck_name: "Spanish::Vocabulary"
+  model_name: "SpanishVocab"
+
+sync:
+  # Source file (translations)
+  source_file: "~/.claude/memory/spanish-vocabulary.yaml"
+
+  # State file (mappings)
+  state_file: "~/.config/anki_sync/sync_state.json"
+
+  # Conflict log
+  conflict_log: "~/.config/anki_sync/conflicts.log"
+
+  # Auto-sync to AnkiWeb after push
+  auto_sync_ankiweb: false
+
+cards:
+  # Card format options
+  include_examples: true
+  include_notes: true
+  max_example_length: 200
+
+  # Tag prefix for all synced cards
+  tag_prefix: "anki_sync"
