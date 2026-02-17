@@ -62,8 +62,10 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 
 ### Step 4: Multi-Agent Consensus Review
 
-Run the **Consensus Review Protocol** from:
+Run the **Consensus Review Protocol** (Steps A–E) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
+
+**Steps A–D: Claude consensus**
 
 Pass to each of the 3 independent reviewer agents:
 - Full diff (or focused subset for large diffs)
@@ -74,6 +76,15 @@ Pass to each of the 3 independent reviewer agents:
 After all 3 agents complete, aggregate per the protocol (Steps B–C):
 - **Issue included:** 2 or more agents flagged it
 - **Severity:** level that 2+ agents agree on; if all 3 differ, use the middle level
+
+**Step E: Codex cross-model verification**
+
+Run from the project's working directory:
+```bash
+codex review "Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+```
+
+Cross-aggregate with the Claude consensus findings per the protocol.
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)

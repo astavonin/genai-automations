@@ -54,14 +54,39 @@ Output: a deduplicated list of findings, each with:
 - `location(s)` — from whichever agent(s) identified the specific code site
 - `fix` — synthesized recommendation (where agents agree on the approach)
 
-This consolidated list is handed back to the calling command, which formats it
-according to its own output format (YAML for `/review-mr`, markdown for `/review-code`
-and `/review-design`).
+### Step E: Codex Cross-Model Verification
+
+After Step D, run Codex as an independent reviewer via Bash from the project's working directory.
+
+**For design/code reviews:**
+```bash
+{ printf "Review the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise.\n\n"; cat <subject-file>; } | codex exec -
+```
+
+**For MR reviews:**
+```bash
+codex review "Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+```
+
+**Cross-aggregate the results:**
+
+| Finding source | Action |
+|----------------|--------|
+| In Claude consensus **and** Codex | Mark as **✓ Corroborated by Codex** |
+| Claude consensus only | Include as-is (already filtered by 2/3) |
+| Codex only | Include separately under **"Codex-only findings"** |
+
+Two findings refer to the same issue if they describe the same root cause at the same code location (fuzzy match on concept, not wording).
+
+The final output handed to the calling command contains:
+1. Consensus findings (with corroboration tags where applicable)
+2. Codex-only findings (separate section, labeled clearly)
 
 ## What Each Agent Should NOT Flag
 
 To keep signal high, instruct each agent to skip:
 - Pre-existing issues not introduced by the change under review
+- Issues a linter will catch (do not run linter)
 - Subjective style preferences
 - Potential bugs that depend on specific inputs without clear evidence
 - Nitpicks a senior engineer would not raise in a review
@@ -71,3 +96,4 @@ To keep signal high, instruct each agent to skip:
 - Each agent must be told the same context (title, description, diff or design doc)
 - Agents must not be shown each other's output before Step B
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
+- Step E (Codex) runs after the Claude consensus, also in the main conversation via Bash

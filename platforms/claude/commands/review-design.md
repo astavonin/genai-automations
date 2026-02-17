@@ -19,7 +19,9 @@ description: Review design before implementation using reviewer agent
 ## Actions
 
 1. Load design document from `planning/<goal>/milestone-XX/design/<feature>-design.md`
-2. Run the **Consensus Review Protocol** (Steps A–D) against the design document
+2. Run the **Consensus Review Protocol** (Steps A–E) against the design document
+   - Steps A–D: 3-agent Claude consensus
+   - Step E: Codex cross-model verification via Bash (run from project working directory)
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. Wait for user approval (MANDATORY)
 5. Block until approved
