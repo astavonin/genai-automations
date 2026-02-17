@@ -57,6 +57,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 - `/mr` - Create merge request for current branch via ci-platform-manager
 - `/load` - Load ticket information (issue/epic/milestone) via ci-platform-manager
+- `/review-mr` - Review an MR and generate YAML findings for `ci-platform-manager comment`
 
 ## Quick Reference
 

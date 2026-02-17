@@ -195,7 +195,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 
 ## Review Report Format
 
-**When invoked via `/review` command (MR reviews):**
+**When invoked via `/review-mr` command (MR reviews):**
 - MUST write review to a YAML file: `planning/reviews/MR<number>-review.yaml`
 
 **For `/review-design` and `/review-code` commands:**
@@ -256,9 +256,10 @@ findings:
 ```
 
 ### Severity Levels
-- `High` / `Critical` - Must fix (security, data loss, crashes, undefined behavior)
-- `Medium` - Should fix (maintainability, performance, test issues)
-- `Low` - Nice to fix (style, minor improvements)
+- `Critical` - Must fix before merge (security vulnerabilities, data loss, crashes, undefined behavior)
+- `High` - Should fix before merge (significant maintainability, correctness, or performance issues)
+- `Medium` - Consider fixing (test gaps, style issues, minor improvements)
+- `Low` - Optional suggestions (minor enhancements, nice-to-haves)
 
 ### Required YAML Fields
 
@@ -282,7 +283,7 @@ findings:
 - Use `null` for optional fields with no value (not empty string)
 - Use `location` (singular) for single file
 - Use `locations` (plural list) for multiple files
-- Order findings by severity: High → Medium → Low
+- Order findings by severity: Critical → High → Medium → Low
 - Keep descriptions concise and technical
 
 ## Common Review Failures
