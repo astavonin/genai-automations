@@ -7,25 +7,24 @@ description: Review code after implementation using reviewer agent
 
 **MANDATORY CHECKPOINT:** Review implementation after code is written.
 
-## Agent
+## Agents
 
-**reviewer** (opus model)
+**3 × reviewer (opus)** — run in parallel per consensus protocol
 
 ## Skills Required
 
-- domains/quality-attributes (8 quality attributes)
+- `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+- `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
 ## Actions
 
-1. Invoke reviewer agent with code review checklist
-2. Evaluate implementation against 8 quality attributes
+1. Run the **Consensus Review Protocol** (Steps A–D) against the implementation
+2. Format consolidated findings as a markdown review report (see Output Format below)
 3. Block until approved
 
-## Review Checklist
+## Review Scope
 
-Use: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-
-**Evaluate:**
+Each of the 3 agents evaluates:
 - **Supportability:** Logging, error messages, debugging
 - **Extendability:** Modularity, abstractions, future-proofing
 - **Maintainability:** Code clarity, naming, complexity
@@ -34,26 +33,39 @@ Use: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md
 - **Safety:** Error handling, resource management, thread safety
 - **Security:** Input validation, no vulnerabilities
 - **Observability:** Logging, metrics, tracing
+- **Design adherence:** Matches approved design
+- **Standards compliance:** Coding standards and static analysis
 
-**Also Check:**
-- Design adherence (matches approved design)
-- Code quality and standards
-- Test coverage and quality
-- Static analysis compliance
+## Output Format
+
+Produce a markdown report:
+
+```markdown
+# Code Review
+
+**Subject:** <feature / PR title>
+**Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
+
+## Findings (<N total — consensus of 3 reviewers>)
+
+### Critical
+- ...
+
+### High
+- ...
+
+### Medium / Low
+- ...
+
+## Recommendation
+<rationale and required actions if not approved>
+```
 
 ## Assessment
 
-- ✅ **Approve:** Proceed to verification
-- ⚠️ **Request Changes:** Fix issues and return for re-review
-- ❌ **Reject:** Fundamental problems, redesign needed
-
-## Usage
-
-```
-"I'll use the reviewer agent to perform code review. Please use the Code Review
-Checklist from ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-to evaluate the implementation."
-```
+- ✅ **Approve:** Zero Critical and zero High findings → proceed to `/verify`
+- ⚠️ **Request Changes:** One or more High findings → fix and re-review
+- ❌ **Reject:** One or more Critical findings → redesign needed
 
 ## Next Step
 

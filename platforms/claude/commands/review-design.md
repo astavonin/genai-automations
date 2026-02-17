@@ -7,26 +7,26 @@ description: Review design before implementation using reviewer agent
 
 **MANDATORY CHECKPOINT:** Review design proposal before any code is written.
 
-## Agent
+## Agents
 
-**reviewer** (opus model)
+**3 × reviewer (opus)** — run in parallel per consensus protocol
 
 ## Skills Required
 
-- domains/quality-attributes (8 quality attributes)
+- `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+- `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
 ## Actions
 
 1. Load design document from `planning/<goal>/milestone-XX/design/<feature>-design.md`
-2. Invoke reviewer agent with design review checklist
-3. Wait for user approval (MANDATORY)
-4. Block until approved
+2. Run the **Consensus Review Protocol** (Steps A–D) against the design document
+3. Format consolidated findings as a markdown review report (see Output Format below)
+4. Wait for user approval (MANDATORY)
+5. Block until approved
 
-## Review Checklist
+## Review Scope
 
-Use: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-
-**Evaluate:**
+Each of the 3 agents evaluates all 8 quality attributes:
 - Supportability: Logging, error messages, debugging strategy
 - Extendability: Modularity, abstractions, extension points
 - Maintainability: Follows conventions, clarity, complexity
@@ -36,19 +36,36 @@ Use: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md
 - Security: Input validation, no vulnerabilities, secrets handling
 - Observability: Logging, metrics, tracing strategy
 
+## Output Format
+
+Produce a markdown report using the reviewer agent's standard template:
+
+```markdown
+# Design Review
+
+**Subject:** <feature name>
+**Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
+
+## Findings (<N total — consensus of 3 reviewers>)
+
+### Critical
+- ...
+
+### High
+- ...
+
+### Medium / Low
+- ...
+
+## Recommendation
+<rationale and required actions if not approved>
+```
+
 ## Assessment
 
-- ✅ **Approve:** Proceed to implementation
-- ⚠️ **Request Changes:** Revise design and re-review
-- ❌ **Reject:** Fundamental problems, return to Phase 2
-
-## Usage
-
-```
-"I'll use the reviewer agent to review this design. Please use the Design Review
-Checklist from ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-to evaluate the approach."
-```
+- ✅ **Approve:** Zero Critical and zero High findings → proceed to implementation
+- ⚠️ **Request Changes:** One or more High findings → fix and re-review
+- ❌ **Reject:** One or more Critical findings → return to Phase 2
 
 ## Critical Rule
 

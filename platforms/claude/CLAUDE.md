@@ -45,6 +45,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 ### Workflow Commands
 
 - `/start` - Sync planning from backup, load current work context, reverify knowledge
+- `/refresh` - Reload behavioral config files, restore expected behavior after session drift
 - `/research` - Run research phase (architecture-research-planner agent)
 - `/design` - Create design proposal
 - `/review-design` - Review design before implementation (MANDATORY)

@@ -60,21 +60,24 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 3. Suggest reviewing specific files or splitting the review across sessions
 4. Optionally proceed with the most critical changed files only
 
-### Step 4: Invoke Reviewer Agent
+### Step 4: Multi-Agent Consensus Review
 
-Pass to the reviewer agent:
+Run the **Consensus Review Protocol** from:
+`~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
+
+Pass to each of the 3 independent reviewer agents:
 - Full diff (or focused subset for large diffs)
 - MR title and description
 - Review checklist from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- Instruction to produce findings directly in YAML format (see schema below)
+- Instruction to produce a raw findings list: `title`, `severity`, `description`, `location(s)`
 
-The reviewer agent evaluates all 8 quality attributes:
-- Supportability, Extendability, Maintainability, Testability
-- Performance, Safety, Security, Observability
+After all 3 agents complete, aggregate per the protocol (Steps B–C):
+- **Issue included:** 2 or more agents flagged it
+- **Severity:** level that 2+ agents agree on; if all 3 differ, use the middle level
 
-Findings are assigned one of four severity values:
+Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
-- `High` - Should fix before merge (significant maintainability/correctness issues)
+- `High` - Should fix before merge (significant correctness/maintainability issues)
 - `Medium` - Consider fixing (improvements, test gaps, style issues)
 - `Low` - Optional suggestions (minor enhancements)
 
