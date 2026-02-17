@@ -60,6 +60,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/load` - Load ticket information (issue/epic/milestone) via ci-platform-manager
 - `/review-mr` - Review an MR and generate YAML findings for `ci-platform-manager comment`
 - `/write` - Research a topic and produce a structured Markdown draft (info collector + draft writer)
+- `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
 
 ## Quick Reference
 
@@ -176,6 +177,8 @@ Reference: `~/.claude/agents/`
 - **coder** (sonnet): Implementation (C++, Go, Rust, Python)
 - **devops-engineer** (sonnet): CI/CD, Docker, infrastructure
 - **reviewer** (opus): Quality reviews (design and code reviews)
+- **debugger** (opus): Root cause analysis, hypothesis-driven investigation, fix recommendations
+- **writer** (opus): Info collection, code snippet extraction, Markdown draft writing
 
 ## Agent Declaration Pattern
 

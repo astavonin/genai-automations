@@ -38,10 +38,24 @@ ci-platform-manager job-logs <job-id>
 
 ### Phase 3: Analysis
 
-Launch **general-purpose agent** with:
+Launch **debugger (opus) agent** with:
 - Job names and failure context
 - Complete job logs
-- Task: Analyze failures, identify root causes, suggest fixes
+- Task: Analyze failures, identify root causes, suggest fixes following the 6-phase debugger process
+
+### Phase 4: Codex Cross-Model Verification
+
+After the debugger agent produces its diagnosis, run Codex independently:
+
+```bash
+printf "Analyze this CI failure. Identify root cause and propose a fix:\n\n<job name and error summary>\n\n<relevant log excerpt>" | codex exec -
+```
+
+Compare results per the cross-aggregate rules:
+- Both agree → confirmed root cause
+- Claude-only → present with confidence level
+- Codex-only → present as **"Codex alternative hypothesis"**
+- Disagree → present both with supporting evidence
 
 ## Agent Prompt Template
 
@@ -138,9 +152,9 @@ def cmd_ci_debug(args):
     # 5. Prepare context for agent
     context = format_failure_context(failed_jobs, logs)
 
-    # 6. Launch agent
+    # 6. Launch debugger agent
     launch_agent(
-        type="general-purpose",
+        type="debugger",
         task=f"Analyze CI failures and suggest fixes\n\n{context}"
     )
 ```

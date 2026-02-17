@@ -86,7 +86,6 @@ The final output handed to the calling command contains:
 
 To keep signal high, instruct each agent to skip:
 - Pre-existing issues not introduced by the change under review
-- Issues a linter will catch (do not run linter)
 - Subjective style preferences
 - Potential bugs that depend on specific inputs without clear evidence
 - Nitpicks a senior engineer would not raise in a review
