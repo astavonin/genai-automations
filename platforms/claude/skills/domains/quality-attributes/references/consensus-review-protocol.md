@@ -12,9 +12,11 @@ The consensus severity is determined the same way: the severity level that **at 
 
 ## Protocol Steps
 
-### Step A: Launch 3 Independent Reviewers in Parallel
+### Step A: Launch 3 Independent Reviewers and Codex in Parallel
 
-Spawn three **reviewer (opus)** agents simultaneously. Each agent:
+Spawn three **reviewer (opus)** agents and Codex simultaneously. Codex is independent of the
+Claude agents and does not need to wait for them — launching all four at once minimises wall-clock
+time. Each Claude agent:
 - Receives the same input: the subject under review + MR/design context (title, description)
 - Receives: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - Works **independently** — no shared state, no knowledge of other agents' outputs
@@ -56,7 +58,10 @@ Output: a deduplicated list of findings, each with:
 
 ### Step E: Codex Cross-Model Verification
 
-After Step D, run Codex as an independent reviewer via Bash from the project's working directory.
+Codex runs in parallel with Step A (not after Step D). Once both the Claude consensus (Steps B–D)
+and the Codex output are available, cross-aggregate them.
+
+Run Codex via Bash from the project's working directory:
 
 **For design/code reviews:**
 ```bash
