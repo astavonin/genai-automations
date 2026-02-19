@@ -60,17 +60,36 @@ Reusable knowledge modules loaded on demand:
 
 ### Commands
 
-Slash commands that drive the workflow:
+```
+/start
+  │  Load context from planning files
+  ▼
+/research ──────────────────────────────── architecture-research-planner
+  │  analysis.md
+  ▼
+/design
+  │  design.md
+  ▼
+/review-design ─────────────────────────── reviewer  ◄── CHECKPOINT 1
+  │  approved?
+  ├─ rejected → /design
+  ▼
+/implement ─────────────────────────────── coder / devops-engineer
+  │  code + tests
+  ▼
+/review-code ───────────────────────────── reviewer  ◄── CHECKPOINT 2
+  │  approved?
+  ├─ rejected → /implement
+  ▼
+/verify
+  │  tests · linters · static analysis
+  ▼
+/complete
+     Update progress.md · sync planning backup
 
-| Command | Action |
-|---------|--------|
-| `/start` | Load current work context from planning files |
-| `/research` | Run architecture-research-planner agent |
-| `/design` | Create design proposal |
-| `/review-design` | Reviewer agent — mandatory before coding |
-| `/implement` | Run coder or devops-engineer agent |
-| `/review-code` | Reviewer agent — mandatory after coding |
-| `/verify` | Run tests, linters, static analysis |
-| `/complete` | Update progress tracking, sync planning backup |
-| `/mr` | Create merge/pull request via ci-platform-manager |
-| `/diagnose` | Debug failures with debugger agent + cross-model verification |
+── Utility ──────────────────────────────────────────────────────────
+/mr          Create merge/pull request
+/review-mr   Review an MR, generate YAML findings for ci-platform-manager
+/diagnose    Debug failures — debugger agent + cross-model verification
+/write       Research a topic, produce structured Markdown draft
+```
