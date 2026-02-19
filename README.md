@@ -1,30 +1,24 @@
 # GenAI Automations
 
-Personal collection of GenAI assistant configurations and automation tools.
+Config backup repo for Claude/Codex AI platform configurations.
 
 ## Repository Structure
 
 ### Platform Configurations (`platforms/`)
 
-Backup repository for AI platform configurations that live in `~/.claude/` and `~/.codex/`:
+Backup of AI platform configurations that live in `~/.claude/` and `~/.codex/`:
 
-- **`platforms/claude/`** - Claude Code configurations (backup of `~/.claude/`)
-  - **CLAUDE.md** - Simplified reference guide for workflows and standards
-  - **commands/** - Executable workflow commands (10 total)
-    - **Workflow:** `/start`, `/research`, `/design`, `/review-design`, `/implement`, `/review-code`, `/verify`, `/complete`
-    - **Utility:** `/mr` (create merge request), `/load` (load ticket info)
-  - **skills/** - Modular knowledge base (13 skills)
-    - **languages/** (6) - C++, Python, Go, Rust, Zig, Shell
-    - **domains/** (5) - Code quality, quality attributes, architecture, testing, devops
-    - **workflows/** (2) - Complete workflow reference, planning templates
-  - **agents/** (4) - coder, devops-engineer, architecture-research-planner, reviewer
-  - **README.md** - Detailed documentation of structure and usage
+- **`platforms/claude/`** — Claude Code configurations (backup of `~/.claude/`)
+  - **CLAUDE.md** — Workflow rules and process guidelines
+  - **commands/** — Executable workflow commands
+  - **skills/** — Modular knowledge base (languages, domains, workflows)
+  - **agents/** — Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
 
-- **`platforms/codex/`** - Codex skills and configurations (backup of `~/.codex/`)
+- **`platforms/codex/`** — Codex skills and configurations (backup of `~/.codex/`)
 
-#### Sync Script
+### Sync Script (`sync-configs.sh`)
 
-**`sync-configs.sh`** - Two-way sync utility for platform configurations
+Two-way sync utility for platform configurations.
 
 **Backup configurations (home → repo):**
 ```bash
@@ -40,103 +34,32 @@ Backup repository for AI platform configurations that live in `~/.claude/` and `
 ./sync-configs.sh install --force     # Restore without prompts (dangerous!)
 ```
 
-**Features:**
-- Two-way sync (backup and restore)
-- Selective platform sync (Claude and/or Codex)
-- Dry-run mode for safe preview
-- Interactive confirmation for installs
-- Automatic exclusion of sensitive files (credentials, history, cache)
+---
 
-### Tools
+## Extracted Tools
 
-#### glab-management
+The Python tools that were previously in this repo have been extracted into standalone repos:
 
-GitLab automation tool for managing epics, issues, and milestones programmatically.
+### ci-platform-manager
+**Location:** `~/projects/ci-platform-manager`
 
-**Features:**
-- Create issues from YAML definitions with dependency tracking
-- Load and display issue/epic/milestone information in markdown format
-- Search issues, epics, and milestones by text query
-- Milestone epic breakdown for progress tracking
+Multi-platform CI automation tool for GitLab/GitHub workflow management.
+- Managing issues, epics, milestones, merge requests
+- Planning folder synchronization with Google Drive
 
-**See [glab-management/CLAUDE.md](glab-management/CLAUDE.md) for detailed documentation.**
-
-**Requirements:**
-- Python 3 (PyYAML)
-- [glab CLI](https://gitlab.com/gitlab-org/cli) installed and authenticated
-
-## Claude Setup Overview
-
-The Claude setup uses a modular, command-based architecture with executable workflow commands and reusable knowledge skills.
-
-### Commands
-
-**Workflow Commands:**
-- `/start` - Load current work context
-- `/research` - Run research phase (architecture-research-planner)
-- `/design` - Create design proposal
-- `/review-design` - Design review checkpoint (MANDATORY)
-- `/implement` - Run implementation (coder/devops-engineer)
-- `/review-code` - Code review checkpoint (MANDATORY)
-- `/verify` - Run tests and static analysis
-- `/complete` - Mark work complete
-
-**Utility Commands:**
-- `/mr` - Create merge request for current branch (GitLab)
-- `/load` - Load ticket information (issue/epic/milestone) using glab-management
-
-### Workflow Phases
-
-All implementation tasks follow a structured workflow with two mandatory checkpoints:
-
-```
-┌─────────────────────┐
-│ 1. Research         │ ← architecture-research-planner
-│ 2. Design           │
-└──────────┬──────────┘
-           ↓
-    ┌──────────────┐
-    │ ⚠️  USER     │
-    │   APPROVAL   │ ← Checkpoint 1
-    └──────┬───────┘
-           ↓
-┌──────────────────────┐
-│ 3. Implementation    │ ← coder / devops-engineer
-└──────────┬───────────┘
-           ↓
-    ┌──────────────┐
-    │ ⚠️  CODE     │
-    │   REVIEW     │ ← reviewer (Checkpoint 2)
-    └──────┬───────┘
-           ↓
-┌──────────────────────┐
-│ 4. Verify & Tests    │
-│ 5. User Commits      │
-└──────────────────────┘
+```bash
+cd ~/projects/ci-platform-manager
+pip install -e ".[dev]"
+ci-platform-manager --help
 ```
 
-**Key Principles:**
-- **Two mandatory checkpoints:** User approval before coding, code review after implementation
-- **Specialized agents:** Different agents handle specific phases based on expertise
-- **User control:** User handles all git commits and final task completion
-- **Quality gates:** No bypassing checkpoints - rejected work loops back for revision
+### anki-sync
+**Location:** `~/projects/anki-sync`
 
-### Agent Responsibilities
+Bidirectional vocabulary synchronization between local YAML files and Anki Desktop.
 
-- **`coder`** (sonnet) - Systems programming in C++, Go, Rust, Python, Zig
-  - Algorithmic efficiency, correctness, and architectural quality
-  - Does NOT handle infrastructure or deployment
-
-- **`devops-engineer`** (sonnet) - Infrastructure, CI/CD, containerization
-  - Docker, CI/CD pipelines, deployment scripts, environment setup
-  - Optimizes build processes and resource usage
-
-- **`architecture-research-planner`** (opus) - Research, architecture, documentation
-  - Reverse engineers codebases, creates Mermaid diagrams
-  - Produces production-level architecture documentation
-  - Does NOT write production code
-
-- **`reviewer`** (opus) - Quality reviews (design and code)
-  - MANDATORY before implementation (design review) and after implementation (code review)
-  - Evaluates: Supportability, Extendability, Maintainability, Testability, Performance, Safety, Security, Observability
-  - NEVER writes code - only provides feedback
+```bash
+cd ~/projects/anki-sync
+pip install -e ".[dev]"
+anki-sync --help
+```

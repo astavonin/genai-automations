@@ -1,0 +1,71 @@
+- spanish: implementar
+  english: to implement / to execute / to deploy
+  example: Vamos a implementar esta función mañana
+  notes: Common verb in software development and project management (YAML version)
+  tags:
+  - tech
+  - verb
+  - common
+- spanish: configuración
+  english: configuration
+  example: La configuración del sistema está lista
+  notes: Feminine noun
+  tags:
+  - tech
+  - noun
+- spanish: ayudar
+  english: help
+  example: ¿Puedes ayudarme con esto?
+  notes: Regular -ar verb
+  tags:
+  - common
+  - verb
+- spanish: tarea
+  english: task
+  example: Tengo muchas tareas hoy
+  notes: Feminine noun
+  tags:
+  - work
+  - noun
+- spanish: actualizar
+  english: update
+  example: Necesito actualizar el software
+  notes: Regular -ar verb
+  tags:
+  - tech
+  - verb
+- spanish: aprender
+  english: learn
+  example: Estoy aprendiendo español
+  notes: Regular -er verb
+  tags:
+  - common
+  - verb
+- spanish: rastrear
+  english: track
+  example: Vamos a rastrear el progreso
+  notes: Regular -ar verb
+  tags:
+  - tech
+  - verb
+- spanish: archivo
+  english: file
+  example: Guarda el archivo en el disco
+  notes: Masculine noun
+  tags:
+  - tech
+  - noun
+- spanish: prueba
+  english: test / proof
+  example: Esta es una prueba de integración
+  notes: Feminine noun, also means test/trial
+  tags:
+  - tech
+  - noun
+- spanish: nuevo - test1
+  english: new
+  example: Tengo un coche nuevo
+  notes: Adjective, changes to nueva for feminine
+  tags:
+  - adjective
+  - common

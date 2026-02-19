@@ -1,6 +1,6 @@
-# GenAI Automations Backup Repository
+# GenAI Automations — Config Backup Repo
 
-Personal collection of GenAI assistant configurations and automation tools.
+Config backup repo for Claude/Codex platforms. No Python packages live here.
 
 ## Repository Structure
 
@@ -12,30 +12,26 @@ Backup of AI platform configurations:
   - `agents/*.md` - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
 - **`codex/`** - Codex configurations and skills
 
-### `ci_platform_manager/`
-Multi-platform CI automation tool - Python package for GitLab/GitHub workflow management.
+### `sync-configs.sh`
+Two-way sync utility for platform configurations between this repo and `~/.claude/` / `~/.codex/`.
 
-**PRIMARY TOOL FOR ALL MANAGERIAL TASKS**
+```bash
+./sync-configs.sh sync          # Backup all configs (home → repo)
+./sync-configs.sh install       # Restore configs (repo → home)
+./sync-configs.sh sync --dry-run
+```
 
-Use `ci_platform_manager` for:
-- Creating/updating issues, epics, milestones
-- Creating merge requests (MRs) or pull requests (PRs)
-- Loading ticket information
-- Planning folder synchronization with Google Drive
-- Any GitLab/GitHub workflow automation
+### `planning/`
+Project planning documents for ongoing and completed work.
 
-**Features:**
-- Epic, issue, milestone, and merge request management
-- Multi-platform support (GitLab, GitHub)
-- Planning folder synchronization with Google Drive
-- Modular architecture with specialized handlers
+---
 
-**Usage Instructions:**
-- Run `ci-platform-manager --help` to see examples and find the full path to CLAUDE.md
-- The `--help` output includes a "Documentation:" section with comprehensive usage instructions
-- See `ci_platform_manager/CLAUDE.md` for detailed documentation
+## Extracted Tools (now in separate repos)
 
-### `glab-management/` (Legacy)
-Original GitLab automation tool (deprecated in favor of `ci_platform_manager`)
+| Tool | Location |
+|------|----------|
+| `ci-platform-manager` | `~/projects/ci-platform-manager` |
+| `anki-sync` | `~/projects/anki-sync` |
 
-**See `glab-management/CLAUDE.md` for legacy documentation.**
+The `ci_platform_manager` package is installed from `~/projects/ci-platform-manager`.
+Use `ci-platform-manager --help` to see usage and find its CLAUDE.md.
