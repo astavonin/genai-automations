@@ -48,7 +48,7 @@ Launch **debugger (opus) agent** with:
 After the debugger agent produces its diagnosis, run Codex independently:
 
 ```bash
-printf "Analyze this CI failure. Identify root cause and propose a fix:\n\n<job name and error summary>\n\n<relevant log excerpt>" | codex exec -
+printf "DO NOT make any changes. Only print your findings.\n\nAnalyze this CI failure. Identify root cause and propose a fix:\n\n<job name and error summary>\n\n<relevant log excerpt>" | codex exec -
 ```
 
 Compare results per the cross-aggregate rules:

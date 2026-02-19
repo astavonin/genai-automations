@@ -65,6 +65,11 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 Run the **Consensus Review Protocol** (Steps A–E) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
+**Launch simultaneously: Steps A–D (Claude) and Step E (Codex) in parallel.**
+
+Do not wait for Claude agents to finish before starting Codex — they are independent.
+Aggregate once all four have returned.
+
 **Steps A–D: Claude consensus**
 
 Pass to each of the 3 independent reviewer agents:
@@ -79,9 +84,9 @@ After all 3 agents complete, aggregate per the protocol (Steps B–C):
 
 **Step E: Codex cross-model verification**
 
-Run from the project's working directory:
+Run from the project's working directory (in parallel with Step A):
 ```bash
-codex review "Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+codex review "DO NOT make any changes. Only print your findings. Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
 ```
 
 Cross-aggregate with the Claude consensus findings per the protocol.

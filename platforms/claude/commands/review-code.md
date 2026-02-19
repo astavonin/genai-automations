@@ -19,8 +19,9 @@ description: Review code after implementation using reviewer agent
 ## Actions
 
 1. Run the **Consensus Review Protocol** (Steps A–E) against the implementation
-   - Steps A–D: 3-agent Claude consensus
-   - Step E: Codex cross-model verification via Bash (run from project working directory)
+   - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel
+   - Do not wait for Claude agents to finish before starting Codex — they are independent
+   - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
 2. Format consolidated findings as a markdown review report (see Output Format below)
 3. Block until approved
 

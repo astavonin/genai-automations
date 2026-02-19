@@ -65,12 +65,12 @@ Run Codex via Bash from the project's working directory:
 
 **For design/code reviews:**
 ```bash
-{ printf "Review the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise.\n\n"; cat <subject-file>; } | codex exec -
+{ printf "DO NOT make any changes. Only print your findings.\n\nReview the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise.\n\n"; cat <subject-file>; } | codex exec -
 ```
 
 **For MR reviews:**
 ```bash
-codex review "Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+codex review "DO NOT make any changes. Only print your findings. Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
 ```
 
 **Cross-aggregate the results:**
