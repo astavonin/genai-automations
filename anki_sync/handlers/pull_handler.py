@@ -77,13 +77,25 @@ class PullHandler:
         # 6. Apply Anki changes to translations
         modified_count = 0
         for note, mapping in modified_notes:
-            if mapping.source_id in trans_by_id:
-                if self._update_translation(trans_by_id[mapping.source_id], note, mapping, state):
+            # Get current source_id from mapping (might be old if remapped earlier)
+            current_source_id = mapping.source_id
+
+            if current_source_id in trans_by_id:
+                trans = trans_by_id[current_source_id]
+                old_source_id = trans.source_id
+
+                if self._update_translation(trans, note, mapping, state):
                     mapping.last_pull_mod = note["mod"]
                     modified_count += 1
+
+                # If source_id changed, update the lookup dictionary
+                new_source_id = trans.source_id
+                if new_source_id != old_source_id and old_source_id in trans_by_id:
+                    trans_by_id.pop(old_source_id)
+                    trans_by_id[new_source_id] = trans
             else:
                 logger.warning(
-                    f"Mapping for source_id '{mapping.source_id}' not found in translations"
+                    f"Mapping for source_id '{current_source_id}' not found in translations"
                 )
 
         # 7. Save translations FIRST, then state (error handling order)
@@ -130,8 +142,29 @@ class PullHandler:
 
         for note in notes_data:
             mapping = state.find_by_note_id(note["noteId"])
-            if mapping and note["mod"] > mapping.last_pull_mod:
-                modified_notes.append((note, mapping))
+            if not mapping:
+                continue
+
+            # Get card IDs for this note
+            card_ids = note.get("cards", [])
+            if not card_ids:
+                logger.warning(f"Note {note['noteId']} has no cards")
+                continue
+
+            # Fetch card info to get modification timestamps
+            try:
+                cards_info = self.client.cards_info(card_ids)
+                # Get the maximum mod timestamp from all cards
+                max_mod = max(card["mod"] for card in cards_info)
+
+                # Check if any card was modified since last pull
+                if max_mod > mapping.last_pull_mod:
+                    # Add mod to note for later use
+                    note["mod"] = max_mod
+                    modified_notes.append((note, mapping))
+            except AnkiAPIError as e:
+                logger.warning(f"Failed to get card info for note {note['noteId']}: {e}")
+                continue
 
         logger.debug(f"Detected {len(modified_notes)} modified notes")
         return modified_notes

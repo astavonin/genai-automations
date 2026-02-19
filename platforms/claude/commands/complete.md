@@ -36,6 +36,13 @@ Before running this command:
    - Move or delete temporary design artifacts
    - Update overview.md to mark milestone complete
 
+5. **Clean up internal plan files:**
+   ```bash
+   rm -f ~/.claude/plans/*.md
+   ```
+   Leftover plan files in `~/.claude/plans/` cause Claude Code to re-enter plan mode
+   automatically at the next session start, which blocks the normal workflow.
+
 ## Critical Rules
 
 - ⚠️ **NEVER update planning files automatically**

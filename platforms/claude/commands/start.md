@@ -9,7 +9,30 @@ Load context from planning files to understand current work status.
 
 ## Actions
 
-1. Read current progress:
+### ⚠️ Pre-flight: Check for Stale Plan Files
+
+Before anything else, check for leftover internal plan files:
+
+```bash
+ls ~/.claude/plans/*.md 2>/dev/null
+```
+
+If any files exist, **immediately warn the user before proceeding:**
+
+> ⚠️ **Plan mode conflict detected**
+> A leftover plan file exists at `~/.claude/plans/<filename>`. Claude Code will
+> automatically re-enter plan mode, which restricts all file writes to that file
+> and **prevents the normal workflow** (designs cannot be written to `planning/`).
+>
+> To proceed with the normal workflow, delete the stale file first:
+> ```bash
+> rm ~/.claude/plans/<filename>
+> ```
+> Then re-run `/start`.
+
+Do NOT continue with context loading until the user resolves this.
+
+### 1. Read current progress:
    ```bash
    cat planning/progress.md
    ```

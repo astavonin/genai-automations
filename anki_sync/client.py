@@ -166,6 +166,17 @@ class AnkiConnectClient:
         """
         return self._request("notesInfo", {"notes": note_ids})
 
+    def cards_info(self, card_ids: List[int]) -> List[Dict]:
+        """Get detailed info for multiple cards.
+
+        Args:
+            card_ids: List of card IDs
+
+        Returns:
+            List of card info dictionaries with mod timestamps
+        """
+        return self._request("cardsInfo", {"cards": card_ids})
+
     def find_notes(self, query: str) -> List[int]:
         """Find notes matching query.
 
