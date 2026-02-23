@@ -68,10 +68,29 @@ Run Codex via Bash from the project's working directory:
 { printf "DO NOT make any changes. Only print your findings.\n\nReview the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise.\n\n"; cat <subject-file>; } | codex exec -
 ```
 
-**For MR reviews:**
+**For MR reviews** — substitute `<source>` and `<target>` with the actual branch names
+obtained in Step 2 of the calling command (e.g. `spring-core-crm` and `main`):
 ```bash
-codex review "DO NOT make any changes. Only print your findings. Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+codex review "DO NOT make any changes. Only print your findings. \
+Review the diff from origin/<target> to origin/<source>. \
+Focus on bugs, security issues, logic errors, and standards compliance. \
+Rate each finding Critical, High, Medium, or Low. Be concise." \
+> /tmp/codex-review.txt 2>&1
 ```
+
+**IMPORTANT — always redirect Codex output to a file.** Never pipe to `head` or truncate inline.
+Codex spends multiple turns reading files before printing findings; truncating early discards all results.
+
+**IMPORTANT — always set a 600-second timeout** on the Bash call that runs Codex.
+The default 120-second timeout is too short for non-trivial codebases and will kill the process
+before findings are printed, producing an empty or incomplete output file.
+
+After the command completes, read the file in full:
+```bash
+wc -l /tmp/codex-review.txt   # check size first
+```
+- If ≤ 300 lines: read the whole file with the Read tool in one call.
+- If > 300 lines: read iteratively in 200-line chunks (offset + limit) until the end of file.
 
 **Cross-aggregate the results:**
 
@@ -100,4 +119,4 @@ To keep signal high, instruct each agent to skip:
 - Each agent must be told the same context (title, description, diff or design doc)
 - Agents must not be shown each other's output before Step B
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
-- Step E (Codex) runs after the Claude consensus, also in the main conversation via Bash
+- Step E (Codex) runs **in parallel** with Steps A–D; redirect its output to a file (`> /tmp/codex-review.txt 2>&1`) and read the file after it completes — never truncate with `head`

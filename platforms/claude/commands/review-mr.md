@@ -84,10 +84,27 @@ After all 3 agents complete, aggregate per the protocol (Steps B–C):
 
 **Step E: Codex cross-model verification**
 
-Run from the project's working directory (in parallel with Step A):
+Run from the project's working directory (in parallel with Step A).
+Use the source and target branch names obtained in Step 2.
+Set a 600-second timeout — the default is too short for non-trivial codebases.
+
 ```bash
-codex review "DO NOT make any changes. Only print your findings. Review for bugs, security issues, logic errors, and standards compliance. Rate each finding Critical, High, Medium, or Low. Be concise."
+codex review "DO NOT make any changes. Only print your findings. \
+Review the diff from origin/<target_branch> to origin/<source_branch>. \
+Focus on bugs, security issues, logic errors, and standards compliance. \
+Rate each finding Critical, High, Medium, or Low. Be concise." \
+> /tmp/codex-review.txt 2>&1
 ```
+
+After the command completes, check the output size and read it in full:
+```bash
+wc -l /tmp/codex-review.txt
+```
+- If ≤ 300 lines: read the whole file with the Read tool in one call.
+- If > 300 lines: read iteratively in 200-line chunks (offset + limit) until EOF.
+
+Never pipe Codex output to `head` or any truncating command — Codex reads files
+before printing findings, so truncation discards all results.
 
 Cross-aggregate with the Claude consensus findings per the protocol.
 
