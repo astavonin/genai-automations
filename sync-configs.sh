@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # Two-way sync for GenAI platform configurations
 # Usage: ./sync-configs.sh [sync|install] [--dry-run] [--claude] [--codex]
 
@@ -12,7 +12,7 @@ readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
 # Script directory (repository root)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Default options
 MODE="sync"  # sync (home → repo) or install (repo → home)
@@ -233,10 +233,10 @@ sync_platform() {
 
     # Execute rsync
     if "${rsync_cmd[@]}"; then
-        print_status "$GREEN" "✓ ${platform} ${action,,} complete"
+        print_status "$GREEN" "✓ ${platform} ${(L)action} complete"
         return 0
     else
-        print_status "$RED" "✗ ${platform} ${action,,} failed"
+        print_status "$RED" "✗ ${platform} ${(L)action} failed"
         return 1
     fi
 }
