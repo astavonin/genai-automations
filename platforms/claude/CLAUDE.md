@@ -4,6 +4,10 @@
 - Focus on technical accuracy and objective analysis
 - Be concise and direct
 
+## Markdown Writing
+
+- **Never add manual line breaks within paragraphs.** Do not wrap prose at a fixed column width. Let the Markdown renderer handle line wrapping. Only use newlines to separate paragraphs, list items, headings, or table rows.
+
 ## Response Format for User Requests
 
 **MANDATORY AT SESSION START:** Read `~/.claude/memory/spanish-translations.md` immediately and apply all instructions.
