@@ -1,6 +1,12 @@
 ---
 name: cpp
-description: C++ Core Guidelines and best practices
+description: C++ coding standards based on the C++ Core Guidelines. Use when writing, reviewing, or modifying C++ code to apply RAII, const correctness, memory safety, and modern C++ patterns.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [cpp, c++, programming]
 ---
 
 # C++ Programming Skill

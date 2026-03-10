@@ -9,6 +9,21 @@ Load context from planning files to understand current work status.
 
 ## Actions
 
+### 0. Sync planning state from backup
+
+```bash
+ci-platform-manager sync pull
+```
+
+Pulls the latest planning state from Google Drive to ensure you have the most recent work from all machines. Do not proceed until sync completes.
+
+### 0b. Read workflow and planning skills
+
+```
+Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
+Read ~/.claude/skills/workflows/planning/SKILL.md
+```
+
 ### ⚠️ Pre-flight: Check for Stale Plan Files
 
 Before anything else, check for leftover internal plan files:

@@ -1,6 +1,12 @@
 ---
 name: quality-attributes
-description: 8 quality attributes for software evaluation
+description: Eight quality attributes for software evaluation: supportability, extendability, maintainability, testability, performance, safety, security, observability. Use when conducting design reviews or code reviews to evaluate all quality dimensions.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: domains
+  tags: [quality, review, architecture, design]
 ---
 
 # Quality Attributes Skill

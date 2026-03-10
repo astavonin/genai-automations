@@ -1,6 +1,12 @@
 ---
 name: python
-description: PEP 8 and Google Python Style Guide
+description: Python coding standards based on PEP 8 and Google Python Style Guide. Use when writing, reviewing, or modifying Python code to apply type hints, docstrings, and Pythonic patterns.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [python, programming]
 ---
 
 # Python Programming Skill

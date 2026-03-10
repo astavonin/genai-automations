@@ -18,6 +18,13 @@ Main conversation (no specialized agent)
 
 ## Actions
 
+0. Read workflow and domain skills to ensure phase context:
+   ```
+   Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
+   Read ~/.claude/skills/domains/architecture/SKILL.md
+   Read ~/.claude/skills/domains/quality-attributes/SKILL.md
+   ```
+
 1. Analyze requirements and constraints
 2. Propose implementation approach
 3. List files to be modified/created

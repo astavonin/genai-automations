@@ -1,6 +1,12 @@
 ---
 name: shell
-description: Shell scripting best practices (bash/zsh)
+description: Shell scripting best practices for bash/zsh. Use when writing or reviewing shell scripts to enforce set -euo pipefail, proper quoting, error handling, and portability.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [shell, bash, zsh, scripting]
 ---
 
 # Shell Scripting Skill

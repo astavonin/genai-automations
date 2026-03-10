@@ -1,6 +1,12 @@
 ---
 name: devops
-description: DevOps practices, CI/CD, containerization, and infrastructure automation
+description: DevOps best practices for CI/CD pipelines, Docker, and infrastructure automation. Use when creating or modifying Dockerfiles, CI configurations, Makefiles, or deployment scripts to apply local-CI parity and resource efficiency.
+allowed-tools: Bash, Glob, Grep, Read, Write, Edit, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: domains
+  tags: [devops, docker, ci-cd, infrastructure]
 ---
 
 # DevOps Skill

@@ -31,6 +31,38 @@ Reference: `~/.claude/skills/domains/code-quality/`
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings
 - Apply formatting using the current project's formatting tool for all files you create or modify
 
+## Testing
+
+Reference: `~/.claude/skills/domains/testing/`
+
+- Follow AAA pattern (Arrange, Act, Assert)
+- Name tests after behavior and expected outcome
+- 80%+ coverage for critical business logic; 100% for public APIs
+- Test edge cases: empty input, null values, boundary conditions, error paths
+
+## Architecture & Design
+
+Reference: `~/.claude/skills/domains/architecture/`
+
+- Use Mermaid diagrams for all architecture documentation
+- Apply separation of concerns and modularity
+- Document trade-offs and alternatives for every design decision
+
+## Quality Attributes
+
+Reference: `~/.claude/skills/domains/quality-attributes/`
+
+- Evaluate all 8 attributes during reviews: supportability, extendability, maintainability, testability, performance, safety, security, observability
+- Use review checklist from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+
+## DevOps
+
+Reference: `~/.claude/skills/domains/devops/`
+
+- Prioritize local-CI parity: same images and scripts locally and in CI
+- Optimize resource efficiency: multi-stage Docker builds, dependency caching, fast feedback loops
+- Follow shell scripting best practices (see `~/.claude/skills/languages/shell/`)
+
 # Workflow
 
 Reference: `~/.claude/skills/workflows/complete-workflow/`
@@ -46,7 +78,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/review-design` - Review design before implementation (MANDATORY)
 - `/implement` - Run implementation (coder or devops-engineer agent)
 - `/review-code` - Review code after implementation (MANDATORY)
-- `/verify` - Run verification (tests, linters, static analysis)
+- `/verify` - Run verification (linters first, then tests, then static analysis)
 - `/complete` - Mark work complete, update progress tracking, backup planning state
 
 ### Utility Commands
@@ -55,8 +87,9 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/load` - Load ticket information (issue/epic/milestone) via ci-platform-manager
 - `/review-mr` - Review an MR and generate YAML findings for `ci-platform-manager comment`
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
-- `/write` - Research a topic and produce a structured Markdown draft (info collector + draft writer)
+- `/write` - Research a topic and produce a structured Markdown draft (writer agent)
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
+- `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent
 
 ## Quick Reference
 
@@ -75,6 +108,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 - **NEVER create git commits** - user always handles commits
 - **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
+- **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
 
@@ -137,9 +171,11 @@ ls planning/<goal>/milestone-XX/design/
 - If rejected: fix and return for re-review
 
 ### Phase 6: Verification
+- Run linters FIRST (must pass before tests): clang-tidy, pylint/mypy, clippy, golangci-lint, shellcheck
+- Apply auto-formatting if needed
 - Run all unit tests
 - Run integration tests (if applicable)
-- Run static analysis (clang-tidy, pylint, clippy, etc.)
+- Run static analysis (zero errors)
 - Verify no regressions
 - All checks must pass
 
@@ -170,7 +206,7 @@ echo "✓ Planning backup complete - available on all machines"
 Reference: `~/.claude/agents/`
 
 - **architecture-research-planner** (opus): Research, architecture, documentation
-- **coder** (sonnet): Implementation (C++, Go, Rust, Python)
+- **coder** (sonnet): Implementation (C++, Go, Rust, Python, Zig)
 - **devops-engineer** (sonnet): CI/CD, Docker, infrastructure
 - **reviewer** (opus): Quality reviews (design and code reviews)
 - **debugger** (opus): Root cause analysis, hypothesis-driven investigation, fix recommendations
@@ -200,7 +236,7 @@ planning/
 ├── progress.md                      # Current work (updated daily)
 ├── <goal>/
 │   ├── overview.md                  # Milestone roadmap
-│   └── milestone-XX/
+│   └── milestone-XX-<name>/
 │       ├── status.md                # Progress tracking (WHAT to do)
 │       └── design/                  # Design docs (HOW to do it)
 ```

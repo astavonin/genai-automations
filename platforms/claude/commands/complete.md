@@ -7,6 +7,13 @@ description: Mark work complete and update progress tracking
 
 Mark work as complete and update progress tracking files.
 
+## Setup
+
+Read planning skill before starting:
+```
+Read ~/.claude/skills/workflows/planning/SKILL.md
+```
+
 ## Prerequisites
 
 Before running this command:
@@ -42,6 +49,12 @@ Before running this command:
    ```
    Leftover plan files in `~/.claude/plans/` cause Claude Code to re-enter plan mode
    automatically at the next session start, which blocks the normal workflow.
+
+6. **Sync planning state to backup:**
+   ```bash
+   ci-platform-manager sync push
+   ```
+   Pushes updated planning files to Google Drive backup, making them available on all machines.
 
 ## Critical Rules
 

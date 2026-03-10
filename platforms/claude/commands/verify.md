@@ -7,6 +7,13 @@ description: Run linters, tests, and static analysis
 
 Run comprehensive verification before considering work complete.
 
+## Setup
+
+Read testing skill before starting:
+```
+Read ~/.claude/skills/domains/testing/SKILL.md
+```
+
 ## Actions (Execute in Order)
 
 1. **Run linters FIRST** (must pass before tests):

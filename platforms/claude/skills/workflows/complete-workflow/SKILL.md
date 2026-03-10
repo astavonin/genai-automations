@@ -1,6 +1,12 @@
 ---
 name: complete-workflow
-description: 8-phase complete workflow reference
+description: 8-phase software development workflow with mandatory design and code review checkpoints. Use when starting any implementation task to follow the research → design → review → implement → review → verify phases.
+allowed-tools: Bash, Glob, Grep, Read, Write, Edit, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: workflows
+  tags: [workflow, development, phases, review]
 ---
 
 # Complete Workflow Skill
@@ -150,8 +156,9 @@ Pushes updated planning to Google Drive backup, making it available on all machi
 
 1. **NEVER create git commits** - user always handles commits
 2. **NEVER automatically update progress.md** - always propose and confirm
-3. **ALL implementations require design review BEFORE code** (Phase 3)
-4. **ALL code requires code review AFTER implementation** (Phase 5)
+3. **ALWAYS declare agent before use** - state "I'll use <agent-name> agent to <task>..." before every agent invocation
+4. **ALL implementations require design review BEFORE code** (Phase 3)
+5. **ALL code requires code review AFTER implementation** (Phase 5)
 
 ## Agent Declaration
 

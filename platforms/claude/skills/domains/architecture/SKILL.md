@@ -1,6 +1,12 @@
 ---
 name: architecture
-description: Software architecture patterns and design principles
+description: Software architecture patterns and documentation practices. Use when designing systems, creating architecture docs, or reviewing design proposals to apply separation of concerns, modularity, and Mermaid diagrams.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: domains
+  tags: [architecture, design, diagrams, mermaid]
 ---
 
 # Architecture Skill
@@ -21,8 +27,7 @@ Software architecture patterns, design principles, and documentation practices.
 
 ### Abstraction Levels
 - Appropriate abstraction for the problem domain
-- Not over-engineered
-- Not under-abstracted
+- Not over-engineered, not under-abstracted
 
 ### Dependency Management
 - Minimize dependencies
@@ -31,93 +36,39 @@ Software architecture patterns, design principles, and documentation practices.
 
 ## Architecture Documentation
 
-### Mermaid Diagrams
-Use Mermaid for architecture diagrams in design documents.
+Use Mermaid for all architecture diagrams. Prefer: Architecture, Sequence, State, and Class diagrams. See `references/diagrams.md` for full examples.
 
-**Component Diagrams:**
-```mermaid
-graph TD
-    A[Client] --> B[API Gateway]
-    B --> C[Service 1]
-    B --> D[Service 2]
-    C --> E[Database]
-    D --> E
-```
-
-**Sequence Diagrams:**
-```mermaid
-sequenceDiagram
-    Client->>API: Request
-    API->>Service: Process
-    Service->>DB: Query
-    DB-->>Service: Result
-    Service-->>API: Response
-    API-->>Client: Result
-```
-
-**State Diagrams:**
-```mermaid
-stateDiagram-v2
-    [*] --> Idle
-    Idle --> Processing: Start
-    Processing --> Success: Complete
-    Processing --> Failed: Error
-    Success --> [*]
-    Failed --> Retry
-    Retry --> Processing
-```
+**Diagram types:**
+- **Component** — system structure and service relationships
+- **Sequence** — interaction flows and timing
+- **State** — state machines and transitions
+- **C4-style** — system context with external actors
 
 ## Common Patterns
 
 ### Layered Architecture
-- Presentation layer
-- Business logic layer
-- Data access layer
-- Clear dependencies (top-down)
+- Presentation → Business logic → Data access
+- Clear dependencies (top-down only)
 
 ### Event-Driven Architecture
-- Producers and consumers
-- Asynchronous communication
-- Loose coupling
+- Producers and consumers, asynchronous communication, loose coupling
 
 ### Microservices
-- Independent deployments
-- Service boundaries by domain
-- API contracts
+- Independent deployments, service boundaries by domain, API contracts
 
 ### Plugin Architecture
-- Core system with extension points
-- Plugins provide additional functionality
-- Isolation between plugins
+- Core system with extension points, isolation between plugins
 
 ## Design Trade-offs
 
-### Performance vs. Maintainability
-- Optimize only when necessary
-- Profile before optimizing
-- Document performance-critical sections
-
-### Flexibility vs. Simplicity
-- YAGNI (You Aren't Gonna Need It)
-- Don't add features for hypothetical future needs
-- Simplest solution that meets requirements
-
-### Abstraction vs. Concreteness
-- Abstract when patterns emerge
-- Don't abstract prematurely
-- Three instances before abstraction
-
-## Integration Points
-
-When designing integration:
-- Define clear boundaries
-- Document contracts
-- Handle failures gracefully
-- Version APIs
+| Trade-off | Guidance |
+|---|---|
+| Performance vs. Maintainability | Optimize only when necessary; profile first |
+| Flexibility vs. Simplicity | YAGNI — don't add features for hypothetical future needs |
+| Abstraction vs. Concreteness | Three instances before abstracting |
 
 ## Architecture Reviews
 
-When reviewing architecture:
 - Does it solve the stated problem?
 - Is it the simplest approach?
 - Are trade-offs understood?
@@ -126,4 +77,5 @@ When reviewing architecture:
 
 ## References
 
-See `references/` directory for detailed architecture patterns and diagram examples.
+See `references/` directory for:
+- Mermaid diagram examples (`diagrams.md`)

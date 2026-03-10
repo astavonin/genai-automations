@@ -1,6 +1,12 @@
 ---
 name: planning
-description: Planning structure and progress tracking
+description: Planning directory structure and progress tracking workflow. Use when organizing project work, creating planning files, or updating progress.md and status.md to follow the standard planning structure.
+allowed-tools: Glob, Grep, Read, Write, Edit
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: workflows
+  tags: [planning, workflow, project-management]
 ---
 
 # Planning Skill

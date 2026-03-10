@@ -1,6 +1,12 @@
 ---
 name: zig
-description: Zig Style Guide and best practices
+description: Zig coding standards based on the Zig Style Guide. Use when writing, reviewing, or modifying Zig code to apply explicit allocation, comptime patterns, and error unions.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [zig, programming]
 ---
 
 # Zig Programming Skill

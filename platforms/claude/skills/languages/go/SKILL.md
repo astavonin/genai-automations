@@ -1,6 +1,12 @@
 ---
 name: go
-description: Effective Go and Code Review Comments
+description: Go coding standards based on Effective Go and Go Code Review Comments. Use when writing, reviewing, or modifying Go code to apply idiomatic patterns, error handling, and concurrency best practices.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [go, golang, programming]
 ---
 
 # Go Programming Skill

@@ -12,10 +12,14 @@ to a previous implementation. Scope is the fix only, not surrounding unchanged c
 
 **3 × reviewer (opus)** — run in parallel per consensus protocol
 
-## Skills Required
+## Setup
 
-- `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
+Read review skills before starting:
+```
+Read ~/.claude/skills/domains/quality-attributes/SKILL.md
+Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
+Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
+```
 
 ## Actions
 

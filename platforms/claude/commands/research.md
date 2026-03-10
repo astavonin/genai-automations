@@ -18,6 +18,12 @@ Investigate existing codebase patterns and architecture using the architecture-r
 
 ## Actions
 
+0. Read workflow and domain skills to ensure phase context:
+   ```
+   Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
+   Read ~/.claude/skills/domains/architecture/SKILL.md
+   ```
+
 1. Investigate existing codebase patterns
 2. Understand current architecture
 3. Identify integration points and dependencies

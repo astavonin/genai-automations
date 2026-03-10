@@ -12,6 +12,15 @@ a structured YAML findings file for posting inline comments via `ci-platform-man
 
 **reviewer** (opus model)
 
+## Setup
+
+Read review skills before starting:
+```
+Read ~/.claude/skills/domains/quality-attributes/SKILL.md
+Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
+Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
+```
+
 ## Prerequisites
 
 - MR exists in GitLab and the branch is pushed

@@ -1,6 +1,12 @@
 ---
 name: code-quality
-description: Code quality principles and standards
+description: Code quality principles covering comments, linter suppressions, and formatting. Use when writing or reviewing any code to enforce self-documenting style, suppression comment requirements, and formatting rules.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: domains
+  tags: [code-quality, linting, formatting, comments]
 ---
 
 # Code Quality Skill

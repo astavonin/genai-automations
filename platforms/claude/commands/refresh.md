@@ -24,8 +24,16 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
 3. Read agent definitions:
    ```
    Read ~/.claude/agents/reviewer.md
-   Read ~/.claude/agents/coder.md (if exists)
-   Read ~/.claude/agents/architecture-research-planner.md (if exists)
+   Read ~/.claude/agents/coder.md
+   Read ~/.claude/agents/devops-engineer.md
+   Read ~/.claude/agents/architecture-research-planner.md
+   Read ~/.claude/agents/debugger.md
+   Read ~/.claude/agents/writer.md
+   ```
+
+4. Read workflow and planning skills:
+   ```
+   Read ~/.claude/skills/workflows/planning/SKILL.md
    ```
 
 ## Output

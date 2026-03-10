@@ -20,6 +20,17 @@ Implement the approved design following the chosen agent's expertise.
 
 ## Actions
 
+0. Read skills for phase context:
+   ```
+   Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
+   Read ~/.claude/skills/domains/code-quality/SKILL.md
+   Read ~/.claude/skills/domains/testing/SKILL.md
+   ```
+   If using devops-engineer agent, also read:
+   ```
+   Read ~/.claude/skills/domains/devops/SKILL.md
+   ```
+
 1. Select appropriate agent based on task type
 2. Write code following approved design
 3. Include comprehensive unit tests (mandatory)

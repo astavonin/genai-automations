@@ -1,6 +1,12 @@
 ---
 name: rust
-description: Rust API Guidelines and best practices
+description: Rust coding standards based on Rust API Guidelines. Use when writing, reviewing, or modifying Rust code to apply ownership patterns, error handling with Result/Option, and zero-cost abstractions.
+allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
+compatibility: claude-code
+metadata:
+  version: 1.0.0
+  category: languages
+  tags: [rust, programming]
 ---
 
 # Rust Programming Skill
