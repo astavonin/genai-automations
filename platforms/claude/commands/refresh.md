@@ -28,11 +28,6 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
    Read ~/.claude/agents/architecture-research-planner.md (if exists)
    ```
 
-4. Read memory file for session startup instructions:
-   ```
-   Read ~/.claude/memory/spanish-translations.md
-   ```
-
 ## Output
 
 After reading all files, confirm to the user:

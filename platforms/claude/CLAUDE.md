@@ -8,15 +8,6 @@
 
 - **Never add manual line breaks within paragraphs.** Do not wrap prose at a fixed column width. Let the Markdown renderer handle line wrapping. Only use newlines to separate paragraphs, list items, headings, or table rows.
 
-## Response Format for User Requests
-
-**MANDATORY AT SESSION START:** Read `~/.claude/memory/spanish-translations.md` immediately and apply all instructions.
-
-- Always provide corrected version + Spanish translation for user requests
-- Track translations mentally (no automatic file writes)
-- Use `/update-spanish` command to batch dump words to log
-- Full instructions in memory file (MUST READ at session start)
-
 # Coding Standards
 
 ## Language-Specific Guidelines
