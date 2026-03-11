@@ -114,6 +114,45 @@ confirm_install() {
     esac
 }
 
+# Function to sync Claude project auto-memory
+# Claude Code stores per-project memory under ~/.claude/projects/<project-id>/memory/
+sync_project_memory() {
+    local project_id="-home-astavonin-projects-genai-automations"
+    local src dst action
+
+    if [[ "$MODE" == "sync" ]]; then
+        src="$HOME/.claude/projects/$project_id/memory"
+        dst="$SCRIPT_DIR/platforms/claude/memory"
+        action="Backing up"
+    else
+        src="$SCRIPT_DIR/platforms/claude/memory"
+        dst="$HOME/.claude/projects/$project_id/memory"
+        action="Installing"
+    fi
+
+    print_status "$BLUE" "==> ${action} Claude project auto-memory..."
+
+    if [[ ! -d "$src" ]]; then
+        print_status "$YELLOW" "Warning: Source directory not found: $src"
+        return 1
+    fi
+
+    if [[ "$MODE" == "install" ]] && [[ "$DRY_RUN" == false ]]; then
+        mkdir -p "$dst"
+    fi
+
+    local rsync_cmd=(rsync -av --delete)
+    [[ "$DRY_RUN" == true ]] && rsync_cmd+=(--dry-run)
+    rsync_cmd+=("$src/" "$dst/")
+
+    if "${rsync_cmd[@]}"; then
+        print_status "$GREEN" "✓ Project auto-memory ${(L)action} complete"
+    else
+        print_status "$RED" "✗ Project auto-memory ${(L)action} failed"
+        return 1
+    fi
+}
+
 # Function to sync a platform configuration
 # Usage: sync_platform PLATFORM HOME_DIR REPO_DIR INCLUDES[@] [EXCLUDES[@]]
 sync_platform() {
@@ -279,8 +318,6 @@ main() {
             'commands/**'
             'skills/'
             'skills/**'
-            'memory/'
-            'memory/**'
         )
 
         # Exclude personal learning data (not in git)
@@ -294,6 +331,10 @@ main() {
             "${claude_includes[@]}" \
             --excludes \
             "${claude_excludes[@]}"; then
+            exit_code=1
+        fi
+
+        if ! sync_project_memory; then
             exit_code=1
         fi
         echo ""

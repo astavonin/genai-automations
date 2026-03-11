@@ -1,15 +1,47 @@
-# Auto Memory
+# Mandatory Behavioral Rules (ALWAYS enforce)
 
-## User Preferences
+## Agent Declaration — REQUIRED before every agent use
 
-### Workflow Integration
-- Planning sync: Run `sync pull` at `/start`, `sync push` at `/complete`
-- See `~/.claude/CLAUDE.md` and `~/.claude/skills/workflows/complete-workflow/SKILL.md`
+Before invoking ANY agent, always state:
+```
+"I'll use <agent-name> agent to <task-description>..."
+```
+This applies to: architecture-research-planner, coder, devops-engineer, reviewer, debugger, writer.
+**Never silently launch an agent. Always declare it first.**
 
-## Project Context
+## Workflow Checkpoints — NEVER skip
 
-### ci-platform-manager
+- Design review (`/review-design`) MUST happen before any implementation
+- Code review (`/review-code`) MUST happen after every implementation
+- NEVER create git commits — user handles all commits
+- NEVER update `progress.md` without explicit user confirmation
+
+---
+
+# Session Startup Protocol
+
+## Critical: Load Referenced Files Immediately
+
+When CLAUDE.md contains `Reference: <path>`, this is a **directive**, not a suggestion.
+
+**MUST DO at session start:**
+1. Scan CLAUDE.md for all `Reference:` lines
+2. Immediately read each referenced file
+3. Apply those instructions from the first user interaction
+
+**Example:**
+```markdown
+Reference: `~/.claude/skills/languages/`
+```
+→ Read that file IMMEDIATELY and apply the coding guidelines from the start
+
+**Why this matters:** User configured persistent behavior across sessions. Not loading references = ignoring user's standing instructions.
+
+---
+
+# Project Context
+
+## ci-platform-manager
 - Multi-platform CI automation tool (GitLab/GitHub)
-- Location: `/home/astavonin/projects/genai-automations/ci_platform_manager/`
+- Location: `~/projects/ci-platform-manager`
 - Config resolution: project-local → user-wide → defaults
-- Legacy config support: auto-transforms old format, preserves `planning_sync`
