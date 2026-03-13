@@ -104,6 +104,17 @@ planning/
 - Weekly: Update `status.md`
 - Milestone complete: Archive `design/`, update `overview.md`
 
+## File Location Rules
+
+**ALL project-related files go under `planning/`, never `/tmp` or other system directories.**
+
+This includes:
+- YAML input files for `ci-platform-manager` (tickets, epics) → `planning/<goal>/milestone-XX/`
+- MR drafts → `planning/mr-draft.yaml`
+- Review artifacts, drafts, notes → `planning/<goal>/milestone-XX/design/`
+
+`/tmp` is for throwaway system scratch only. If a file is related to the project — even if it is a draft pending user confirmation — it belongs in `planning/`.
+
 ## Planning Principles
 
 ### Concise Over Comprehensive

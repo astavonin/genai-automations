@@ -85,17 +85,22 @@ Aggregate once all four have returned per the consensus protocol.
 ## Findings (<N total — consensus of 3 reviewers>)
 
 ### Critical
-- ...
+- **C1** [attribute] Description...
 
 ### High
-- ...
+- **H1** [attribute] Description...
 
-### Medium / Low
-- ...
+### Medium
+- **M1** [attribute] Description...
+
+### Low
+- **L1** [attribute] Description...
 
 ## Recommendation
-<rationale; if not approved, what must change>
+<rationale; if not approved, what must change — reference findings by ID e.g. "Fix C1, H1 before proceeding">
 ```
+
+IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity. IDs are stable within a review session.
 
 ## Assessment
 

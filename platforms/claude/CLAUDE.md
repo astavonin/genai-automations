@@ -8,6 +8,10 @@
 
 - **Never add manual line breaks within paragraphs.** Do not wrap prose at a fixed column width. Let the Markdown renderer handle line wrapping. Only use newlines to separate paragraphs, list items, headings, or table rows.
 
+## Mermaid Diagrams
+
+- **Always use `<br/>` for line breaks inside node labels.** Never use `\n` — it renders as a literal backslash-n in all Mermaid renderers.
+
 # Coding Standards
 
 ## Language-Specific Guidelines
@@ -106,7 +110,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ## Critical Rules
 
-- **NEVER create git commits** - user always handles commits
+- **Always propose commit message and wait for explicit approval before committing**
 - **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
 - **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
@@ -180,8 +184,10 @@ ls planning/<goal>/milestone-XX/design/
 - All checks must pass
 
 ### Phase 7: Commit
-- User handles all git commits
-- NEVER create commits automatically
+- **Commit message format:** single line — `<short description>. Ref #<issue-number>`
+  - Example: `Add retry logic for failed API requests. Ref #42`
+- Always propose a commit message and wait for explicit user approval before committing
+- After approval, stage the relevant files and create the commit
 
 ### Phase 8: Completion
 **Step 1: Update Planning Files**

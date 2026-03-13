@@ -56,17 +56,24 @@ Produce a markdown report using the reviewer agent's standard template:
 ## Findings (<N total — consensus of 3 reviewers>)
 
 ### Critical
-- ...
+- **C1** [attribute] Description...
+- **C2** [attribute] Description...
 
 ### High
-- ...
+- **H1** [attribute] Description...
+- **H2** [attribute] Description...
 
-### Medium / Low
-- ...
+### Medium
+- **M1** [attribute] Description...
+
+### Low
+- **L1** [attribute] Description...
 
 ## Recommendation
-<rationale and required actions if not approved>
+<rationale and required actions if not approved; reference findings by ID e.g. "Fix C1, H2 before proceeding">
 ```
+
+IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity (C1, C2, H1, H2, M1, …). IDs are stable within a review session and used when discussing or resolving findings.
 
 ## Assessment
 
