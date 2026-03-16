@@ -35,6 +35,10 @@
 
 ## Integration Testing
 
+### Test Comments
+
+Integration tests require numbered step comments describing the logical flow. See `~/.claude/skills/domains/code-quality/references/comments.md` → **Integration Test Cases**.
+
 ### Database Testing
 - Use a test database or in-memory database (SQLite, H2)
 - Use fixtures or factories for test data

@@ -37,13 +37,32 @@ fn process_sync() {
 }
 ```
 
-### Test Cases
+### Unit Test Cases
 ```go
 func TestUserLogin(t *testing.T) {
     // Verify that invalid credentials return 401 and preserve session
     // ...
 }
 ```
+
+### Integration Test Cases
+
+Integration tests launch real processes or services and involve multi-step flows. Use a numbered step list at the top of the test body describing the logical flow — not the code mechanics.
+
+```python
+def test_clean_exit(self):
+    # 1. Initialize and prepare manager
+    # 2. Start all non-blacklisted processes with started=True
+    # 3. Wait 10 s for processes to stabilise
+    # 4. For each process: verify it is running, stop it, verify clean exit code
+    ...
+```
+
+**Rules:**
+- Steps describe WHAT happens at the logical level, not HOW the code does it
+- Each step is one line — no sub-bullets, no prose
+- Order matches execution order in the test body
+- Omit steps that are covered by `setUp` / `tearDown`
 
 ### Complex Algorithms
 ```cpp
