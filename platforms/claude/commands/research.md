@@ -40,6 +40,8 @@ Investigate existing codebase patterns and architecture using the architecture-r
 - Integration points
 - Dependency analysis
 
+**After writing:** Ask the user if they want to `open <path>` the analysis file.
+
 ## Usage
 
 ```

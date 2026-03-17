@@ -75,6 +75,9 @@ Aggregate once all four have returned per the consensus protocol.
 
 ### Step 4: Output
 
+**Write the report to `planning/reviews/<fix-description>-fix-review.md`** (use a short slug for `<fix-description>`, e.g. `tier-timeout-fix`).
+After writing, ask the user if they want to `open <path>` the review file.
+
 ```markdown
 # Fix Review
 

@@ -43,6 +43,8 @@ Main conversation (no specialized agent)
 - File modification list
 - Trade-offs analysis
 
+**After writing:** Ask the user if they want to `open <path>` the design file.
+
 ## Key Principle
 
 Design files describe **HOW** to implement (architecture, approach), not **WHAT** to do (that's in status.md).

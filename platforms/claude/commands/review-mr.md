@@ -159,6 +159,8 @@ Show the user:
   - **Request Changes** — one or more `Critical` or `High` findings
 - Full path to the YAML file
 
+Ask the user if they want to `open <path>` the YAML file before displaying the post instructions.
+
 Then display:
 ```
 Review written to: planning/reviews/MR<number>-review.yaml

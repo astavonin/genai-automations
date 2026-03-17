@@ -153,9 +153,12 @@ ls planning/<goal>/milestone-XX/design/
 - List files to be modified/created
 - Explain rationale and trade-offs
 - Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
+- After writing the design file, ask the user if they want to `open` it
 
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
+- After writing, ask the user if they want to `open` the file
 - Present design to user
 - Wait for explicit user approval
 - DO NOT proceed without approval
@@ -171,6 +174,8 @@ ls planning/<goal>/milestone-XX/design/
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
+- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`**
+- After writing, ask the user if they want to `open` the file
 - Block until approved
 - If rejected: fix and return for re-review
 
@@ -250,6 +255,20 @@ planning/
 **Key principle:** Separate tracking from design
 - `status.md` = WHAT to do (task checklists, progress %)
 - `design/` = HOW to do it (architecture, diagrams, approach)
+
+# Post-Write Actions
+
+After writing certain files, always ask the user if they want to open the file with `open <path>` before continuing:
+
+| File type | When to ask |
+|-----------|-------------|
+| Design docs (`planning/**/design/*.md`) | After Phase 2 design doc is written |
+| Design review reports (`planning/**/reviews/*-design-review.md`) | After Phase 3 review is written |
+| Code review reports (`planning/**/reviews/*-code-review.md`) | After Phase 5 review is written |
+| MR review YAML (`planning/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
+| Issue/Epic YAML files (any YAML created for `ci-platform-manager create`) | After the YAML is written |
+
+Ask exactly once per file, immediately after writing. Do not open automatically — always ask first.
 
 # CI Platform Management
 

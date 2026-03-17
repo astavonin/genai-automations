@@ -77,7 +77,7 @@ Display the generated YAML to the user:
 cat planning/mr-draft.yaml
 ```
 
-Wait for user confirmation before proceeding.
+Ask the user if they want to `open planning/mr-draft.yaml`, then wait for confirmation before proceeding.
 
 ### 4. Create MR via ci-platform-manager
 

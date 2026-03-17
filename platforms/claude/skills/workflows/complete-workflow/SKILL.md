@@ -77,6 +77,7 @@ Investigate existing codebase patterns, architecture, integration points.
 Create detailed design proposal with architecture, approach, trade-offs.
 
 **Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
+After writing, ask the user if they want to `open <path>` the design file.
 
 ### Phase 3: Design Review (CHECKPOINT)
 **Command:** `/review-design`
@@ -84,6 +85,9 @@ Create detailed design proposal with architecture, approach, trade-offs.
 **MANDATORY:** User approval required before implementation
 
 Review design against 8 quality attributes. Block until approved.
+
+**Output:** Write report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`.
+After writing, ask the user if they want to `open <path>` the review file.
 
 **Outcomes:**
 - ✅ Approve → Proceed to implementation
@@ -106,6 +110,9 @@ Implement approved design with:
 **MANDATORY:** Review required after implementation
 
 Review code against 8 quality attributes and design adherence.
+
+**Output:** Write report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`.
+After writing, ask the user if they want to `open <path>` the review file.
 
 **Outcomes:**
 - ✅ Approve → Proceed to verification

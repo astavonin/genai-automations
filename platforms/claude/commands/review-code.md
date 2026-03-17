@@ -27,7 +27,9 @@ Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-pro
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
 2. Format consolidated findings as a markdown review report (see Output Format below)
-3. Block until approved
+3. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`**
+4. After writing, ask the user if they want to `open <path>` the review file
+5. Block until approved
 
 ## Review Scope
 
