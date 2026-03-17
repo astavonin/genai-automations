@@ -267,4 +267,6 @@ For ALL managerial tasks related to GitLab/GitHub, use `ci_platform_manager`:
 - The `--help` output includes a "Documentation:" section with the absolute path to comprehensive usage instructions
 - Invoke via `/mr` and `/load` commands, which internally use ci-platform-manager
 
+**Critical rule:** If a required operation is not supported by ci-platform-manager, extend it first (source at `~/projects/ci-platform-manager`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass ci-platform-manager.
+
 **Note:** `glab-management` is deprecated and should NOT be used.
