@@ -20,11 +20,45 @@ Create a merge request from the current branch using ci-platform-manager (suppor
 
 ```bash
 git status
-git log origin/main..HEAD  # View commits that will be in MR
-git diff origin/main...HEAD --stat  # Review changed files
+git log origin/master..HEAD --oneline  # View commits that will be in MR
+git diff origin/master...HEAD --stat   # Review changed files
 ```
 
-### 2. Generate MR YAML
+### 2. Verify Issue Acceptance Criteria
+
+If the branch is linked to an issue (look for `Ref #NNN` in commit messages or the branch name):
+
+```bash
+ci-platform-manager load <issue_number>
+```
+
+Read the issue's **Scope** and **Acceptance Criteria** sections. For each item, check the changed files to determine whether it is implemented.
+
+Produce a checklist:
+
+```
+Scope / Acceptance Criteria check:
+  ✅ <item> — implemented in <file>
+  ❌ <item> — NOT implemented (missing)
+  ⚠️  <item> — partially implemented
+```
+
+**Then explicitly ask the user:**
+
+> The following items from the issue are not yet implemented:
+> - <item 1>
+> - <item 2>
+>
+> How would you like to proceed?
+> 1. Implement the missing items before creating the MR
+> 2. Create the MR as-is and track missing items in follow-up issues
+> 3. Remove the missing items from the issue scope
+
+**Do NOT proceed to YAML generation until the user answers.**
+
+If no linked issue is found, skip this step.
+
+### 3. Generate MR YAML
 
 Create `planning/mr-draft.yaml` with the following structure:
 
@@ -70,7 +104,7 @@ target_branch: "main"  # Optional (default: repo default)
 - `milestone` (optional) - Milestone title
 - `target_branch` (optional) - Target branch name
 
-### 3. Show YAML for User Verification
+### 4. Show YAML for User Verification
 
 Display the generated YAML to the user:
 ```bash
@@ -79,7 +113,7 @@ cat planning/mr-draft.yaml
 
 Ask the user if they want to `open planning/mr-draft.yaml`, then wait for confirmation before proceeding.
 
-### 4. Create MR via ci-platform-manager
+### 5. Create MR via ci-platform-manager
 
 After user confirms YAML, create the MR:
 
@@ -153,12 +187,14 @@ Return the MR URL to the user.
 
 ## Critical Rules
 
-1. **Generate YAML first** - Always create `planning/mr-draft.yaml` before creating MR
-2. **User verification required** - Show YAML and wait for explicit confirmation
-3. **Analyze all commits** - Review complete commit range, not just latest commit
-4. **Follow template structure** - MR description must have Summary, Implementation Details, and How It Was Tested sections
-5. **Keep it concise** - Architecture-level descriptions, not implementation details
-6. **Push before creating** - Ensure branch is pushed to remote before MR creation
+1. **Check acceptance criteria first** - Load the linked issue and verify scope/AC coverage before writing YAML
+2. **Block on gaps** - If any scope/AC items are unimplemented, explicitly present them and ask the user how to proceed; do NOT silently skip them
+3. **Generate YAML first** - Always create `planning/mr-draft.yaml` before creating MR
+4. **User verification required** - Show YAML and wait for explicit confirmation
+5. **Analyze all commits** - Review complete commit range, not just latest commit
+6. **Follow template structure** - MR description must have Summary, Implementation Details, and How It Was Tested sections
+7. **Keep it concise** - Architecture-level descriptions, not implementation details
+8. **Push before creating** - Ensure branch is pushed to remote before MR creation
 
 ## Example
 
