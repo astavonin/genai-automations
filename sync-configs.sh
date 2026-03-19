@@ -242,7 +242,6 @@ sync_platform() {
         'plugins/'
         'projects/'
         'session-env/'
-        'settings.json'
         'settings.local.json'
         '.credentials.json'
         'shell-snapshots/'
@@ -312,6 +311,7 @@ main() {
         # Include patterns for Claude
         local claude_includes=(
             'CLAUDE.md'
+            'settings.json'
             'agents/'
             'agents/**'
             'commands/'

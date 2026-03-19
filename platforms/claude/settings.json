@@ -1,0 +1,45 @@
+{
+  "includeCoAuthoredBy": false,
+  "model": "sonnet",
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/*)",
+      "Bash(make:*)",
+      "Bash(ci-platform-manager:*)",
+      "Bash(git:*)",
+      "Bash(python3:*)",
+      "Bash(open:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(jq:*)",
+      "Bash(codex:*)",
+      "Bash(timeout:*)",
+      "Bash(script:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Read(/tmp/**)"
+    ],
+    "additionalDirectories": [
+      "~/work",
+      "~/projects",
+      "~/.config",
+      "~/.claude"
+    ]
+  }
+}
