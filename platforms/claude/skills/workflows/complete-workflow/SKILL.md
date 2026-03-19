@@ -166,6 +166,7 @@ Pushes updated planning to Google Drive backup, making it available on all machi
 3. **ALWAYS declare agent before use** - state "I'll use <agent-name> agent to <task>..." before every agent invocation
 4. **ALL implementations require design review BEFORE code** (Phase 3)
 5. **ALL code requires code review AFTER implementation** (Phase 5)
+6. **NEVER use `isolation: "worktree"` for coder or devops-engineer agents** — changes would land in a throw-away branch instead of the user's working branch, requiring manual recovery. Omit the `isolation` parameter entirely for all implementation agents.
 
 ## Agent Declaration
 

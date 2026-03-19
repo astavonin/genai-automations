@@ -115,6 +115,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
+- **NEVER use `isolation: "worktree"` when invoking coder or devops-engineer agents** — this strands all changes in a throw-away branch. Omit the `isolation` parameter for all implementation agents so changes land directly in the user's working branch.
 
 ## Workflow Execution
 
