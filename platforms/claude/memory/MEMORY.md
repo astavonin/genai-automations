@@ -39,9 +39,18 @@ Reference: `~/.claude/skills/languages/`
 
 ---
 
+# Shell Scripting Preferences
+
+- `feedback_shell_pipe_stderr.md` — Use `|&` instead of `2>&1 |` to avoid permission prompts
+
+---
+
 # Project Context
 
 ## ci-platform-manager
 - Multi-platform CI automation tool (GitLab/GitHub)
 - Location: `~/projects/ci-platform-manager`
 - Config resolution: project-local → user-wide → defaults
+
+## planning-mcp language and stack
+- See `project_planning_mcp.md` — Go, not Python; may influence ci-manager migration later

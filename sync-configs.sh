@@ -318,6 +318,8 @@ main() {
             'commands/**'
             'skills/'
             'skills/**'
+            'scripts/'
+            'scripts/**'
         )
 
         # Exclude personal learning data (not in git)

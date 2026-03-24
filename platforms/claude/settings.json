@@ -64,6 +64,7 @@
       "Bash(date:*)",
       "Bash(df:*)",
       "Bash(du:*)",
+      "Bash(~/.claude/scripts/codex-pipe:*)",
       "Read(/tmp/**)"
     ],
     "additionalDirectories": [

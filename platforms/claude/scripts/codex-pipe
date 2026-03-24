@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# codex-pipe — Pipe a prompt and optional files to codex exec -
+#
+# Replaces the { printf "..."; cat file; } | codex exec - pattern that triggers
+# Claude Code's shell obfuscation heuristic on brace-with-quote combinations.
+#
+# Usage: codex-pipe [OPTIONS] [FILE...]
+#
+# Options:
+#   -p, --prompt TEXT   Task instruction appended after the standard header
+#   -o, --output FILE   Write codex output to FILE instead of stdout
+#   FILE...             Files to include, printed with --- name --- separators
+#
+# The "DO NOT make any changes. Only print your findings." header is always
+# prepended — callers should not repeat it in --prompt.
+#
+# All input files are read and buffered before codex starts. If any file is
+# unreadable, codex never runs and the output file is never created/truncated.
+
+set -euo pipefail
+
+readonly HEADER='DO NOT make any changes. Only print your findings.\n\n'
+
+PROMPT=""
+OUTPUT=""
+FILES=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -p|--prompt)
+            if [[ $# -lt 2 ]]; then
+                printf 'codex-pipe: %s requires a value\n' "$1" >&2
+                exit 1
+            fi
+            PROMPT="$2"
+            shift 2
+            ;;
+        -o|--output)
+            if [[ $# -lt 2 ]]; then
+                printf 'codex-pipe: %s requires a value\n' "$1" >&2
+                exit 1
+            fi
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            cat <<'EOF'
+Usage: codex-pipe [OPTIONS] [FILE...]
+
+Pipe a prompt and optional file contents to codex exec -.
+
+Options:
+  -p, --prompt TEXT   Task instruction (the standard header is always prepended)
+  -o, --output FILE   Write codex output to FILE (default: stdout)
+  FILE...             Files to include with --- name --- separators
+
+Examples:
+  codex-pipe --prompt "Review for bugs." --output /tmp/review.txt src/main.go
+  codex-pipe --prompt "Debug this failure:\n\n<log excerpt>"
+  codex-pipe --prompt "Review for quality attributes." design.md impl.go
+EOF
+            exit 0
+            ;;
+        --)
+            shift
+            FILES+=("$@")
+            break
+            ;;
+        -*)
+            printf 'codex-pipe: unknown option: %s\n' "$1" >&2
+            exit 1
+            ;;
+        *)
+            FILES+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Buffer all input to a temp file before starting codex.
+# This ensures: (a) all files are readable before codex runs, so no partial
+# input is streamed on read failure; (b) --output is never truncated unless
+# input gathering fully succeeds.
+INPUT_TMP=$(mktemp /tmp/codex-pipe-input.XXXXXX)
+trap 'rm -f "$INPUT_TMP"' EXIT
+
+{
+    printf '%b' "$HEADER"
+    if [[ -n "$PROMPT" ]]; then
+        printf '%s\n\n' "$PROMPT"
+    fi
+    for f in "${FILES[@]}"; do
+        printf '%s\n' "--- $f ---"
+        cat "$f"
+        printf '\n'
+    done
+} > "$INPUT_TMP"
+
+if [[ -n "$OUTPUT" ]]; then
+    codex exec - < "$INPUT_TMP" > "$OUTPUT" 2>&1
+else
+    codex exec - < "$INPUT_TMP"
+fi

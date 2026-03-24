@@ -65,7 +65,10 @@ Run Codex via Bash from the project's working directory:
 
 **For design/code reviews:**
 ```bash
-{ printf "DO NOT make any changes. Only print your findings.\n\nReview the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise.\n\n"; cat <subject-file>; } | codex exec -
+~/.claude/scripts/codex-pipe \
+  --prompt "Review the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise." \
+  --output /tmp/codex-review.txt \
+  <subject-file>
 ```
 
 **For MR reviews** — substitute `<source>` and `<target>` with the actual branch names

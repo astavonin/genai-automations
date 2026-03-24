@@ -36,12 +36,17 @@ Invoke the **debugger** agent with:
 After the Claude debugger produces its diagnosis, run Codex independently:
 
 ```bash
-{ printf "DO NOT make any changes. Only print your findings.\n\nDebug this failure. Identify root cause and propose a fix:\n\n<failure description and context>\n\n"; cat <relevant-file-if-applicable>; } | codex exec -
+~/.claude/scripts/codex-pipe \
+  --prompt "Debug this failure. Identify root cause and propose a fix:\n\n<failure description and context>" \
+  --output /tmp/codex-diagnose.txt \
+  <relevant-file-if-applicable>
 ```
 
-Or for log-based failures:
+Or for log-based failures (no separate file — embed log and code in the prompt):
 ```bash
-printf "DO NOT make any changes. Only print your findings.\n\nRoot cause analysis:\n\n<error log>\n\nRelevant code:\n\n$(cat <file>)" | codex exec -
+~/.claude/scripts/codex-pipe \
+  --prompt "Root cause analysis:\n\n<error log>\n\nRelevant code:\n\n$(cat <file>)" \
+  --output /tmp/codex-diagnose.txt
 ```
 
 Run from the project's working directory.
