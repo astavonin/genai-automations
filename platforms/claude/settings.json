@@ -65,6 +65,15 @@
       "Bash(df:*)",
       "Bash(du:*)",
       "Bash(~/.claude/scripts/codex-pipe:*)",
+      "Bash(adb:*)",
+      "Bash(fastboot:*)",
+      "Bash(aapt:*)",
+      "Bash(aapt2:*)",
+      "Bash(apksigner:*)",
+      "Bash(zipalign:*)",
+      "Bash(avdmanager:*)",
+      "Bash(emulator:*)",
+      "Bash(sdkmanager:*)",
       "Read(/tmp/**)"
     ],
     "additionalDirectories": [
