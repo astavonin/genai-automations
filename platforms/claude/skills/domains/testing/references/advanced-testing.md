@@ -35,21 +35,11 @@
 
 ## Integration Testing
 
-### Test Comments
+See `integration-testing.md` for: isolation strategies, testcontainers quickstart, language-specific build tags/markers, and flaky test policy.
 
-Integration tests require numbered step comments describing the logical flow. See `~/.claude/skills/domains/code-quality/references/comments.md` → **Integration Test Cases**.
+**Step comments:** Integration tests require numbered step comments describing the logical flow. See `~/.claude/skills/domains/code-quality/references/comments.md` → **Integration Test Cases**.
 
-### Database Testing
-- Use a test database or in-memory database (SQLite, H2)
-- Use fixtures or factories for test data
-- Wrap tests in transactions and roll back after each test
-- Never share state between integration tests
-
-### API Testing
-- Test the full request/response cycle
-- Verify status codes, headers, and body
-- Test error conditions and edge cases
-- Use a test server or mock server (no real external calls)
+**Coverage:** All primary flows + at least one error/failure path per component boundary.
 
 ## Performance Testing
 

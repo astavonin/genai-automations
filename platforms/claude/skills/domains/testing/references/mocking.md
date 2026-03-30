@@ -1,5 +1,16 @@
 # Mocking and Stubbing Guide
 
+## Test Double Taxonomy
+
+| Type | Returns | Verifies calls? | Use when |
+|------|---------|-----------------|----------|
+| **Stub** | Canned values | No | Control indirect inputs |
+| **Fake** | Real logic (simplified) | No | Fast in-proc replacement (e.g. in-memory DB) |
+| **Spy** | Real behavior + records | After the fact | Verify side effects without breaking behavior |
+| **Mock** | Canned values | Yes (expectations upfront) | Verify exact interaction contract |
+
+Prefer **fakes** for infrastructure (DB, cache); prefer **mocks** only when the interaction protocol itself is what's under test.
+
 ## When to Mock
 
 Mock dependencies that are:

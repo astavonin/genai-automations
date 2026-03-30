@@ -47,23 +47,60 @@ Name tests after **behavior and expected outcome**, not the function name:
 ### Edge Cases
 Always test: empty input, null/None values, max/min values, invalid input, error conditions.
 
+## Integration Testing
+
+Use integration tests when two or more real components interact (DB, HTTP, broker). Use unit tests for isolated logic.
+
+**Requirements:**
+- Real deps (testcontainers, test DB) — no mocking at the infrastructure boundary
+- No shared mutable state between tests; clean up in teardown
+- Flaky tests are bugs — fix or delete immediately, never `t.Skip()` or `@pytest.mark.skip`
+- Use deterministic readiness waits (poll + timeout), never bare `sleep`
+
+**Tagging (mandatory — must run separately from unit tests):**
+- Go: `//go:build integration` in `*_integration_test.go` files
+- Python: `@pytest.mark.integration` on each test function
+- Rust: place in `tests/` directory; run with `cargo test --test <name>`
+- C++: separate CMake target or `Integration` test suite name prefix
+
+**Isolation strategies (pick one per dependency type):**
+- DB: transaction rollback in teardown, or testcontainers per suite
+- HTTP: in-process test server (`httptest.NewServer`, `TestClient`) — no real external calls
+- Other: in-process fake (e.g. miniredis) when container overhead is too high
+
 ## Coverage Goals
-- 80%+ for critical business logic
-- 100% for public APIs
-- Focus on meaningful coverage, not hitting a number
+
+| Scope | Target |
+|-------|--------|
+| Critical business logic (unit) | 80%+ line + branch |
+| Public API surface (unit) | 100% |
+| Integration paths (happy + error) | All primary flows + at least one error path |
+
+Focus on meaningful coverage: a covered line is not a tested behavior.
 
 ## Summary
 
-1. Write tests first or alongside code
+1. Write unit tests first; add integration tests at component boundaries
 2. Focus on behavior, not implementation
 3. Keep tests simple and readable
 4. Test edge cases and error conditions
-5. Use appropriate granularity (unit → integration → e2e)
-6. Maintain tests as you maintain code
+5. Unit tests: fast, isolated, no I/O; integration tests: real deps, tagged separately
+6. Maintain tests as you maintain code; delete flaky tests immediately
 
-## References
+## Test Doubles
 
-See `references/` directory for:
-- Language-specific test organization examples (`test-organization.md`)
-- Mocking guide — when and how to mock (`mocking.md`)
-- Advanced patterns — TDD, integration, performance, anti-patterns (`advanced-testing.md`)
+| Type | Use when |
+|------|----------|
+| **Fake** | Infrastructure replacement (in-memory DB, fake cache) — preferred for infra |
+| **Stub** | Control indirect inputs; return canned values |
+| **Spy** | Verify side effects without replacing real behavior |
+| **Mock** | Verify exact interaction protocol — use only when the call contract itself is under test |
+
+Prefer fakes over mocks for infrastructure dependencies. Over-mocking hides real integration failures.
+
+## References (examples and lookup — not rules)
+
+- `references/test-organization.md` — language-specific file layout
+- `references/mocking.md` — framework usage examples (Go, Python, C++)
+- `references/advanced-testing.md` — TDD, performance, anti-patterns
+- `references/integration-testing.md` — testcontainers quickstart, directory structure

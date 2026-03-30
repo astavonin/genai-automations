@@ -46,10 +46,10 @@ Eight quality attributes for evaluating software design and implementation.
 **Definition:** How easy is it to test the system?
 
 **Key aspects:**
-- Unit test strategy defined
-- Components testable in isolation
-- Edge cases considered
-- Integration test scenarios identified
+- Unit test strategy defined; components testable in isolation
+- Integration tests written (not just planned) for component boundaries
+- Integration tests tagged to run separately from unit tests
+- Edge cases covered; no flaky tests
 
 ### 5. Performance
 **Definition:** Does the system meet performance requirements?
@@ -97,9 +97,6 @@ Evaluate proposed design against all 8 attributes before implementation.
 ### Code Review
 Verify implementation meets quality standards for all 8 attributes after implementation.
 
-## References
+## References (checklist lookup — explicitly read when doing reviews)
 
-See `references/` directory for:
-- Detailed attribute descriptions
-- Review checklists (design and code)
-- Evaluation criteria
+- `references/review-checklist.md` — full design and code review checklists (pass this path to reviewer agent)

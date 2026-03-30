@@ -31,8 +31,14 @@ Use this checklist when conducting design and code reviews with the reviewer age
 #### Testability
 - [ ] Unit test strategy defined
 - [ ] Components can be tested in isolation
-- [ ] Integration test scenarios identified
+- [ ] Integration test scenarios identified and written (not just planned)
+- [ ] Integration tests tagged to run separately from unit tests
 - [ ] Edge cases considered
+
+**Testability analysis — answer all three:**
+- [ ] **Local/Docker integration tests:** Can integration tests be run locally or in Docker without special hardware or credentials? What setup is required?
+- [ ] **Real environment/device tests:** How difficult is it to run integration tests against a real environment or physical device? What are the blockers (access, hardware, env config)?
+- [ ] **Manual testing:** How difficult is it to verify the feature manually? Is there a clear test procedure, or does it require deep system knowledge?
 
 #### Performance
 - [ ] No obvious bottlenecks in design
@@ -105,7 +111,9 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Test coverage is adequate (critical paths covered)
 - [ ] Tests are clear and maintainable
 - [ ] Edge cases tested
-- [ ] Integration tests identified/planned
+- [ ] Integration tests exist (not just planned) for component boundaries
+- [ ] Integration tests are tagged/marked to run separately
+- [ ] No flaky tests (non-deterministic assertions, bare sleeps)
 
 #### Performance
 - [ ] No unnecessary operations in hot paths

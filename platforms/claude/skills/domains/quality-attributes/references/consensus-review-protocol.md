@@ -12,11 +12,11 @@ The consensus severity is determined the same way: the severity level that **at 
 
 ## Protocol Steps
 
-### Step A: Launch 3 Independent Reviewers and Codex in Parallel
+### Step A: Launch 3 Independent Reviewers and Codex in Parallel (+ test-coverage agent for code reviews)
 
-Spawn three **reviewer (opus)** agents and Codex simultaneously. Codex is independent of the
-Claude agents and does not need to wait for them — launching all four at once minimises wall-clock
-time. Each Claude agent:
+Spawn three **reviewer (opus)** agents and Codex simultaneously. For **code reviews** also spawn
+the test-coverage agent (Step F) in the same batch — do not launch it for design reviews.
+All agents run in parallel to minimise wall-clock time. Each Claude agent:
 - Receives the same input: the subject under review + MR/design context (title, description)
 - Receives: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - Works **independently** — no shared state, no knowledge of other agents' outputs
@@ -109,6 +109,48 @@ The final output handed to the calling command contains:
 1. Consensus findings (with corroboration tags where applicable)
 2. Codex-only findings (separate section, labeled clearly)
 
+### Step F: Test-Coverage and Pitfalls Agent (code review only — skip for design reviews)
+
+A dedicated **reviewer (opus)** agent runs in parallel with Step A, focused exclusively on test
+quality. It does **not** participate in the 3-agent consensus (Steps B–C) — its output is
+cross-aggregated separately, the same way Codex findings are handled in Step E.
+
+**Only applicable when actual code and tests exist.** Do not launch this agent for design
+reviews (`/review-design`) — there is no code or test suite to evaluate yet.
+
+**Prompt the agent with:**
+```
+You are a test-quality reviewer. Your ONLY job is to find gaps in test coverage and test anti-patterns.
+Do NOT report on code correctness, security, or architecture — those are covered by other reviewers.
+
+Read ~/.claude/skills/domains/testing/SKILL.md for the testing rules.
+Read ~/.claude/skills/domains/testing/references/advanced-testing.md for anti-patterns.
+
+Evaluate the subject under review for:
+1. Missing unit tests — public functions/methods with no test, untested edge cases (null, empty, boundary, error)
+2. Missing integration tests — component boundaries that touch DB/HTTP/broker with no integration test
+3. Integration tests not tagged to run separately (missing //go:build integration, @pytest.mark.integration, etc.)
+4. Test anti-patterns:
+   - Tests that depend on execution order
+   - Tests that duplicate production logic instead of testing outcomes
+   - Bare sleep() used as a wait strategy
+   - Overly brittle mocks (mocking internals instead of boundaries)
+   - No assertion or a single trivial assertion that can never fail
+   - Flaky indicators (time-dependent assertions, non-deterministic ordering)
+5. Mock overuse — infrastructure (DB, cache, broker) mocked instead of using a fake or testcontainers
+
+Rate each finding: Critical (no tests for public API), High (significant gap), Medium (anti-pattern, missing edge case), Low (minor improvement).
+Output a raw list: title, severity, description, location.
+```
+
+**Cross-aggregate its output** after both it and the Claude consensus (Steps B–D) are available:
+
+| Finding source | Action |
+|----------------|--------|
+| In Claude consensus **and** test-coverage agent | Mark as **✓ Corroborated by test-coverage agent** |
+| Claude consensus only | Include as-is |
+| Test-coverage agent only | Include under **"Test-coverage findings"** (separate section) |
+
 ## What Each Agent Should NOT Flag
 
 To keep signal high, instruct each agent to skip:
@@ -122,4 +164,6 @@ To keep signal high, instruct each agent to skip:
 - Each agent must be told the same context (title, description, diff or design doc)
 - Agents must not be shown each other's output before Step B
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
-- Step E (Codex) runs **in parallel** with Steps A–D; redirect its output to a file (`> /tmp/codex-review.txt 2>&1`) and read the file after it completes — never truncate with `head`
+- Step E (Codex) and Step F (test-coverage agent) both run **in parallel** with Steps A–D
+- Redirect Codex output to a file (`> /tmp/codex-review.txt 2>&1`) and read the file after it completes — never truncate with `head`
+- The final report sections are: Consensus findings → Codex-only findings → Test-coverage findings

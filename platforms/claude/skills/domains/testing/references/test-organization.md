@@ -1,5 +1,23 @@
 # Test Organization by Language
 
+## Directory Structure (unit vs integration)
+
+```
+project/
+├── src/
+├── tests/              # Python / Rust integration tests
+│   └── integration/
+├── *_test.go           # Go: unit tests alongside source
+├── *_integration_test.go  # Go: tagged with //go:build integration
+└── test/
+    ├── unit/           # C++: unit test files
+    └── integration/    # C++: separate CMake target
+```
+
+Integration test files must be tagged so they run separately. See `integration-testing.md`.
+
+
+
 Language-specific conventions for structuring and naming test files and suites.
 
 ## C++
