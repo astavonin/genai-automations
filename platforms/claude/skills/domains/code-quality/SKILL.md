@@ -25,7 +25,8 @@ Use comments for:
 - **Classes:** 1-2 line summary of purpose
 - **Methods:** Inline purpose if non-obvious
 - **TODOs:** For future work (with issue reference if possible)
-- **Tests:** Describe the test case scenario
+- **Unit tests:** Describe the test case scenario
+- **Integration tests:** Numbered step list at the top of the test body describing the logical flow (not the code mechanics). Each step is one line, matches execution order, omits what setUp/tearDown covers.
 - **Complex algorithms:** Explain the approach, not the syntax
 
 ### What to Avoid in Comments
@@ -39,6 +40,8 @@ Don't use comments for:
 ## Linter Suppressions
 
 **CRITICAL RULE:** ALWAYS add a comment explaining WHY when suppressing linter warnings.
+
+**Fix instead of suppress when:** the warning points to a genuine design issue; the fix is as easy as the suppression; multiple suppressions of the same rule exist; or the code can be simply rewritten. Suppress only for: hardware/low-level unavoidable casts, external protocol constants, API boundary matching, third-party library limitations, or justified legacy debt (with issue reference).
 
 ### Format
 

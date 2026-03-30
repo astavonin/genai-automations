@@ -71,4 +71,6 @@ Run go vet, golint, and staticcheck for code quality.
 
 ## References
 
-See `references/` directory for Go idioms and patterns.
+- Effective Go: https://go.dev/doc/effective_go
+- Go Code Review Comments: https://github.com/golang/go/wiki/CodeReviewComments
+- Go Style Guide: https://google.github.io/styleguide/go/

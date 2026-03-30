@@ -66,4 +66,5 @@ Run pylint and mypy for code quality and type checking.
 
 ## References
 
-See `references/` directory for detailed guidelines and patterns.
+- PEP 8: https://peps.python.org/pep-0008/
+- Google Python Style Guide: https://google.github.io/styleguide/pyguide.html

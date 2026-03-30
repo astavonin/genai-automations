@@ -71,4 +71,5 @@ Run clippy for lints and best practices.
 
 ## References
 
-See `references/` directory for Rust patterns and idioms.
+- Rust API Guidelines: https://rust-lang.github.io/api-guidelines/
+- The Rust Book: https://doc.rust-lang.org/book/

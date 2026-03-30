@@ -34,15 +34,50 @@ Software architecture patterns, design principles, and documentation practices.
 - Depend on abstractions, not concretions
 - Use dependency injection where appropriate
 
+## Code in Design Documents
+
+**Only tiny illustration snippets or pseudocode are allowed in design docs.**
+
+- Pseudocode must show intent, not syntax — language keywords and real APIs are not required
+- Real code snippets: max ~5 lines, only to illustrate a non-obvious interface or contract
+- No full function bodies, no complete class definitions, no working implementations
+- If you feel you need more than 5 lines of real code to explain a design decision, use a diagram instead
+
+```
+// ALLOWED — pseudocode illustrating flow
+connect(addr) → retry loop → backoff → emit Connected event
+
+// ALLOWED — tiny interface sketch
+type Handler interface { Handle(ctx, msg) error }
+
+// NOT ALLOWED — full implementation in a design doc
+func (h *handler) Handle(ctx context.Context, msg Message) error {
+    if err := h.validate(msg); err != nil { ... }
+    ...
+}
+```
+
 ## Architecture Documentation
 
-Use Mermaid for all architecture diagrams. Prefer: Architecture, Sequence, State, and Class diagrams. See `references/diagrams.md` for full examples.
+Use Mermaid for all architecture diagrams. Always use `<br/>` for line breaks inside node labels — never `\n`.
 
-**Diagram types:**
-- **Component** — system structure and service relationships
-- **Sequence** — interaction flows and timing
-- **State** — state machines and transitions
-- **C4-style** — system context with external actors
+**Which diagram to use:**
+
+| Situation | Diagram type |
+|-----------|-------------|
+| System structure, service relationships | Component (`graph TD/TB`) |
+| Interaction flows, timing, call sequences | Sequence (`sequenceDiagram`) |
+| State machines, lifecycle transitions | State (`stateDiagram-v2`) |
+| System context with external actors | C4-style (`graph TB` with subgraph) |
+
+**Rules:**
+- Every design doc must include at least one diagram
+- Split large systems into multiple focused diagrams — one diagram per concern
+- Use consistent naming across all diagrams in the same document
+- Add notes for non-obvious relationships
+- Prefer the diagram types above; use flowcharts only as a last resort
+
+See `references/diagrams.md` for copy-paste examples of each type.
 
 ## Common Patterns
 

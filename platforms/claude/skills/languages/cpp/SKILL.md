@@ -60,4 +60,4 @@ Run clang-tidy for code quality checks.
 
 ## References
 
-See `references/` directory for detailed guidelines and patterns.
+- C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
