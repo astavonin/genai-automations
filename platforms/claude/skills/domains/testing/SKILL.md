@@ -44,6 +44,12 @@ Name tests after **behavior and expected outcome**, not the function name:
 - Tests can run in any order
 - Use setup/teardown for common initialization
 
+### Speed and Isolation (hard requirements)
+- Each unit test must complete in **≤ 3 seconds**
+- No network calls, no disk I/O, no external processes, no real databases
+- No `sleep` or time-based waits
+- If a test needs any of the above, it is an integration test — move it and tag it accordingly
+
 ### Edge Cases
 Always test: empty input, null/None values, max/min values, invalid input, error conditions.
 

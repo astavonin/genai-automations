@@ -29,10 +29,11 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Self-documenting approach
 
 #### Testability
-- [ ] Unit test strategy defined
+- [ ] Test Plan section present in the design doc
+- [ ] Unit test table covers every public component/behavior or has explicit exclusion with reason
+- [ ] Integration test table covers every boundary touching external systems
+- [ ] "Explicitly not tested" list is present (even if empty — signals completeness was considered)
 - [ ] Components can be tested in isolation
-- [ ] Integration test scenarios identified and written (not just planned)
-- [ ] Integration tests tagged to run separately from unit tests
 - [ ] Edge cases considered
 
 **Testability analysis — answer all three:**
@@ -108,6 +109,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 
 #### Testability
 - [ ] Unit tests exist and pass
+- [ ] Unit tests complete in ≤ 3 seconds each — no network, disk I/O, external processes, or real databases
 - [ ] Test coverage is adequate (critical paths covered)
 - [ ] Tests are clear and maintainable
 - [ ] Edge cases tested

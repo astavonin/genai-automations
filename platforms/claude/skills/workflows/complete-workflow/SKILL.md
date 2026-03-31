@@ -74,9 +74,16 @@ Investigate existing codebase patterns, architecture, integration points.
 **Command:** `/design`
 **Agent:** Main conversation
 
-Create detailed design proposal with architecture, approach, trade-offs.
+Create detailed design proposal with architecture, approach, trade-offs, and test plan.
 
 **Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
+
+**Required sections** (design doc is incomplete without all of these):
+- Architecture / approach with at least one Mermaid diagram
+- Files to be created/modified
+- Trade-offs and alternatives
+- **Test Plan** — unit test table (component → scenarios) + integration test table (boundary → what it verifies) + explicit exclusions
+
 After writing, ask the user if they want to `open <path>` the design file.
 
 ### Phase 3: Design Review (CHECKPOINT)

@@ -102,6 +102,32 @@ See `references/diagrams.md` for copy-paste examples of each type.
 | Flexibility vs. Simplicity | YAGNI — don't add features for hypothetical future needs |
 | Abstraction vs. Concreteness | Three instances before abstracting |
 
+## Required Design Doc Sections
+
+Every design doc must include a **Test Plan** section before it can be reviewed. Template:
+
+```markdown
+## Test Plan
+
+### Unit Tests
+| Component / behavior | Scenarios |
+|----------------------|-----------|
+| Foo.bar              | valid input, nil arg, error return |
+
+### Integration Tests
+| Boundary             | What it verifies |
+|----------------------|-----------------|
+| FooService ↔ DB      | persists record, unique constraint enforced |
+
+### Explicitly not tested
+- <what and why>
+```
+
+Rules:
+- Every public function/method must appear in Unit Tests or have an explicit exclusion with reason
+- Every component boundary touching external systems must appear in Integration Tests
+- "Explicitly not tested" must be non-empty only when there is a genuine reason (third-party owned, out of scope); leaving it empty signals completeness
+
 ## Architecture Reviews
 
 - Does it solve the stated problem?
