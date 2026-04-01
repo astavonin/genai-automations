@@ -142,7 +142,7 @@ Before saving, parse and verify:
 2. Required top-level fields present: `mr_number`, `title`, `review_date`, `findings`
 3. `mr_number` is an integer (not a string)
 4. Each finding has required fields: `severity`, `title`, `description`
-5. Each finding has at least one location (`location` or `locations`)
+5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
 6. Severity values are exactly one of: `Critical`, `High`, `Medium`, `Low` (case-sensitive)
 
 If validation fails:
@@ -174,6 +174,8 @@ To post inline comments to the MR:
 
 The command never posts automatically. Posting requires explicit user action.
 
+**Re-posting warning:** Running `comment` more than once on the same YAML will create duplicate comments on the MR. If a previous posting attempt failed or was partial, resolve the underlying issue (e.g. fix `:1` line numbers in the YAML) before re-running — do not retry blindly.
+
 ---
 
 ## YAML Schema
@@ -186,8 +188,8 @@ review_date: "2026-02-11"               # YYYY-MM-DD, REQUIRED
 findings:
   - severity: Critical                  # REQUIRED: Critical | High | Medium | Low
     title: "Brief problem statement"    # REQUIRED: concise, specific
-    description: |                      # REQUIRED: WHY this is an issue
-      Technical explanation of the problem, its impact, and why it matters.
+    description: |                      # REQUIRED: what breaks and why it matters — 1-3 sentences max
+      Short, plain statement of the problem and its impact.
     location: "path/to/file.cc:123"     # Single file:line (use this OR locations)
     locations:                          # Multiple files (use this OR location)
       - "path/to/file.cc:181"
@@ -197,11 +199,18 @@ findings:
     guideline: "C++ Core Guidelines F.53"  # OPTIONAL: null if none
 ```
 
+**Description writing rules:**
+- 1–3 sentences maximum — state what breaks and what the impact is
+- Plain language: write for a developer skimming a review, not a formal report
+- Never passive-aggressive: no "you should have", "obviously", "this ignores", "dangerously", "poorly"
+- Focus on the problem, not the author — describe what the code does, not what the person did
+- Bad: "This function dangerously ignores the error return value." Good: "If the error return is ignored here, the caller proceeds with an invalid state."
+
 **Schema rules:**
 - `location` (singular) and `locations` (plural list) are mutually exclusive
 - Every finding must have at least one location; findings without locations are skipped
 - Line ranges (`123-145`) are supported; only start line is used for inline posting
-- Locations without `:line` are normalized to `:1`
+- **Always use a specific line number from the diff.** If no exact line is known, omit `location`/`locations` entirely — the tool will fall back to a general MR note. Never use `:1` as a placeholder; GitLab returns HTTP 500 for inline comments on lines not present in the diff.
 - Use `null` for optional fields with no value (not empty string)
 - Use `|` for multi-line strings (description, fix)
 - Order findings by severity: Critical → High → Medium → Low
@@ -227,44 +236,34 @@ findings:
   - severity: Critical
     title: "SQL injection via unsanitized user input"
     description: |
-      The `build_query()` function at line 45 concatenates the user-provided
-      `filter` parameter directly into the SQL string without sanitization.
-      An attacker can inject arbitrary SQL and read or modify any table.
+      `build_query()` concatenates `filter` directly into the SQL string.
+      Any caller-controlled value can read or modify arbitrary tables.
     location: "src/db/query_builder.cc:45"
-    fix: |
-      Use parameterized queries: `db.execute("SELECT ... WHERE name = ?", [filter])`
+    fix: "Use parameterized queries: `db.execute(\"SELECT ... WHERE name = ?\", [filter])`"
     guideline: "OWASP A03:2021 Injection"
 
   - severity: High
     title: "Race condition in cache invalidation"
     description: |
-      The invalidation check in `CacheManager::invalidate()` reads and writes
-      the `valid_` flag without synchronization. Concurrent calls can result
-      in a partially-invalidated cache being treated as valid.
+      `valid_` is read and written in `invalidate()` without synchronization.
+      Concurrent calls can leave the cache in a partially-invalidated state.
     location: "src/cache/cache_manager.cc:87"
-    fix: |
-      Protect the check-then-act sequence with a mutex or use std::atomic
-      with a compare-exchange operation.
+    fix: "Protect the check-then-act with a mutex, or use std::atomic with compare-exchange."
     guideline: "C++ Core Guidelines CP.2"
 
   - severity: Medium
-    title: "Missing unit test for invalidation edge case"
+    title: "Missing unit test for invalidation during in-flight read"
     description: |
-      The case where invalidation is called while an in-flight read is pending
-      has no test coverage. This path is exercised in the integration scenario
-      but not in isolation.
+      No test covers invalidation called while a read is pending.
+      The scenario exists in the integration test but not in isolation.
     location: "tests/cache/test_cache_manager.cc:1"
-    fix: |
-      Add a test that triggers invalidation concurrently with a pending read,
-      verifying the read either completes with old data or is retried.
+    fix: "Add a unit test that calls invalidate() concurrently with a pending read."
     guideline: null
 
   - severity: Low
-    title: "Unused parameter in constructor"
-    description: |
-      The `timeout_ms` parameter in `CacheManager::CacheManager()` is stored
-      but never used in any method. Either remove it or implement the timeout.
+    title: "Unused constructor parameter"
+    description: "`timeout_ms` is stored but never read. Remove it or wire it up."
     location: "src/cache/cache_manager.cc:12"
-    fix: "Remove unused parameter or implement timeout behavior."
+    fix: "Remove the parameter or implement timeout behavior."
     guideline: null
 ```

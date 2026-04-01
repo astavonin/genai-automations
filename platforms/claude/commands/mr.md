@@ -150,7 +150,7 @@ ci-platform-manager create-mr \
 ci-platform-manager create-mr --fill --draft
 ```
 
-Return the MR URL to the user.
+Return the MR URL to the user and ask if they want to `open <url>` in the browser.
 
 ## MR Description Template
 
