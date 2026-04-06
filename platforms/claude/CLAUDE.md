@@ -94,6 +94,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/write` - Research a topic and produce a structured Markdown draft (writer agent)
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
 - `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent
+- `/tasks-sync` - Sync local planning task state with remote ticket system (push completions, discover epic children)
 
 ## Quick Reference
 
