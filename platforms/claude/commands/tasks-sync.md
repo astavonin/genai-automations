@@ -23,22 +23,46 @@ Add to the top of `status.md` to bind the file to remote entities:
 ```markdown
 ---
 sync:
-  epic: 21        # corresponds to &21
   milestone: 10   # corresponds to %10
+  epic: 21        # single epic — corresponds to &21
+  epics:          # multiple epics (use instead of epic: when there are more than one)
+    - 21
+    - 23
+    - 24
 ---
 ```
 
+Use `epic:` for a single epic, `epics:` for a list. Both are supported. If both appear, `epics:` takes precedence.
+
 ### Individual task lines
 
-Append the remote issue reference at the end of a task line:
+Task lines are any `- ` bullet that contains a remote reference anywhere in the line.
 
+**Preferred format** (reference at end):
 ```markdown
 - [x] Implement sync hook #145
 - [ ] Write tests for sync #146
 - [ ] Untracked task (no remote reference)
 ```
 
-Valid reference prefixes on a task line:
+**Also recognized** (existing files may use emoji status or reference at start):
+```markdown
+- ✅ #183 [Design] Analyze manager.py
+- ⏳ #239 Watchdog instrumentation
+- ⬜ #153: [Design] Analyze existing logging
+- 🔶 #121: [Impl] Configuration parsing for SRT
+- [ ] Start #140: VisionIpcClient handling
+```
+
+**Completion state mapping:**
+| Marker | State |
+|--------|-------|
+| `[x]` or `✅` | done |
+| `[ ]`, `⬜`, `⏳`, `🔶` | todo |
+
+**Reference extraction:** first occurrence of `#N`, `&N`, `%N`, or `!N` anywhere in the line (N = one or more digits).
+
+Valid reference prefixes:
 - `#N` — issue
 - `&N` — epic
 - `%N` — milestone

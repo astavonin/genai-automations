@@ -279,7 +279,9 @@ Ask exactly once per file, immediately after writing. Do not open automatically 
 For ALL managerial tasks related to GitLab/GitHub, use `ci_platform_manager`:
 - Creating/updating issues, epics, milestones
 - Creating merge requests (MRs) or pull requests (PRs)
-- Loading ticket information
+- Loading ticket information (issues `#N`, epics `&N`, milestones `%N`, MRs `!N`)
+- Searching issues, epics, and milestones by text/state
+- Managing milestones: activate/close state, set due-date, assign issues to milestones
 - Synchronizing planning folders with Google Drive
 - Multi-platform workflow automation
 
