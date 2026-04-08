@@ -5,7 +5,7 @@ description: Sync local planning task state with remote ticket system (GitLab, G
 
 # Tasks Sync Command
 
-Sync local planning task state with the remote ticket system using `ci-platform-manager`.
+Sync local planning task state with the remote ticket system using `projctl`.
 
 **Primary direction:** Local → Remote (push completions to close remote tickets).
 **Discovery:** For each referenced epic, pull all its child issues from the remote and add any that are missing from local planning.
@@ -90,13 +90,13 @@ For each unique remote reference found:
 
 ```bash
 # Epic — also loads all child issues (discovery)
-ci-platform-manager load epic &N
+projctl load epic &N
 
 # Milestone
-ci-platform-manager load milestone %N
+projctl load milestone %N
 
 # Individual issue (if referenced inline but not part of an epic already loaded)
-ci-platform-manager load issue #N
+projctl load issue #N
 ```
 
 Collect from each epic: the full list of its child issues (title + number + state).
@@ -111,7 +111,7 @@ For each epic loaded, compare its child issue list against the task lines in the
 
 Build three lists:
 
-**A. Local → Remote (close):** Tasks marked `[x]` with a remote reference where the remote issue is still open → will call `ci-platform-manager update issue #N --state close`
+**A. Local → Remote (close):** Tasks marked `[x]` with a remote reference where the remote issue is still open → will call `projctl update issue #N --state close`
 
 **B. Remote → Local (mark done):** Remote issues that are closed but appear as `[ ]` locally → will mark the local task line as `[x]`
 
@@ -153,7 +153,7 @@ Ask the user: **"Apply this sync plan? (yes / no / edit)"**
 
 Close remote tickets:
 ```bash
-ci-platform-manager update issue #N --state close
+projctl update issue #N --state close
 ```
 
 Mark local tasks done: edit the `status.md` file, replacing `- [ ] <text> #N` with `- [x] <text> #N`.

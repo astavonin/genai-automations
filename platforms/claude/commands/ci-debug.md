@@ -23,17 +23,17 @@ This command:
 # Get current branch
 git branch --show-current
 
-# Find associated MR or pipeline (via ci-platform-manager)
-ci-platform-manager load-pipeline --branch <branch-name>
+# Find associated MR or pipeline (via projctl)
+projctl load-pipeline --branch <branch-name>
 ```
 
 ### Phase 2: Log Collection
 ```bash
 # Get failed jobs
-ci-platform-manager pipeline-jobs --failed
+projctl pipeline-jobs --failed
 
 # Fetch logs for each failed job
-ci-platform-manager job-logs <job-id>
+projctl job-logs <job-id>
 ```
 
 ### Phase 3: Analysis
@@ -116,7 +116,7 @@ Please provide a structured analysis with clear next steps.
 
 ## Implementation Steps
 
-### 1. Extend ci-platform-manager
+### 1. Extend projctl
 
 Add new command: `pipeline-debug`
 
@@ -125,7 +125,7 @@ Add new command: `pipeline-debug`
 - `GET /projects/:id/pipelines/:pipeline_id/jobs`
 - `GET /projects/:id/jobs/:job_id/trace`
 
-**New handler:** `ci_platform_manager/handlers/pipeline_handler.py`
+**New handler:** `projctl/handlers/pipeline_handler.py`
 
 ### 2. Command Execution
 
@@ -200,7 +200,7 @@ Branch: feature/add-spanish-sync
 
 Suggestions:
 - Push the branch: git push -u origin feature/add-spanish-sync
-- Create MR: ci-platform-manager create-mr
+- Create MR: projctl create-mr
 ```
 
 ## Error Handling
@@ -221,7 +221,7 @@ Suggestions:
 
 ## Dependencies
 
-- `ci-platform-manager` with pipeline support
+- `projctl` with pipeline support
 - GitLab or GitHub API access
 - `git` command available
 - Agent framework (Task tool)

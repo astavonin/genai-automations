@@ -17,7 +17,7 @@ The user provides a topic or request, e.g.:
 ```
 /write how the Yocto CI cache strategy works
 /write the Anki sync pull handler design
-/write overview of ci-platform-manager architecture
+/write overview of projctl architecture
 ```
 
 Optional context the user may provide:

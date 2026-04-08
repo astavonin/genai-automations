@@ -109,7 +109,7 @@ planning/
 **ALL project-related files go under `planning/`, never `/tmp` or other system directories.**
 
 This includes:
-- YAML input files for `ci-platform-manager` (tickets, epics) → `planning/<goal>/milestone-XX/`
+- YAML input files for `projctl` (tickets, epics) → `planning/<goal>/milestone-XX/`
 - MR drafts → `planning/mr-draft.yaml`
 - Review artifacts, drafts, notes → `planning/<goal>/milestone-XX/design/`
 

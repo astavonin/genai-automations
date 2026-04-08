@@ -1,6 +1,6 @@
 ---
 name: load
-description: Load ticket information via ci-platform-manager
+description: Load ticket information via projctl
 ---
 
 # Load Ticket Command
@@ -9,60 +9,60 @@ Load issue, epic, or milestone information from ticket management systems.
 
 ## Supported Systems
 
-### Multi-Platform Support (via ci-platform-manager)
+### Multi-Platform Support (via projctl)
 
 Load issues, epics, milestones, and merge requests with full details and dependencies.
 
-**Tool:** `ci-platform-manager` (supports GitLab and GitHub)
+**Tool:** `projctl` (supports GitLab and GitHub)
 
 ## Usage Patterns
 
 ### Load Issue
 ```bash
 # By issue number
-ci-platform-manager load 113
+projctl load 113
 
 # By URL
-ci-platform-manager load https://gitlab.com/group/project/-/issues/113
+projctl load https://gitlab.com/group/project/-/issues/113
 
 # With # prefix
-ci-platform-manager load #113
+projctl load #113
 ```
 
 ### Load Epic
 ```bash
 # By epic number with & prefix
-ci-platform-manager load &21
+projctl load &21
 
 # By number with --type flag
-ci-platform-manager load 21 --type epic
+projctl load 21 --type epic
 
 # By URL
-ci-platform-manager load https://gitlab.com/groups/group/-/epics/21
+projctl load https://gitlab.com/groups/group/-/epics/21
 ```
 
 ### Load Milestone
 ```bash
 # By milestone number with % prefix
-ci-platform-manager load %123
+projctl load %123
 
 # By number with --type flag
-ci-platform-manager load 123 --type milestone
+projctl load 123 --type milestone
 
 # By URL
-ci-platform-manager load https://gitlab.com/group/project/-/milestones/123
+projctl load https://gitlab.com/group/project/-/milestones/123
 ```
 
 ### Load Merge Request
 ```bash
 # By MR number with ! prefix
-ci-platform-manager load !134
+projctl load !134
 
 # By number with --type flag
-ci-platform-manager load 134 --type mr
+projctl load 134 --type mr
 
 # By URL
-ci-platform-manager load https://gitlab.com/group/project/-/merge_requests/134
+projctl load https://gitlab.com/group/project/-/merge_requests/134
 ```
 
 ## Actions
@@ -72,7 +72,7 @@ ci-platform-manager load https://gitlab.com/group/project/-/merge_requests/134
    - Extract ticket number
 
 2. **Load ticket data:**
-   - Use ci-platform-manager (supports GitLab and GitHub)
+   - Use projctl (supports GitLab and GitHub)
    - Fetch full ticket information including:
      - Title and description
      - Status and labels
@@ -142,7 +142,7 @@ ci-platform-manager load https://gitlab.com/group/project/-/merge_requests/134
 
 ## Configuration
 
-The ci-platform-manager tool uses `config.yaml` or `glab_config.yaml` (legacy):
+The projctl tool uses `config.yaml` or `glab_config.yaml` (legacy):
 
 ```yaml
 # Platform selection
@@ -163,7 +163,7 @@ github:
 1. `--config` flag (explicit path)
 2. `./glab_config.yaml` (project-local, legacy)
 3. `./config.yaml` (project-local, new)
-4. `~/.config/ci_platform_manager/config.yaml` (user-wide)
+4. `~/.config/projctl/config.yaml` (user-wide)
 5. `~/.config/glab_config.yaml` (legacy)
 
 ## Error Handling
@@ -175,8 +175,8 @@ github:
 ## Platform Support
 
 **Supported Platforms:**
-- **GitLab:** Full support via ci-platform-manager
-- **GitHub:** Full support via ci-platform-manager (future)
+- **GitLab:** Full support via projctl
+- **GitHub:** Full support via projctl (future)
 
 **Alternative Tools:**
 - **GitHub:** Use `gh issue view <number>` or `gh pr view <number>` (native CLI)

@@ -87,9 +87,9 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ### Utility Commands
 
-- `/mr` - Create merge request for current branch via ci-platform-manager
-- `/load` - Load ticket information (issue/epic/milestone) via ci-platform-manager
-- `/review-mr` - Review an MR and generate YAML findings for `ci-platform-manager comment`
+- `/mr` - Create merge request for current branch via projctl
+- `/load` - Load ticket information (issue/epic/milestone) via projctl
+- `/review-mr` - Review an MR and generate YAML findings for `projctl comment`
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
 - `/write` - Research a topic and produce a structured Markdown draft (writer agent)
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
@@ -126,7 +126,7 @@ For ANY implementation task, automatically follow these phases:
 **Step 1: Sync Planning State (Multi-Machine Support)**
 ```bash
 # Pull latest planning state from Google Drive backup
-ci-platform-manager sync pull
+projctl sync pull
 
 # Verify sync successful
 echo "✓ Planning state synchronized from backup"
@@ -206,7 +206,7 @@ ls planning/<goal>/milestone-XX/design/
 **Step 2: Backup Planning State (Multi-Machine Support)**
 ```bash
 # Push updated planning to Google Drive backup
-ci-platform-manager sync push
+projctl sync push
 
 # Verify sync successful
 echo "✓ Planning backup complete - available on all machines"
@@ -268,15 +268,15 @@ After writing certain files, always ask the user if they want to open the file w
 | Design review reports (`planning/**/reviews/*-design-review.md`) | After Phase 3 review is written |
 | Code review reports (`planning/**/reviews/*-code-review.md`) | After Phase 5 review is written |
 | MR review YAML (`planning/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
-| Issue/Epic YAML files (any YAML created for `ci-platform-manager create`) | After the YAML is written |
+| Issue/Epic YAML files (any YAML created for `projctl create`) | After the YAML is written |
 
 Ask exactly once per file, immediately after writing. Do not open automatically — always ask first.
 
 # CI Platform Management
 
-**Tool:** `ci_platform_manager` (Python package)
+**Tool:** `projctl` (Python package)
 
-For ALL managerial tasks related to GitLab/GitHub, use `ci_platform_manager`:
+For ALL managerial tasks related to GitLab/GitHub, use `projctl`:
 - Creating/updating issues, epics, milestones
 - Creating merge requests (MRs) or pull requests (PRs)
 - Loading ticket information (issues `#N`, epics `&N`, milestones `%N`, MRs `!N`)
@@ -286,10 +286,10 @@ For ALL managerial tasks related to GitLab/GitHub, use `ci_platform_manager`:
 - Multi-platform workflow automation
 
 **Usage Instructions:**
-- Run `ci-platform-manager --help` to see usage examples and find the full path to CLAUDE.md documentation
+- Run `projctl --help` to see usage examples and find the full path to CLAUDE.md documentation
 - The `--help` output includes a "Documentation:" section with the absolute path to comprehensive usage instructions
-- Invoke via `/mr` and `/load` commands, which internally use ci-platform-manager
+- Invoke via `/mr` and `/load` commands, which internally use projctl
 
-**Critical rule:** If a required operation is not supported by ci-platform-manager, extend it first (source at `~/projects/ci-platform-manager`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass ci-platform-manager.
+**Critical rule:** If a required operation is not supported by projctl, extend it first (source at `~/projects/projctl`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass projctl.
 
 **Note:** `glab-management` is deprecated and should NOT be used.

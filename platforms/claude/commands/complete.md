@@ -52,7 +52,7 @@ Before running this command:
 
 6. **Sync planning state to backup:**
    ```bash
-   ci-platform-manager sync push
+   projctl sync push
    ```
    Pushes updated planning files to Google Drive backup, making them available on all machines.
 

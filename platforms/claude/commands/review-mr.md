@@ -1,12 +1,12 @@
 ---
 name: review-mr
-description: Review MR code and generate YAML for ci-platform-manager comment
+description: Review MR code and generate YAML for projctl comment
 ---
 
 # MR Review Command
 
 Conduct a code review of a GitLab Merge Request using the reviewer agent and generate
-a structured YAML findings file for posting inline comments via `ci-platform-manager comment`.
+a structured YAML findings file for posting inline comments via `projctl comment`.
 
 ## Agent
 
@@ -24,7 +24,7 @@ Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-pro
 ## Prerequisites
 
 - MR exists in GitLab and the branch is pushed
-- `ci-platform-manager` installed and configured
+- `projctl` installed and configured
 - Platform CLI authenticated (`glab` for GitLab)
 
 ## Workflow
@@ -44,7 +44,7 @@ the MR number explicitly.
 ### Step 2: Load MR Context
 
 ```bash
-ci-platform-manager load !<mr_number>
+projctl load !<mr_number>
 ```
 
 Extract: MR title, source branch, target branch, description, list of changed files.
@@ -166,10 +166,10 @@ Then display:
 Review written to: planning/reviews/MR<number>-review.yaml
 
 To preview (dry-run):
-  ci-platform-manager comment planning/reviews/MR<number>-review.yaml --dry-run
+  projctl comment planning/reviews/MR<number>-review.yaml --dry-run
 
 To post inline comments to the MR:
-  ci-platform-manager comment planning/reviews/MR<number>-review.yaml
+  projctl comment planning/reviews/MR<number>-review.yaml
 ```
 
 The command never posts automatically. Posting requires explicit user action.

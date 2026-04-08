@@ -1,17 +1,17 @@
 ---
 name: mr
-description: Create merge request for current branch via ci-platform-manager
+description: Create merge request for current branch via projctl
 ---
 
 # Merge Request Command
 
-Create a merge request from the current branch using ci-platform-manager (supports GitLab and GitHub).
+Create a merge request from the current branch using projctl (supports GitLab and GitHub).
 
 ## Prerequisites
 
 - Current branch has commits
 - Branch is pushed to remote (or will be pushed)
-- `ci-platform-manager` installed and configured
+- `projctl` installed and configured
 - Platform CLI authenticated (`glab` for GitLab, `gh` for GitHub)
 
 ## Workflow
@@ -29,7 +29,7 @@ git diff origin/master...HEAD --stat   # Review changed files
 If the branch is linked to an issue (look for `Ref #NNN` in commit messages or the branch name):
 
 ```bash
-ci-platform-manager load <issue_number>
+projctl load <issue_number>
 ```
 
 Read the issue's **Scope** and **Acceptance Criteria** sections. For each item, check the changed files to determine whether it is implemented.
@@ -113,7 +113,7 @@ cat planning/mr-draft.yaml
 
 Ask the user if they want to `open planning/mr-draft.yaml`, then wait for confirmation before proceeding.
 
-### 5. Create MR via ci-platform-manager
+### 5. Create MR via projctl
 
 After user confirms YAML, create the MR:
 
@@ -121,8 +121,8 @@ After user confirms YAML, create the MR:
 # Push branch if needed
 git push -u origin $(git branch --show-current)
 
-# Create MR using ci-platform-manager
-ci-platform-manager create-mr \
+# Create MR using projctl
+projctl create-mr \
   --title "$(yq '.title' planning/mr-draft.yaml)" \
   --description "$(yq '.description' planning/mr-draft.yaml)" \
   $(yq -r '.draft // false | if . then "--draft" else "" end' planning/mr-draft.yaml) \
@@ -135,7 +135,7 @@ ci-platform-manager create-mr \
 **Alternative (if yq not available):**
 Parse YAML manually and build command:
 ```bash
-ci-platform-manager create-mr \
+projctl create-mr \
   --title "MR title from YAML" \
   --description "MR description from YAML" \
   --draft \
@@ -147,7 +147,7 @@ ci-platform-manager create-mr \
 
 **Quick option (use git history to auto-generate):**
 ```bash
-ci-platform-manager create-mr --fill --draft
+projctl create-mr --fill --draft
 ```
 
 Return the MR URL to the user and ask if they want to `open <url>` in the browser.

@@ -47,7 +47,7 @@ Use these commands to execute workflow phases:
 
 **Step 1: Sync Planning State (Multi-Machine Support)**
 ```bash
-ci-platform-manager sync pull
+projctl sync pull
 ```
 Pulls latest planning state from Google Drive backup to ensure you have the most recent work from all machines.
 
@@ -160,7 +160,7 @@ Run all checks in this order:
 
 **Step 2: Backup Planning State (Multi-Machine Support)**
 ```bash
-ci-platform-manager sync push
+projctl sync push
 ```
 Pushes updated planning to Google Drive backup, making it available on all machines.
 

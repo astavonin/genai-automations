@@ -12,7 +12,7 @@ Load context from planning files to understand current work status.
 ### 0. Sync planning state from backup
 
 ```bash
-ci-platform-manager sync pull
+projctl sync pull
 ```
 
 Pulls the latest planning state from Google Drive to ensure you have the most recent work from all machines. Do not proceed until sync completes.
