@@ -12,7 +12,7 @@ Create a merge request from the current branch using projctl (supports GitLab an
 - Current branch has commits
 - Branch is pushed to remote (or will be pushed)
 - `projctl` installed and configured
-- Platform CLI authenticated (`glab` for GitLab, `gh` for GitHub)
+- `projctl` configured and platform authenticated (run: `projctl --help` to verify)
 
 ## Workflow
 

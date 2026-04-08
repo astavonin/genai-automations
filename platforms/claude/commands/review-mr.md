@@ -25,7 +25,7 @@ Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-pro
 
 - MR exists in GitLab and the branch is pushed
 - `projctl` installed and configured
-- Platform CLI authenticated (`glab` for GitLab)
+- `projctl` configured and platform authenticated (run: `projctl --help` to verify)
 
 ## Workflow
 
