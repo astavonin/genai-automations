@@ -89,6 +89,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 - `/mr` - Create merge request for current branch via projctl
 - `/load` - Load ticket information (issue/epic/milestone) via projctl
+- `/ticket` - Create milestones, epics, and/or issues as YAML for `projctl create`
 - `/review-mr` - Review an MR and generate YAML findings for `projctl comment`
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
 - `/write` - Research a topic and produce a structured Markdown draft (writer agent)

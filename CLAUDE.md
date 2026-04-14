@@ -10,6 +10,7 @@ Backup of AI platform configurations:
   - `CLAUDE.md` - Workflow rules and process guidelines
   - `PLANNING-TEMPLATE.md` - Project planning template
   - `agents/*.md` - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
+  - `commands/*.md` - Slash command definitions (mr, load, ticket, review-mr, etc.)
 - **`codex/`** - Codex configurations and skills
 
 ### `sync-configs.sh`
@@ -30,8 +31,8 @@ Project planning documents for ongoing and completed work.
 
 | Tool | Location |
 |------|----------|
-| `ci-platform-manager` | `~/projects/ci-platform-manager` |
+| `projctl` | `~/projects/projctl` |
 | `anki-sync` | `~/projects/anki-sync` |
 
-The `ci_platform_manager` package is installed from `~/projects/ci-platform-manager`.
-Use `ci-platform-manager --help` to see usage and find its CLAUDE.md.
+`projctl` is installed from `~/projects/projctl`.
+Use `projctl --help` to see usage and find its CLAUDE.md.
