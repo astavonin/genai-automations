@@ -52,19 +52,33 @@ Do NOT continue with context loading until the user resolves this.
    cat planning/progress.md
    ```
 
-2. Check active milestone status:
+### 2. Verify active issue states
+
+Extract every `#N` reference from the **Active** section of `progress.md` and fetch current state for each:
+
+```bash
+projctl load issue #N
+```
+
+For each issue:
+- If state is **closed** or status is **Done** — it is stale
+- If state is **open** — include normally
+
+If any stale issues are found, propose the exact edits to `progress.md` (move them from Active to a completed/done section, update their status line) and wait for explicit user confirmation before writing.
+
+### 3. Check active milestone status:
    ```bash
    cat planning/<goal>/milestone-XX-<name>/status.md
    ```
 
-3. List design documents if they exist:
+### 4. List design documents if they exist:
    ```bash
    ls planning/<goal>/milestone-XX-<name>/design/
    ```
 
-4. Display summary:
+### 5. Display summary:
    - Current active milestone/epic
-   - Tasks in progress
+   - Tasks in progress (with verified states)
    - Blockers
    - Next steps
 

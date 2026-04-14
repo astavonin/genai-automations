@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rsync:*)",
+      "Bash(./sync-configs.sh:*)",
+      "Bash(./setup-dev.sh:*)",
+      "Bash(test:*)",
+      "Bash(stat:*)",
+      "Bash(source:*)",
+      "Bash(pytest:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(pylint:*)",
+      "Bash(python -m pylint:*)",
+      "Bash(flake8:*)",
+      "Bash(mypy:*)",
+      "Bash(black:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m black:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pip show:*)",
+      "Bash(pgrep:*)",
+      "Bash(anki-sync setup:*)",
+      "Bash(LOGLEVEL=DEBUG .venv/bin/anki-sync:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.gitlab.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:git.sr.ht)",
+      "Skill(update-config)"
+    ]
+  }
+}
