@@ -7,6 +7,18 @@
     "gopls-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
+  "hooks": {
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostCompact\",\"additionalContext\":\"Compaction just completed. Immediately invoke /refresh to reload behavioral configuration files (CLAUDE.md and all referenced skill files) before responding to the user.\"}}'"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(.venv/bin/*)",
@@ -78,6 +90,8 @@
       "Bash(shellcheck:*)",
       "Bash(yamllint:*)",
       "Bash(pipx:*)",
+      "Bash(~/.local/bin/projctl:*)",
+      "Bash(projctl:*)",
       "Bash(~/.claude/scripts/codex-pipe:*)",
       "Bash(adb:*)",
       "Bash(fastboot:*)",

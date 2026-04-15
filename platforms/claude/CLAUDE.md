@@ -112,6 +112,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ## Critical Rules
 
+- **After every compaction (auto or manual), run `/refresh` as the first action before responding to the user**
 - **Always propose commit message and wait for explicit approval before committing**
 - **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
 - **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation

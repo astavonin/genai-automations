@@ -14,7 +14,7 @@ This applies to: architecture-research-planner, coder, devops-engineer, reviewer
 - Design review (`/review-design`) MUST happen before any implementation
 - Code review (`/review-code`) MUST happen after every implementation
 - NEVER create git commits — user handles all commits
-- NEVER update `progress.md` without explicit user confirmation
+- NEVER **write** to `progress.md` without explicit user confirmation — but **always propose** the exact edits and wait for approval (proposing is required, not optional)
 
 ---
 
