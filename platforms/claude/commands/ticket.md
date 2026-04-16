@@ -28,8 +28,8 @@ Do NOT guess — ask before generating YAML.
 If the user references an existing epic or milestone, load it first:
 
 ```bash
-projctl load &<epic_id>      # verify epic exists and get its title/description
-projctl load %<milestone_id> # verify milestone exists
+projctl load epic <epic_id>         # verify epic exists and get its title/description
+projctl load milestone <milestone_id>  # verify milestone exists
 ```
 
 ### 3. Generate YAML

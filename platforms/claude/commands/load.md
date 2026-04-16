@@ -19,56 +19,36 @@ Load issues, epics, milestones, and merge requests with full details and depende
 
 ### Load Issue
 ```bash
-# By issue number
-projctl load 113
-
-# By URL
-projctl load https://gitlab.com/group/project/-/issues/113
-
-# With # prefix
-projctl load #113
+projctl load issue 113
+projctl load issue "#113"   # prefixed form also accepted
+projctl load issue https://gitlab.com/group/project/-/issues/113
 ```
 
 ### Load Epic
 ```bash
-# By epic number with & prefix
-projctl load &21
-
-# By number with --type flag
-projctl load 21 --type epic
-
-# By URL
-projctl load https://gitlab.com/groups/group/-/epics/21
+projctl load epic 21
+projctl load epic "&21"     # prefixed form also accepted
+projctl load epic https://gitlab.com/groups/group/-/epics/21
 ```
 
 ### Load Milestone
 ```bash
-# By milestone number with % prefix
-projctl load %123
-
-# By number with --type flag
-projctl load 123 --type milestone
-
-# By URL
-projctl load https://gitlab.com/group/project/-/milestones/123
+projctl load milestone 123
+projctl load milestone "%123"  # prefixed form also accepted
+projctl load milestone https://gitlab.com/group/project/-/milestones/123
 ```
 
 ### Load Merge Request
 ```bash
-# By MR number with ! prefix
-projctl load !134
-
-# By number with --type flag
-projctl load 134 --type mr
-
-# By URL
-projctl load https://gitlab.com/group/project/-/merge_requests/134
+projctl load mr 134
+projctl load mr "!134"      # prefixed form also accepted
+projctl load mr https://gitlab.com/group/project/-/merge_requests/134
 ```
 
 ## Actions
 
 1. **Parse ticket reference:**
-   - Detect ticket type from prefix (#, &, %) or URL
+   - Detect ticket type from subcommand (`issue`, `epic`, `mr`, `milestone`) or URL
    - Extract ticket number
 
 2. **Load ticket data:**
@@ -176,24 +156,20 @@ github:
 
 **Supported Platforms:**
 - **GitLab:** Full support via projctl
-- **GitHub:** Full support via projctl (future)
-
-**Alternative Tools:**
-- **GitHub:** Use `gh issue view <number>` or `gh pr view <number>` (native CLI)
-- **Jira:** (Add Jira support as needed)
+- **GitHub:** Full support via projctl
 
 ## Examples
 
 ```bash
-# Load GitLab issue with dependencies
-/load #145
+# Load issue with dependencies
+/load issue 145
 
 # Load epic with all issues
-/load &25
+/load epic 25
 
 # Load milestone with progress
-/load %10
+/load milestone 10
 
 # Load from URL
-/load https://gitlab.com/mygroup/project/-/issues/200
+/load issue https://gitlab.com/mygroup/project/-/issues/200
 ```

@@ -44,7 +44,7 @@ the MR number explicitly.
 ### Step 2: Load MR Context
 
 ```bash
-projctl load !<mr_number>
+projctl load mr <mr_number>
 ```
 
 Extract: MR title, source branch, target branch, description, list of changed files.

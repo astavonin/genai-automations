@@ -20,8 +20,10 @@ Create a merge request from the current branch using projctl (supports GitLab an
 
 ```bash
 git status
-git log origin/master..HEAD --oneline  # View commits that will be in MR
-git diff origin/master...HEAD --stat   # Review changed files
+# Detect default branch (main or master), then show commits and diff
+DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+git log origin/${DEFAULT}..HEAD --oneline
+git diff origin/${DEFAULT}...HEAD --stat
 ```
 
 ### 2. Verify Issue Acceptance Criteria
@@ -29,7 +31,7 @@ git diff origin/master...HEAD --stat   # Review changed files
 If the branch is linked to an issue (look for `Ref #NNN` in commit messages or the branch name):
 
 ```bash
-projctl load <issue_number>
+projctl load issue <issue_number>
 ```
 
 Read the issue's **Scope** and **Acceptance Criteria** sections. For each item, check the changed files to determine whether it is implemented.
@@ -120,32 +122,22 @@ After user confirms YAML, create the MR:
 ```bash
 # Push branch if needed
 git push -u origin $(git branch --show-current)
-
-# Create MR using projctl
-projctl create-mr \
-  --title "$(yq '.title' planning/mr-draft.yaml)" \
-  --description "$(yq '.description' planning/mr-draft.yaml)" \
-  $(yq -r '.draft // false | if . then "--draft" else "" end' planning/mr-draft.yaml) \
-  $(yq -r '.reviewers[]? | "--reviewer " + .' planning/mr-draft.yaml) \
-  $(yq -r '.labels[]? | "--label " + .' planning/mr-draft.yaml) \
-  $(yq -r '.milestone // "" | if . != "" then "--milestone " + . else "" end' planning/mr-draft.yaml) \
-  $(yq -r '.target_branch // "" | if . != "" then "--target-branch " + . else "" end' planning/mr-draft.yaml)
 ```
 
-**Alternative (if yq not available):**
-Parse YAML manually and build command:
+Read `planning/mr-draft.yaml` and build the `projctl create-mr` command by parsing the YAML fields directly. Pass each present field as the corresponding flag:
+
 ```bash
 projctl create-mr \
-  --title "MR title from YAML" \
-  --description "MR description from YAML" \
-  --draft \
-  --reviewer alice --reviewer bob \
-  --label "type::feature" --label "priority::medium" \
-  --milestone "v2.0" \
-  --target-branch main
+  --title "<title from YAML>" \
+  --description "<description from YAML>" \
+  --draft \                          # only if draft: true
+  --reviewer alice --reviewer bob \  # one --reviewer per entry
+  --label "type::feature" \          # one --label per entry
+  --milestone "v2.0" \               # only if present
+  --target-branch main               # only if present
 ```
 
-**Quick option (use git history to auto-generate):**
+**Quick option (use git history to auto-generate title and description):**
 ```bash
 projctl create-mr --fill --draft
 ```

@@ -90,13 +90,13 @@ For each unique remote reference found:
 
 ```bash
 # Epic — also loads all child issues (discovery)
-projctl load epic &N
+projctl load epic N
 
 # Milestone
-projctl load milestone %N
+projctl load milestone N
 
 # Individual issue (if referenced inline but not part of an epic already loaded)
-projctl load issue #N
+projctl load issue N
 ```
 
 Collect from each epic: the full list of its child issues (title + number + state).
@@ -153,7 +153,7 @@ Ask the user: **"Apply this sync plan? (yes / no / edit)"**
 
 Close remote tickets:
 ```bash
-projctl update issue #N --state close
+projctl update issue N --state close
 ```
 
 Mark local tasks done: edit the `status.md` file, replacing `- [ ] <text> #N` with `- [x] <text> #N`.
