@@ -24,6 +24,7 @@ metadata:
 - Use STL containers and algorithms
 - Prefer `auto` for type deduction where it improves readability
 - Use `constexpr` for compile-time evaluation
+- Prefer static polymorphism over dynamic
 
 ### Safety
 - Avoid undefined behavior
@@ -37,6 +38,7 @@ metadata:
 - Minimize header dependencies
 - Forward declarations where possible
 - Keep header files clean and minimal
+- One file - one class where possible
 
 ### Error Handling
 - Use exceptions for exceptional cases
