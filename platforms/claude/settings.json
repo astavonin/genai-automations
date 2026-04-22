@@ -1,24 +1,5 @@
 {
   "includeCoAuthoredBy": false,
-  "model": "sonnet",
-  "enabledPlugins": {
-    "clangd-lsp@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true
-  },
-  "alwaysThinkingEnabled": true,
-  "hooks": {
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostCompact\",\"additionalContext\":\"Compaction just completed. Immediately invoke /refresh to reload behavioral configuration files (CLAUDE.md and all referenced skill files) before responding to the user.\"}}'"
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(.venv/bin/*)",
@@ -109,6 +90,26 @@
       "~/projects",
       "~/.config",
       "~/.claude"
+    ],
+    "defaultMode": "auto"
+  },
+  "hooks": {
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostCompact\",\"additionalContext\":\"Compaction just completed. Immediately invoke /refresh to reload behavioral configuration files (CLAUDE.md and all referenced skill files) before responding to the user.\"}}'"
+          }
+        ]
+      }
     ]
-  }
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "skipAutoPermissionPrompt": true
 }

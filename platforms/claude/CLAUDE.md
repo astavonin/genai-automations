@@ -100,14 +100,14 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 ## Quick Reference
 
 ```
-1. Start:      /start → sync pull → load progress.md, status.md → reverify
+1. Start:      /start → auto-compact → drift-check → sync pull (if needed) → load progress.md, status.md → reverify
 2. Research:   /research → architecture-research-planner → analysis.md
-3. Design:     /design → create design.md → /review-design
-4. Implement:  /implement → coder/devops-engineer → code + tests
-5. Review:     /review-code → reviewer → approve/changes/reject
+3. Design:     /design → create design.md → push planning → /review-design
+4. Implement:  /implement → gated auto-compact → coder/devops-engineer → code + tests
+5. Review:     /review-code → reviewer → APPROVED/CHANGES REQUESTED/REJECTED marker → push planning
 6. Verify:     /verify → tests + linters + static analysis
 7. Commit:     User handles git commits (NEVER automatic)
-8. Complete:   /complete → update progress.md (propose & confirm) → sync push
+8. Complete:   /complete → update progress.md (propose & confirm) → sync push → gated auto-compact
 ```
 
 ## Critical Rules
@@ -119,19 +119,72 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
 - **NEVER use `isolation: "worktree"` when invoking coder or devops-engineer agents** — this strands all changes in a throw-away branch. Omit the `isolation` parameter for all implementation agents so changes land directly in the user's working branch.
+- **Review files MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** — machine-readable, no emoji. Pre-existing reviews without this marker cause gates to skip (fail-safe). See §4 below.
+- **Auto-compaction fires at three phase boundaries** without a prompt: `/start` (unconditional), `/implement` (gated), `/complete` (gated). Always followed by a `✓ Compacted at <phase>` confirmation line.
+
+## Workflow Safety — New Behaviors (workflow-safety milestone)
+
+### Review File Status-Marker Convention (§4)
+
+Every review file written by `/review-design` or `/review-code` MUST contain:
+
+```
+**Status:** APPROVED
+```
+
+as the **first non-empty line after the H1 title**, within the first 20 lines. Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED`. No emoji, no verb/noun mixing. Machine-readable via `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`.
+
+**Migration note:** This marker is NOT retrofitted to pre-existing review files. Reviews written before this convention was adopted do not have the canonical marker; gates fail-safe (skip compaction) for those files. Users on in-flight milestones may manually add the marker to opt in.
+
+### Gate-Decision Log (§8.1)
+
+Every gate evaluation at a compaction point appends one line to:
+
+**Path:** `planning/.workflow-safety.log`
+
+**Format:**
+```
+<ISO-8601 timestamp> <skill> <boundary> <decision> [reason]
+```
+
+Examples:
+```
+2026-04-22T14:30:12Z /start start FIRED
+2026-04-22T15:02:44Z /implement implement-begin SKIPPED precondition-2-failed:CHANGES_REQUESTED
+2026-04-22T16:18:03Z /complete complete-end SKIPPED precondition-3-failed:STATUS=local-ahead
+2026-04-22T16:20:11Z /complete complete-end FIRED
+```
+
+Boundary values: `start`, `implement-begin`, `complete-end`. Decision values: `FIRED`, `SKIPPED`.
+
+### Warning Surface Convention (§8.2)
+
+All gate-skip and push-failure warnings use this three-line visual block:
+
+```
+⚠️  workflow-safety: <event>
+    reason: <one-line reason>
+    recovery: <one-line recommendation>
+```
+
+Consistent formatting makes warnings scannable across any skill output.
 
 ## Workflow Execution
 
 For ANY implementation task, automatically follow these phases:
 
 ### Phase 0: Start Work
-**Step 1: Sync Planning State (Multi-Machine Support)**
-```bash
-# Pull latest planning state from Google Drive backup
-projctl sync pull
+**Step 0-pre: Auto-compact (unconditional, first)**
+Compact the session before any other action. Log the gate decision to `planning/.workflow-safety.log`. Emit `✓ Compacted at start` on success. On compact failure, log, warn, and continue.
 
-# Verify sync successful
-echo "✓ Planning state synchronized from backup"
+**Step 1: Sync Planning State (Multi-Machine Support) — drift-check flow**
+Do NOT blindly pull. First detect pre-feature projctl, then run drift check:
+```bash
+# Check if projctl sync status is available
+timeout 30 projctl sync status
+# Parse first line: in-sync → no-op; remote-ahead → pull; local-ahead → HALT; diverged → HALT
+# On timeout → blind pull with caveat warning
+# On pre-feature projctl (exit 2 / "invalid choice") → blind pull, no warning
 ```
 
 **Step 2: Load Context**
@@ -158,17 +211,21 @@ ls planning/<goal>/milestone-XX/design/
 - Explain rationale and trade-offs
 - Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
 - After writing the design file, ask the user if they want to `open` it
+- **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
+- **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file
 - Present design to user
 - Wait for explicit user approval
 - DO NOT proceed without approval
 - If rejected: return to Phase 2
+- **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
 ### Phase 4: Implementation
+- **First step:** gated auto-compact (§7.3, §7.4) — both preconditions must pass: (1) design.md + design-review.md exist on disk, mtime-ordered, status=APPROVED; (2) no code-review exists OR code-review status=APPROVED. Log gate decision. Skip silently with §8.2 warning if gate fails.
 - Use coder agent (code) OR devops-engineer agent (CI/CD)
 - Follow approved design
 - Include comprehensive unit tests
@@ -178,10 +235,12 @@ ls planning/<goal>/milestone-XX/design/
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
-- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`**
+- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`** (single file, always overwritten — no versioning suffixes)
+- **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file
 - Block until approved
 - If rejected: fix and return for re-review
+- **Last step:** push planning to backup (elevated warning on failure: also recommend `projctl sync status` before `/complete`)
 
 ### Phase 6: Verification
 - Run linters FIRST (must pass before tests): clang-tidy, pylint/mypy, clippy, golangci-lint, shellcheck
@@ -209,10 +268,16 @@ ls planning/<goal>/milestone-XX/design/
 ```bash
 # Push updated planning to Google Drive backup
 projctl sync push
-
-# Verify sync successful
-echo "✓ Planning backup complete - available on all machines"
+# Record push success/failure for the compaction gate (Step 3)
 ```
+
+**Step 3: Gated auto-compact (last step, §7.5)**
+Three disk-checkable conditions must all pass:
+1. `git status --porcelain` — no uncommitted tracked changes outside `planning/`
+2. `projctl sync push` (Step 2) returned exit code 0
+3. `projctl sync status` reports `STATUS: in-sync`
+
+If all pass → log `FIRED` → compact → emit `✓ Compacted at complete-end`. If any fail → log `SKIPPED <condition>` → surface §8.2 warning → leave session uncompacted (acceptable). If compact itself fails → log + warn + accept.
 
 **Purpose:** Ensures planning state is backed up and available across machines after completing work
 

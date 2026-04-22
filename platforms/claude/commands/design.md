@@ -49,6 +49,16 @@ Main conversation (no specialized agent)
 
 Design files describe **HOW** to implement (architecture, approach), not **WHAT** to do (that's in status.md).
 
+## Final Step — Push planning to backup
+
+After writing the design file, push planning state to backup using the shared push fragment:
+
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+
+Follow the steps in that fragment: run `projctl sync push`. On failure, surface the standard warning and continue — do not fail this skill.
+
 ## Next Step
 
 After design is complete, use `/review-design` to get approval before implementation.

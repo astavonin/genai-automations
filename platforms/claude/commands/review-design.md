@@ -20,6 +20,18 @@ Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
 Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
 ```
 
+## Status Marker Convention (§4)
+
+Every design review file MUST contain exactly one status marker as the **first non-empty line after the H1 title**, within the first 20 lines:
+
+```
+**Status:** APPROVED
+```
+
+Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED` — all uppercase, no emoji, no verb/noun mixing.
+
+This marker is machine-readable and used by the `/implement` gate (`head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`). A review without the canonical marker will cause the compaction gate to skip at `/implement`.
+
 ## Actions
 
 1. Load design document from `planning/<goal>/milestone-XX/design/<feature>-design.md`
@@ -29,9 +41,27 @@ Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-pro
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
-5. After writing, ask the user if they want to `open <path>` the review file
-6. Wait for user approval (MANDATORY)
-7. Block until approved
+
+5. **Verify the status marker** before declaring the review complete:
+   ```bash
+   head -20 planning/<goal>/milestone-XX/reviews/<feature>-design-review.md | grep -m 1 '^\*\*Status:\*\*'
+   ```
+   - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
+   - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
+
+6. After writing, ask the user if they want to `open <path>` the review file
+7. Wait for user approval (MANDATORY)
+8. Block until approved
+
+## Final Step — Push planning to backup
+
+After the review file is written and the marker verified, push planning state to backup:
+
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+
+Follow the steps in that fragment: run `projctl sync push`. On failure, surface the standard warning and continue — do not fail this skill.
 
 ## Review Scope
 
@@ -51,6 +81,8 @@ Produce a markdown report using the reviewer agent's standard template:
 
 ```markdown
 # Design Review
+
+**Status:** APPROVED  (or CHANGES REQUESTED / REJECTED)
 
 **Subject:** <feature name>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject

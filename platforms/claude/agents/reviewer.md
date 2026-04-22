@@ -122,12 +122,38 @@ Evaluate infrastructure and pipeline configurations:
 - Does it work consistently across environments?
 - Are failure modes handled appropriately?
 
+## Status Marker (MANDATORY)
+
+Every review file written by this agent MUST contain exactly one status marker as the **first non-empty line after the H1 title**, within the first 20 lines of the file:
+
+```
+**Status:** <STATE>
+```
+
+Where `<STATE>` is one of exactly three values — all uppercase, no emoji, no verb/noun mixing:
+
+- `APPROVED`
+- `CHANGES REQUESTED`
+- `REJECTED`
+
+This marker is machine-readable and load-bearing: `/review-design` and `/review-code` both verify its presence using `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring the review complete. A review file without the canonical marker will cause compaction gates to skip. See design §4 for the full convention.
+
+**Canonical output format (the H1 title line, then the Status line immediately after, no blank line between):**
+
+```
+# Review Summary
+
+**Status:** APPROVED
+```
+
 ## Feedback Format
 
 Provide structured feedback using this template:
 
 ```markdown
 # Review Summary
+
+**Status:** APPROVED
 
 **Type:** [Design Review | Code Review | DevOps Review]
 **Subject:** [Brief description of what's being reviewed]

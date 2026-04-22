@@ -20,6 +20,22 @@ Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
 Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
 ```
 
+## Status Marker Convention (§4)
+
+Every code review file MUST contain exactly one status marker as the **first non-empty line after the H1 title**, within the first 20 lines:
+
+```
+**Status:** APPROVED
+```
+
+Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED` — all uppercase, no emoji, no verb/noun mixing.
+
+This marker is machine-readable and used by the `/implement` gate (`head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`). A review without the canonical marker will cause the compaction gate to skip at `/implement`.
+
+## File Overwrite Convention (§7.4)
+
+This skill always writes a **single** file `<feature>-code-review.md`, **overwriting** any prior content. No versioning suffixes (`-v1`, `-v2`). No appending. Each run replaces. Git history in `planning/` preserves prior reviews if needed. The gate always reads the single latest file.
+
 ## Actions
 
 1. Run the **Consensus Review Protocol** (Steps A–E) against the implementation
@@ -27,9 +43,36 @@ Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-pro
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
 2. Format consolidated findings as a markdown review report (see Output Format below)
-3. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`**
-4. After writing, ask the user if they want to `open <path>` the review file
-5. Block until approved
+3. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`** (overwriting any prior version)
+
+4. **Verify the status marker** before declaring the review complete:
+   ```bash
+   head -20 planning/<goal>/milestone-XX/reviews/<feature>-code-review.md | grep -m 1 '^\*\*Status:\*\*'
+   ```
+   - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
+   - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
+
+5. After writing, ask the user if they want to `open <path>` the review file
+6. Block until approved
+
+## Final Step — Push planning to backup
+
+After the review file is written and the marker verified, push planning state to backup:
+
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+
+Follow the steps in that fragment. If the push fails, surface the elevated warning (see §6.3):
+
+```
+⚠️  workflow-safety: planning push failed after /review-code
+    reason: projctl sync push returned non-zero (backup may be unavailable)
+    recovery: run `projctl sync push` manually; also run `projctl sync status`
+              before /complete to verify no drift has accumulated across machines
+```
+
+Do not fail this skill — return success after surfacing the warning.
 
 ## Review Scope
 
@@ -51,6 +94,8 @@ Produce a markdown report:
 
 ```markdown
 # Code Review
+
+**Status:** APPROVED  (or CHANGES REQUESTED / REJECTED)
 
 **Subject:** <feature / PR title>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
