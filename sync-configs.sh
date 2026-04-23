@@ -347,6 +347,9 @@ main() {
         # Include patterns for Codex
         local codex_includes=(
             '*.md'
+            'config.toml'
+            'rules/'
+            'rules/**'
             'agents/'
             'agents/**'
             'commands/'

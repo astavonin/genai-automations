@@ -1,85 +1,78 @@
 # Scope
 
-Codex is used for **three workflows only**:
-- **Code Reviews**
-- **Issue Investigations**
-- **Architecture Reviews**
+Codex is used for architecture/design work and for implementation work in selected languages.
 
-Avoid implementation work unless explicitly requested.
+Active implementation focus:
+- C++
+- Python
+- Go
+
+Keep the scope narrow to these languages unless explicitly expanded.
 
 # Communication Style
 
-- Avoid validation phrases like "you are right" or "great idea"
-- Focus on technical accuracy and objective analysis
-- Be concise and direct
+- Focus on technical accuracy and consistency.
+- Prefer clear interfaces, explicit invariants, and concrete files/paths.
+- Be concise, but do not omit required interface or enforcement details.
 
-# Quality Standards
+# Design Doc Workflow
 
-## Language Guidelines
-Reference: `~/.codex/skills/languages/`
+Use `skills/architecture-research-planner/` when producing or updating design documents.
 
-- **C++**: C++ Core Guidelines
-- **Python**: PEP 8 + Google Python Style Guide
-- **Go**: Effective Go + Go Code Review Comments
-- **Rust**: Rust API Guidelines
-- **Zig**: Zig Style Guide
-- **Shell**: Shell scripting best practices
+## Required Outcomes
 
-## Code Quality
-Reference: `~/.codex/skills/domains/code-quality/`
+Every command/workflow design doc should make these items explicit when relevant:
+- command or workflow entry point
+- required request fields
+- outputs
+- writable paths or mutation rules
+- enforcement mechanism for hard invariants
+- validation and failure behavior
+- at least one worked example or canonical template
 
-- Prefer self-documenting code
-- Always explain linter suppressions
-- Expect formatting to follow project tools
+## Mandatory Consistency Pass
 
-# Workflow A: Code Review
+Before finalizing a design doc, verify that every introduced field, flag, path, or invariant appears in all relevant places:
+1. interface or request section
+2. runtime behavior section
+3. validation/failure section
+4. canonical template or example
+5. enforcement description when the rule is hard
 
-Primary skill: `~/.codex/skills/workflows/code-review/`
+# Coding Workflow
 
-**Steps:**
-1. Intake & scope (goal, risk, change surface)
-2. Evidence collection (diffs, tests, logs)
-3. Review using quality-attributes checklist
-4. Report findings using template
+When implementing or reviewing code, skill selection is explicit:
+- C++ request: MUST use `skills/languages/cpp/`
+- Python request: MUST use `skills/languages/python/`
+- Go request: MUST use `skills/languages/go/`
+- Any code-writing, code-modification, or code-review task: MUST use `skills/domains/quality-attributes/`
+- Any test-writing or test-review task: ALSO use `skills/domains/testing/`
+- Any code-writing or code-review task: ALSO use `skills/domains/code-quality/`
 
-**Checklist:** `~/.codex/skills/domains/quality-attributes/references/review-checklist.md`
+Do not rely on generic coding behavior when one of the language skills matches the request.
+If a task spans multiple covered languages, use each corresponding language skill for the relevant files.
+Treat `skills/domains/quality-attributes/` as a development-time constraint, not only a review aid.
+During implementation, make trade-offs against supportability, extendability, maintainability, testability, performance, safety, security, and observability explicit in the code and validation approach where relevant.
 
-**Output template:** `~/.codex/skills/workflows/code-review/references/review-output-template.md`
+Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 
-# Workflow B: Issue Investigation
+# Active Skills
 
-Primary skill: `~/.codex/skills/workflows/issue-investigation/`
-
-**Steps:**
-1. Intake & triage (expected vs actual, impact)
-2. Reproduce or simulate (document environment)
-3. Trace evidence (code paths, logs, metrics)
-4. Hypotheses & validation
-5. Recommendations & next steps
-
-**Output template:** `~/.codex/skills/workflows/issue-investigation/references/investigation-template.md`
-
-# Workflow C: Architecture Review
-
-Primary skill: `~/.codex/skills/workflows/architecture-review/`
-
-**Steps:**
-1. Intake & scope (problem, constraints, affected components)
-2. Architecture evaluation (patterns, boundaries, dependencies)
-3. Trade-offs & risks (assumptions, mitigations)
-4. Recommendations & decision
-
-**Output template:** `~/.codex/skills/workflows/architecture-review/references/architecture-review-template.md`
+- `skills/architecture-research-planner/`
+- `skills/workflows/architecture-review/`
+- `skills/reviewer/`
+- `skills/domains/architecture/`
+- `skills/domains/quality-attributes/`
+- `skills/domains/testing/`
+- `skills/domains/code-quality/`
+- `skills/languages/cpp/`
+- `skills/languages/python/`
+- `skills/languages/go/`
 
 # Critical Rules
 
-- Do not implement fixes during reviews or investigations
-- Ask for missing evidence explicitly
-- Separate **confirmed facts** from **hypotheses**
-- Always include test/verification gaps in the output
-
-# Skill Usage
-
-- **Code Reviews:** Use `reviewer` skill with the quality-attributes checklist
-- **Issue Investigations:** Use `architecture-research-planner` skill for evidence-based analysis
-- **Architecture Reviews:** Use `architecture` + `reviewer` skills for design quality and trade-offs
+- Do not let prompt wording stand in for runtime enforcement when a hard invariant is required.
+- Separate confirmed facts from proposed behavior.
+- For workflow docs, ensure request fields, templates, and examples stay aligned.
+- For code changes, always develop against the eight quality attributes, not just language style rules.
+- For code changes, apply the project's formatter and use the project's test and lint tooling when available.

@@ -1,99 +1,71 @@
 ---
 name: quality-attributes
-description: 8 quality attributes for software evaluation
+description: Eight quality attributes for guiding software design and implementation and for evaluating reviews: supportability, extendability, maintainability, testability, performance, safety, security, and observability. Use during development as well as during design reviews and code reviews.
 ---
 
 # Quality Attributes Skill
 
-Eight quality attributes for evaluating software design and implementation.
+Use these quality attributes to guide architecture/design proposals, code implementations, and reviews.
+
+For coding tasks, this skill is not optional review material. It is an always-on development constraint that should shape implementation choices, error handling, testing strategy, operational signals, and security boundaries while writing code.
 
 ## The 8 Quality Attributes
 
 ### 1. Supportability
-**Definition:** How easy is it to diagnose and fix issues?
-
-**Key aspects:**
-- Adequate logging at critical paths
-- Clear, actionable error messages
-- Debugging information available
-- Operational troubleshooting considered
+Can operators and developers diagnose, debug, and fix problems?
 
 ### 2. Extendability
-**Definition:** How easy is it to add new features?
-
-**Key aspects:**
-- Modular design
-- Appropriate abstractions
-- Extension points identified
-- Future requirements anticipated
+Can the design or code evolve without unnecessary rework?
 
 ### 3. Maintainability
-**Definition:** How easy is it to understand and modify the code?
-
-**Key aspects:**
-- Code clarity and naming
-- Minimal complexity
-- Follows project conventions
-- Self-documenting approach
+Is the design or code understandable, structured, and consistent?
 
 ### 4. Testability
-**Definition:** How easy is it to test the system?
-
-**Key aspects:**
-- Unit test strategy defined
-- Components testable in isolation
-- Edge cases considered
-- Integration test scenarios identified
+Can behavior and invariants be validated with clear, reliable tests?
 
 ### 5. Performance
-**Definition:** Does the system meet performance requirements?
-
-**Key aspects:**
-- No obvious bottlenecks
-- Resource usage reasonable
-- Algorithms appropriate for scale
-- Profiling and optimization strategy
+Are performance implications, hot paths, or scale boundaries handled appropriately where relevant?
 
 ### 6. Safety
-**Definition:** Does the system handle errors and edge cases gracefully?
-
-**Key aspects:**
-- Comprehensive error handling
-- Edge cases handled
-- Resource management (RAII, defer, etc.)
-- Thread safety (if applicable)
-- No undefined behavior
+Are failure modes, invariants, resource handling, and edge cases handled explicitly?
 
 ### 7. Security
-**Definition:** Is the system protected against vulnerabilities?
-
-**Key aspects:**
-- Input validation and sanitization
-- No injection vulnerabilities (SQL, command, XSS)
-- Secrets not hardcoded
-- Authentication/authorization appropriate
-- Dependencies from trusted sources
+Does the design or implementation avoid unsafe assumptions and define trust boundaries clearly?
 
 ### 8. Observability
-**Definition:** Can we understand system behavior in production?
+Can behavior and failures be observed in development and production?
 
-**Key aspects:**
-- Key operations logged
-- Metrics available
-- Traceable across boundaries
-- Performance can be monitored
+## Design Review Checks
 
-## Usage
+For workflow and command designs, also verify:
+- required inputs are explicit
+- outputs are explicit
+- writable paths are explicit
+- hard invariants name an enforcement mechanism
+- validation and failure behavior are specified
 
-### Design Review
-Evaluate proposed design against all 8 attributes before implementation.
+## Development Checks
 
-### Code Review
-Verify implementation meets quality standards for all 8 attributes after implementation.
+During implementation, ensure:
+- the code structure supports likely future changes without unnecessary abstraction
+- important behavior can be validated with unit and integration tests where appropriate
+- failure handling, cleanup, and invariants are explicit in code
+- trust boundaries, input validation, and secret handling are addressed
+- operationally relevant behavior emits enough signal to debug and monitor
+- obvious performance and resource regressions are avoided
 
-## References
+## Code Review Checks
 
-See `references/` directory for:
-- Detailed attribute descriptions
-- Review checklists (design and code)
-- Evaluation criteria
+For code reviews, also verify:
+- the implementation follows the intended design and project conventions
+- tests exist for important behavior and edge cases
+- error handling, cleanup, and invariants are explicit in code
+- input validation, secrets handling, and injection risks are addressed
+- logging, metrics, or debug signals exist where operationally relevant
+- obvious performance or resource regressions are not introduced
+
+## Reference Checklists
+
+Use:
+- `references/design-review-checklist.md` for design and architecture reviews
+- `references/code-review-checklist.md` for implementation and code reviews

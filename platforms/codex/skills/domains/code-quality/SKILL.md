@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Code quality principles and standards
+description: Code quality principles covering comments, linter suppressions, and formatting. Use when writing or reviewing code to enforce self-documenting style, justified suppressions, and project-standard formatting.
 ---
 
 # Code Quality Skill
@@ -8,86 +8,43 @@ description: Code quality principles and standards
 ## Core Principles
 
 ### Self-Documenting Code
-- Write code that needs minimal comments
-- Before adding a comment, reevaluate: why is the code unclear?
-- Use clear, descriptive names for variables, functions, and classes
-- Keep functions focused and small
+- Prefer code that needs minimal comments
+- Use comments to explain why, not what
+- Keep functions focused
+- Choose clear names over explanatory comments
 
-### When Comments Are Necessary
+### Comments
 
 Use comments for:
-- **Classes:** 1-2 line summary of purpose
-- **Methods:** Inline purpose if non-obvious
-- **TODOs:** For future work (with issue reference if possible)
-- **Tests:** Describe the test case scenario
-- **Complex algorithms:** Explain the approach, not the syntax
+- non-obvious design intent
+- complex algorithms where the approach is not immediately clear
+- TODOs with enough context to act on them later
+- test scenario setup where the behavior being exercised is otherwise hard to follow
 
-### What to Avoid in Comments
-
-Don't use comments for:
-- Usage examples (tests document usage)
-- Complexity notes (simplify the code instead)
-- Responsibility lists (code structure shows this)
-- Obvious information (what the code already says)
+Avoid comments that restate the code.
 
 ## Linter Suppressions
 
-**CRITICAL RULE:** ALWAYS add a comment explaining WHY when suppressing linter warnings.
+Always explain why a suppression is necessary.
 
-### Format
+Examples:
+- C++: `// NOLINTNEXTLINE(rule-name): reason`
+- Python: `# noqa: rule-name - reason`
+- Go: `//nolint:rule-name // reason`
 
-```
-// NOLINTNEXTLINE(rule-name): Reason why suppression is needed
-```
+Prefer fixing the code instead of suppressing the warning when the warning points to a real design issue.
 
-### Language-Specific Suppressions
+## Formatting
 
-- **C++:** `// NOLINTNEXTLINE(rule-name): reason`
-- **Python:** `# noqa: rule-name - reason` or `# type: ignore - reason`
-- **Go:** `//nolint:rule-name // reason`
-- **Rust:** `#[allow(clippy::rule_name)] // reason`
-- **JavaScript/TypeScript:** `// eslint-disable-next-line rule-name -- reason`
+Apply the project's formatter to every modified file.
 
-### Example
+- C++: `clang-format`
+- Python: `black` or project equivalent
+- Go: `gofmt` or `goimports`
 
-```cpp
-// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Hardware register access requires reinterpret_cast
-auto* reg = reinterpret_cast<volatile uint32_t*>(0x40000000);
-```
+## Checklist
 
-## Code Formatting
-
-**Apply formatting using the current project's formatting tool for all files you create or modify.**
-
-### Language-Specific Tools
-
-- **C++:** clang-format
-- **Python:** black, autopep8
-- **Go:** gofmt, goimports
-- **Rust:** rustfmt
-- **Zig:** zig fmt
-- **JavaScript/TypeScript:** prettier
-
-### Workflow
-
-1. Write code
-2. Apply formatter before commit
-3. Ensure CI enforces formatting
-
-## Code Quality Checklist
-
-- [ ] Code is self-documenting
-- [ ] Clear, descriptive names
-- [ ] Functions are focused and small
-- [ ] Comments explain WHY, not WHAT
-- [ ] All linter suppressions have explanations
-- [ ] Formatting applied
-- [ ] No commented-out code
-- [ ] No TODO without context
-
-## References
-
-See `references/` directory for:
-- Detailed comment philosophy
-- Linter suppression guidelines
-- Formatting configuration examples
+- Code is readable without excessive comments
+- Comments explain intent where needed
+- Suppressions are justified
+- Formatting has been applied

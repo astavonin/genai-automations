@@ -1,68 +1,55 @@
 ---
 name: go
-description: Effective Go and Code Review Comments
+description: Go coding standards based on Effective Go and Go Code Review Comments. Use when writing, reviewing, or modifying Go code to apply idiomatic patterns, explicit error handling, and concurrency best practices.
 ---
 
 # Go Programming Skill
 
 ## Standards
 
-**Follow Effective Go:**
-- https://go.dev/doc/effective_go
-
-**Follow Go Code Review Comments:**
-- https://github.com/golang/go/wiki/CodeReviewComments
-
-**Follow Official Go Style Guide:**
-- https://google.github.io/styleguide/go/
+Follow:
+- Effective Go: https://go.dev/doc/effective_go
+- Go Code Review Comments: https://github.com/golang/go/wiki/CodeReviewComments
+- Google Go Style Guide: https://google.github.io/styleguide/go/
 
 ## Key Principles
 
 ### Code Style
-- Use gofmt for formatting (enforced)
-- MixedCaps for exported names
-- Short variable names in small scopes
-- Package names: lowercase, no underscores
-- Interface names: single-method interfaces end in -er
+- Treat `gofmt` formatting as mandatory
+- Use clear package names: lowercase and without underscores
+- Keep names concise in small scopes and descriptive at boundaries
+- Prefer small, focused interfaces
 
 ### Error Handling
-- Always check errors, never ignore
-- Return errors, don't panic
-- Wrap errors with context
+- Check errors explicitly
+- Return errors instead of panicking for normal failure paths
+- Wrap errors with context where helpful
 - Use `defer` for cleanup
 
 ### Concurrency
-- Share memory by communicating (use channels)
-- Don't communicate by sharing memory
-- Use `sync` package when needed
-- Be mindful of goroutine lifetimes
+- Prefer communicating over shared mutable state
+- Use channels and goroutines deliberately
+- Be explicit about goroutine lifetime and cancellation
+- Use `context.Context` for cancellation and request scope when applicable
 
 ### Code Organization
-- One package per directory
-- Keep packages focused and cohesive
-- Minimize dependencies
-- Use internal/ for private packages
+- Keep packages cohesive
+- Use `internal/` for non-public packages when the project structure supports it
+- Prefer composition over inheritance-style abstractions
 
-### Testing
-- Use table-driven tests
-- Test files named `*_test.go`
-- Use `testing` package
-- Benchmark critical code
+### Testing and Performance
+- Prefer table-driven tests
+- Use benchmarks for hot paths only when needed
+- Measure before optimizing
 
-### Performance
-- Avoid premature optimization
-- Use profiling tools (pprof)
-- Be aware of allocations
-- Pool frequently allocated objects if needed
+## Workflow
 
-## Formatting
-
-Run gofmt (or goimports) automatically.
-
-## Static Analysis
-
-Run go vet, golint, and staticcheck for code quality.
+- Format with `gofmt` or `goimports`
+- Run configured analysis such as `go vet`, `staticcheck`, or `golangci-lint`
+- Use `testing` and `code-quality` skills alongside this skill when writing or reviewing code
 
 ## References
 
-See `references/` directory for Go idioms and patterns.
+- Effective Go: https://go.dev/doc/effective_go
+- Go Code Review Comments: https://github.com/golang/go/wiki/CodeReviewComments
+- Google Go Style Guide: https://google.github.io/styleguide/go/

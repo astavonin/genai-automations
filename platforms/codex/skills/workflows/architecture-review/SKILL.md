@@ -1,44 +1,36 @@
 ---
 name: architecture-review
-description: Architecture review workflow focused on design quality, trade-offs, and evolution.
+description: Architecture and design review workflow focused on quality, trade-offs, consistency, and enforceable constraints.
 ---
 
 # Architecture Review Workflow Skill
 
-Review architecture proposals or existing system designs with evidence-based analysis.
-
-## When To Use
-- Reviewing architecture/design documents
-- Evaluating system boundaries or integration changes
-- Assessing architectural refactors
+Review architecture proposals, workflow designs, and technical plans with evidence-based analysis.
 
 ## Required Inputs
-- Design doc or proposal
-- Current system constraints and context
-- Known risks, trade-offs, or alternatives
+
+- design doc or proposal
+- current system constraints and context
+- known risks, trade-offs, or alternatives
 
 ## Workflow
 
-1. **Intake & Scope**
-   - Clarify the problem statement and success criteria
-   - Identify affected components and integration points
+1. Clarify the problem, scope, and decision being proposed.
+2. Review the design against architecture and quality-attribute guidance.
+3. Trace every required field, path, flag, and hard invariant across command entry, contract, runtime behavior, validation, examples, and enforcement.
+4. Report findings, open questions, and recommendation.
 
-2. **Design Review**
-   - Use `~/.codex/skills/domains/architecture/SKILL.md`
-   - Apply quality-attributes checklist where relevant
+## References
 
-3. **Trade-offs & Risks**
-   - Identify cost/benefit and operational impacts
-   - Highlight gaps, unknowns, and assumptions
-
-4. **Output**
-   - Provide structured findings and recommendations
-
-## Output Template
-
-Use: `references/architecture-review-template.md`
+Use:
+- `~/.codex/skills/domains/architecture/SKILL.md`
+- `~/.codex/skills/domains/quality-attributes/SKILL.md`
+- `~/.codex/skills/domains/quality-attributes/references/design-review-checklist.md`
+- `references/architecture-review-template.md`
 
 ## Guardrails
-- Review only; do not implement changes
-- Separate confirmed facts from hypotheses
-- Prefer evidence over speculation
+
+- Review only; do not implement changes.
+- Prefer evidence over speculation.
+- Treat missing field propagation across sections as a first-class design finding, not a minor editorial issue.
+- Treat missing enforcement for hard constraints as a design finding.
