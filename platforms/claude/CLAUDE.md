@@ -207,7 +207,7 @@ ls planning/<goal>/milestone-XX/design/
 - Output: `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
 
 ### Phase 2: Design
-- Main conversation (no agent)
+- Use architecture-research-planner agent
 - Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 9 sections required
 - After writing the design file, ask the user if they want to `open` it
@@ -285,12 +285,14 @@ If all pass → log `FIRED` → compact → emit `✓ Compacted at complete-end`
 
 Reference: `~/.claude/agents/`
 
-- **architecture-research-planner** (opus): Research, architecture, documentation
+- **architecture-research-planner** (opus): Research, architecture, documentation — **including writing architecture docs and service READMEs**
 - **coder** (sonnet): Implementation (C++, Go, Rust, Python, Zig)
 - **devops-engineer** (sonnet): CI/CD, Docker, infrastructure
 - **reviewer** (opus): Quality reviews (design and code reviews)
 - **debugger** (opus): Root cause analysis, hypothesis-driven investigation, fix recommendations
 - **writer** (opus): Info collection, code snippet extraction, Markdown draft writing
+
+> **Rule:** Any task that produces architecture documentation or a service README MUST be delegated to architecture-research-planner. Never write these files inline with Write/Edit tools.
 
 ## Agent Declaration Pattern
 

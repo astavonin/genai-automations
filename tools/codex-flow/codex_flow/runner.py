@@ -23,6 +23,10 @@ IGNORED_REVIEW_ARTIFACT_DIRS = {
     ".mypy_cache",
     ".ruff_cache",
     "htmlcov",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".claude",  # Claude Code session/settings files managed by the IDE, not by Codex
 }
 IGNORED_REVIEW_ARTIFACT_SUFFIXES = {
     ".pyc",
@@ -165,7 +169,11 @@ def _changed_paths(
 
 
 def _is_ignored_review_artifact(path: Path, repository: Path) -> bool:
-    relative_path = path.resolve().relative_to(repository.resolve())
+    try:
+        relative_path = path.resolve().relative_to(repository.resolve())
+    except ValueError:
+        # Symlink target resolves outside the repository (e.g. .venv → /usr/bin/python)
+        return True
     if any(part in IGNORED_REVIEW_ARTIFACT_DIRS for part in relative_path.parts):
         return True
     if path.name in IGNORED_REVIEW_ARTIFACT_NAMES:

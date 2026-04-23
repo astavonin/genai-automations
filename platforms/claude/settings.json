@@ -102,7 +102,7 @@
           {
             "type": "command",
             "if": "Bash(projctl create*)",
-            "command": "jq -r 'if ((.tool_response.output // \"\") | (contains(\"Created Issues\") and contains(\"work_items/\"))) then {\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"projctl create completed — update the relevant planning/status.md with the new issue number(s) shown above.\"}} | tojson else empty end' 2>/dev/null || true"
+            "command": "bash ~/.claude/scripts/projctl-post-create.sh 2>/dev/null || true"
           }
         ]
       }

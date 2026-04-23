@@ -13,5 +13,11 @@ trust_level = "trusted"
 [projects."/tmp/codex-flow-review-smoke-repo"]
 trust_level = "trusted"
 
+[projects."/home/astavonin/projects/projctl"]
+trust_level = "trusted"
+
+[projects."/home/astavonin/work/openpilot"]
+trust_level = "trusted"
+
 [notice]
 hide_rate_limit_model_nudge = true

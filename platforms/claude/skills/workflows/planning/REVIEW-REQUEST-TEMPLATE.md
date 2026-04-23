@@ -32,9 +32,13 @@ What must not change:
 
 ## Evidence
 
-Verification run before this review:
+Verification run before this review.
+**This section MUST contain a non-empty fenced code block — codex-flow will reject the request otherwise.**
+For design-only reviews with no commands to run, use the placeholder below as-is.
+
 ```bash
 # commands + exit codes
+# (design-only review: no implementation to verify)
 ```
 
 ---

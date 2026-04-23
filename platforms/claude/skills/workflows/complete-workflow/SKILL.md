@@ -72,7 +72,7 @@ Investigate existing codebase patterns, architecture, integration points.
 
 ### Phase 2: Design
 **Command:** `/design`
-**Agent:** Main conversation
+**Agent:** architecture-research-planner
 
 Create detailed design proposal with architecture, approach, trade-offs, and test plan.
 

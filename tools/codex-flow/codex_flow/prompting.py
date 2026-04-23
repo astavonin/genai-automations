@@ -150,9 +150,6 @@ def build_review_prompt(request: ReviewRequest) -> str:
         _resource_text("templates/review-output-instructions.md"),
     ]
 
-    language = _detect_language(request.repository)
-    if language:
-        skill_parts.append(_resource_text(f"skills/languages/{language}.md"))
 
     return "\n\n".join(
         [
@@ -189,13 +186,3 @@ def _file_block(path: Path, display_path: str) -> str:
             "```",
         ]
     )
-
-
-def _detect_language(repository: Path) -> str | None:
-    if any(repository.rglob("*.py")):
-        return "python"
-    if any(repository.rglob("*.sh")):
-        return "bash"
-    if any(repository.rglob("*.cpp")) or any(repository.rglob("*.cc")):
-        return "cpp"
-    return None
