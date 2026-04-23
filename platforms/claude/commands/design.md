@@ -21,6 +21,7 @@ Main conversation (no specialized agent)
 0. Read workflow and domain skills to ensure phase context:
    ```
    Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
+   Read ~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md
    Read ~/.claude/skills/domains/architecture/SKILL.md
    Read ~/.claude/skills/domains/quality-attributes/SKILL.md
    ```
@@ -35,13 +36,19 @@ Main conversation (no specialized agent)
 
 **File:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
 
+**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly. All nine sections are required; sections 7 and 8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why.
+
 **Contains:**
-- Proposed approach
-- Architecture diagrams (Mermaid)
-- Alternative approaches considered
-- Design rationale
-- File modification list
-- Trade-offs analysis
+- Header metadata (goal, milestone + GL/GH ref, feature ref, branch, status, revision)
+- Problem statement
+- Goals and non-goals
+- Implementation context (repo, language, requirements, constraints, verification command, context files)
+- Architecture overview with Mermaid diagram
+- Detailed design
+- Files changed table
+- Trade-offs and alternatives
+- Open questions
+- Test plan (unit table + integration table + exclusions)
 
 **After writing:** Ask the user if they want to `open <path>` the design file.
 

@@ -78,11 +78,7 @@ Create detailed design proposal with architecture, approach, trade-offs, and tes
 
 **Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
 
-**Required sections** (design doc is incomplete without all of these):
-- Architecture / approach with at least one Mermaid diagram
-- Files to be created/modified
-- Trade-offs and alternatives
-- **Test Plan** — unit test table (component → scenarios) + integration test table (boundary → what it verifies) + explicit exclusions
+**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 9 sections required. Sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
 After writing, ask the user if they want to `open <path>` the design file.
 

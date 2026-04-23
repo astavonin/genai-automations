@@ -85,14 +85,15 @@
       "Bash(sdkmanager:*)",
       "Read(/tmp/**)"
     ],
+    "defaultMode": "auto",
     "additionalDirectories": [
       "~/work",
       "~/projects",
       "~/.config",
       "~/.claude"
-    ],
-    "defaultMode": "auto"
+    ]
   },
+  "model": "sonnet",
   "hooks": {
     "PostCompact": [
       {

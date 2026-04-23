@@ -206,10 +206,8 @@ ls planning/<goal>/milestone-XX/design/
 
 ### Phase 2: Design
 - Main conversation (no agent)
-- Propose implementation approach with architecture diagrams
-- List files to be modified/created
-- Explain rationale and trade-offs
 - Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
+- **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 9 sections required
 - After writing the design file, ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
