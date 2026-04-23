@@ -28,7 +28,6 @@ What problem does this solve? Why now?
 ## 3. Implementation Context
 
 **Repository:** `/absolute/path/to/repo`
-**Language:** python
 
 **Requirements:**
 - ...
@@ -37,8 +36,18 @@ What problem does this solve? Why now?
 - ...
 
 **Verification:**
+
+*Extract from the project's `README.md` or `CLAUDE.md`. Must cover all three workflows (e.g. `./dev.sh build`, `./dev.sh test`, `make`, `make test`).*
+
 ```bash
-# commands to verify implementation
+# Build / compile
+<command>
+
+# Test
+<command>
+
+# Debug / run
+<command>
 ```
 
 **Context Files:**

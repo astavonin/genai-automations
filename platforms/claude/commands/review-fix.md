@@ -67,8 +67,18 @@ Focus areas for a fix review:
 
 **Step E: Codex cross-model verification**
 
+Follow Step E of the consensus protocol exactly. Before calling `codex-flow`, generate
+`planning/reviews/<fix-description>-fix-review-request.md` from the review request template:
+- **Repository:** absolute path to the current repo
+- **Review Scope:** the fix diff range established in Step 1
+- **Output File:** `planning/reviews/<fix-description>-codex-fix-review.md`
+- **Requirements:** what the fix was supposed to solve (from Step 2)
+- **Evidence:** the fix diff
+- **Review Focus:** correctness, completeness, regressions, root cause, tests
+
+Then invoke:
 ```bash
-codex review "DO NOT make any changes. Only print your findings. This is a targeted fix review — only review the changes in the diff, not pre-existing code. Check: does the fix correctly solve the problem? Are there regressions? Missing cases? Rate each finding Critical, High, Medium, or Low."
+codex-flow review planning/reviews/<fix-description>-fix-review-request.md
 ```
 
 Aggregate once all four have returned per the consensus protocol.

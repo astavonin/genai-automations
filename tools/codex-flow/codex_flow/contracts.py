@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-SUPPORTED_LANGUAGES = {"cpp", "python", "bash"}
-
 
 @dataclass(frozen=True)
 class ImplementationRequest:
@@ -14,7 +12,6 @@ class ImplementationRequest:
 
     request_path: Path
     repository: Path
-    language: str
     requirements: list[str]
     constraints: list[str]
     verification: str

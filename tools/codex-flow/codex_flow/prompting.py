@@ -114,7 +114,6 @@ def build_implementation_prompt(request: ImplementationRequest) -> str:
             _resource_text("skills/coder/SKILL.md"),
             _resource_text("skills/domains/code-quality/SKILL.md"),
             _resource_text("skills/domains/testing/SKILL.md"),
-            _resource_text(f"skills/languages/{request.language}.md"),
             _resource_text("templates/implementation-output-instructions.md"),
         ]
     )

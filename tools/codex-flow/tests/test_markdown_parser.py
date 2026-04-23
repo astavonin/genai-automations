@@ -22,7 +22,6 @@ def test_parse_implementation_request_extracts_contract(tmp_path: Path) -> None:
 ## 3. Implementation Context
 
 **Repository:** `/tmp/repo`
-**Language:** `python`
 
 **Requirements:**
 - Retry transient failures up to three times
@@ -31,8 +30,18 @@ def test_parse_implementation_request_extracts_contract(tmp_path: Path) -> None:
 - Keep the CLI unchanged
 
 **Verification:**
+
+*Extract from the project README or CLAUDE.md.*
+
 ```bash
+# Build / compile
+make
+
+# Test
 pytest tests/test_sync.py
+
+# Debug / run
+make run
 ```
 
 **Context Files:**
@@ -45,7 +54,6 @@ pytest tests/test_sync.py
     parsed = parse_implementation_request(request)
 
     assert parsed.repository == Path("/tmp/repo")
-    assert parsed.language == "python"
     assert parsed.requirements == ["Retry transient failures up to three times"]
     assert parsed.constraints == ["Keep the CLI unchanged"]
     assert parsed.context_files == ["src/sync.py", "tests/test_sync.py"]
@@ -61,7 +69,6 @@ def test_parse_implementation_request_rejects_missing_verification(tmp_path: Pat
 ## 3. Implementation Context
 
 **Repository:** `/tmp/repo`
-**Language:** `python`
 
 **Requirements:**
 - Do the thing

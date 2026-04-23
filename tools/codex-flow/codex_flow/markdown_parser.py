@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .contracts import ImplementationRequest, ReviewRequest, SUPPORTED_LANGUAGES
+from .contracts import ImplementationRequest, ReviewRequest
 from .exceptions import ValidationError
 
 FIELD_PATTERN = re.compile(r"^\*\*(?P<name>[^*]+):\*\*\s*(?P<value>.*)$")
@@ -23,11 +23,6 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
 
     section = _extract_section(lines, "Implementation Context")
     repository = _require_absolute_path(_extract_field(section, "Repository"), "Repository")
-    language = _extract_field(section, "Language").strip("`").lower()
-    if language not in SUPPORTED_LANGUAGES:
-        raise ValidationError(
-            f"Language must be one of {sorted(SUPPORTED_LANGUAGES)}; got {language!r}."
-        )
 
     requirements = _extract_bullets_after_field(section, "Requirements")
     constraints = _extract_bullets_after_field(section, "Constraints")
@@ -42,7 +37,6 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
     return ImplementationRequest(
         request_path=request_path.resolve(),
         repository=repository,
-        language=language,
         requirements=requirements,
         constraints=constraints,
         verification=verification.strip(),

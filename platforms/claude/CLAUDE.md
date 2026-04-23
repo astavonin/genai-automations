@@ -96,6 +96,8 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
 - `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent
 - `/tasks-sync` - Sync local planning task state with remote ticket system (push completions, discover epic children)
+- `/codex-review` - Run a standalone Codex review via codex-flow from a review request document (REVIEW-REQUEST-TEMPLATE.md)
+- `/codex-implement` - Run a standalone Codex implementation via codex-flow from a design document (DESIGN-TEMPLATE.md)
 
 ## Quick Reference
 

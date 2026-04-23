@@ -20,7 +20,6 @@ def _write_implementation_request(path: Path, repository: Path) -> None:
 ## 3. Implementation Context
 
 **Repository:** `{repository}`
-**Language:** `python`
 
 **Requirements:**
 - Retry transient failures up to three times

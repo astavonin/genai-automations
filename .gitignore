@@ -65,6 +65,9 @@ platforms/claude/memory/*-log.md
 # Logs
 *.log
 
+# codex-flow generated example outputs
+tools/codex-flow/examples/*.implementation-output.md
+
 # OS
 .DS_Store
 Thumbs.db

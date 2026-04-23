@@ -93,29 +93,21 @@ After all 3 agents complete, aggregate per the protocol (Steps B–C):
 
 **Step E: Codex cross-model verification**
 
-Run from the project's working directory (in parallel with Step A).
-Use the source and target branch names obtained in Step 2.
-Set a 600-second timeout — the default is too short for non-trivial codebases.
+Follow Step E of the consensus protocol exactly. Before calling `codex-flow`, generate
+`planning/reviews/MR<number>-review-request.md` from the review request template:
+- **Repository:** absolute path to the current repo
+- **Review Scope:** `origin/<target_branch>...origin/<source_branch>`
+- **Output File:** `planning/reviews/MR<number>-codex-review.md`
+- **Requirements:** key requirements extracted from the MR description
+- **Evidence:** `git diff origin/<target_branch>...origin/<source_branch> --stat` output
+- **Review Focus:** bugs, security issues, logic errors, standards compliance
 
+Then invoke:
 ```bash
-codex review "DO NOT make any changes. Only print your findings. \
-Review the diff from origin/<target_branch> to origin/<source_branch>. \
-Focus on bugs, security issues, logic errors, and standards compliance. \
-Rate each finding Critical, High, Medium, or Low. Be concise." \
-> /tmp/codex-review.txt 2>&1
+codex-flow review planning/reviews/MR<number>-review-request.md
 ```
 
-After the command completes, check the output size and read it in full:
-```bash
-wc -l /tmp/codex-review.txt
-```
-- If ≤ 300 lines: read the whole file with the Read tool in one call.
-- If > 300 lines: read iteratively in 200-line chunks (offset + limit) until EOF.
-
-Never pipe Codex output to `head` or any truncating command — Codex reads files
-before printing findings, so truncation discards all results.
-
-Cross-aggregate with the Claude consensus findings per the protocol.
+Read `planning/reviews/MR<number>-codex-review.md` and cross-aggregate with the Claude consensus findings per the protocol.
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)

@@ -61,39 +61,26 @@ Output: a deduplicated list of findings, each with:
 Codex runs in parallel with Step A (not after Step D). Once both the Claude consensus (Steps B–D)
 and the Codex output are available, cross-aggregate them.
 
-Run Codex via Bash from the project's working directory:
+**Before invoking Codex, generate a review request document** from the template at
+`~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and write it to
+`planning/reviews/<feature>-review-request.md`. Fill in all fields from the current review
+context (repository, branch, scope, requirements from the design doc, evidence from `/verify`,
+review focus from the calling command). The `Output File` field must point to
+`planning/reviews/<feature>-codex-review.md` — codex-flow writes its output there automatically.
 
-**For design/code reviews:**
+Run Codex via `codex-flow`:
+
 ```bash
-~/.claude/scripts/codex-pipe \
-  --prompt "Review the following for quality attributes (supportability, extendability, maintainability, testability, performance, safety, security, observability). List findings with severity Critical, High, Medium, or Low. Be concise." \
-  --output /tmp/codex-review.txt \
-  <subject-file>
+codex-flow review planning/reviews/<feature>-review-request.md
 ```
 
-**For MR reviews** — substitute `<source>` and `<target>` with the actual branch names
-obtained in Step 2 of the calling command (e.g. `spring-core-crm` and `main`):
+`codex-flow` validates the request document, invokes `codex exec`, enforces the read-only
+guarantee (aborts if Codex modifies any file other than `Output File`), and writes a
+standardised Markdown artifact. After it completes, read the output file:
+
 ```bash
-codex review "DO NOT make any changes. Only print your findings. \
-Review the diff from origin/<target> to origin/<source>. \
-Focus on bugs, security issues, logic errors, and standards compliance. \
-Rate each finding Critical, High, Medium, or Low. Be concise." \
-> /tmp/codex-review.txt 2>&1
+cat planning/reviews/<feature>-codex-review.md
 ```
-
-**IMPORTANT — always redirect Codex output to a file.** Never pipe to `head` or truncate inline.
-Codex spends multiple turns reading files before printing findings; truncating early discards all results.
-
-**IMPORTANT — always set a 600-second timeout** on the Bash call that runs Codex.
-The default 120-second timeout is too short for non-trivial codebases and will kill the process
-before findings are printed, producing an empty or incomplete output file.
-
-After the command completes, read the file in full:
-```bash
-wc -l /tmp/codex-review.txt   # check size first
-```
-- If ≤ 300 lines: read the whole file with the Read tool in one call.
-- If > 300 lines: read iteratively in 200-line chunks (offset + limit) until the end of file.
 
 **Cross-aggregate the results:**
 
@@ -165,5 +152,5 @@ To keep signal high, instruct each agent to skip:
 - Agents must not be shown each other's output before Step B
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
 - Step E (Codex) and Step F (test-coverage agent) both run **in parallel** with Steps A–D
-- Redirect Codex output to a file (`> /tmp/codex-review.txt 2>&1`) and read the file after it completes — never truncate with `head`
+- Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` — never call `codex` directly
 - The final report sections are: Consensus findings → Codex-only findings → Test-coverage findings
