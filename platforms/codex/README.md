@@ -18,6 +18,9 @@ It does not attempt to restore the full Claude-side surface area.
 platforms/codex/
 ├── CODEX.md
 ├── README.md
+├── config.toml
+├── rules/
+├── templates/
 └── skills/
     ├── architecture-research-planner/
     ├── reviewer/

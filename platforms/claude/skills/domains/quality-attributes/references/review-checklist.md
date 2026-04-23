@@ -33,6 +33,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Unit test table covers every public component/behavior or has explicit exclusion with reason
 - [ ] Integration test table covers every boundary touching external systems
 - [ ] "Explicitly not tested" list is present (even if empty — signals completeness was considered)
+- [ ] When a coverage target can be extracted from repo policy, CI, or surrounding context, the expected minimum is stated and is `>= 80%` unless the project defines a stricter rule
 - [ ] Components can be tested in isolation
 - [ ] Edge cases considered
 
@@ -111,6 +112,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Unit tests exist and pass
 - [ ] Unit tests complete in ≤ 3 seconds each — no network, disk I/O, external processes, or real databases
 - [ ] Test coverage is adequate (critical paths covered)
+- [ ] When a numeric coverage target can be extracted from repo policy, CI, or surrounding context, the expected minimum is `>= 80%` unless the project defines a stricter rule
 - [ ] Tests are clear and maintainable
 - [ ] Edge cases tested
 - [ ] Integration tests exist (not just planned) for component boundaries

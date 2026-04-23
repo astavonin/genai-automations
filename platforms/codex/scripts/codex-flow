@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOOL_DIR="$(cd "${SCRIPT_DIR}/../../../tools/codex-flow" && pwd)"
-
-export PYTHONPATH="${TOOL_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
-exec python3 -m codex_flow "$@"

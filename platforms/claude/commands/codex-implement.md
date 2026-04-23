@@ -50,6 +50,6 @@ Display the summary, files changed, verification results, and any open issues to
 
 ## Notes
 
-- The design document must follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — `codex-flow` parses the `Implementation Context` section for Repository, Language, Requirements, Constraints, Verification, and Context Files.
+- The design document must follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — `codex-flow` parses the `Implementation Context` section for Repository, Requirements, Constraints, Verification, and Context Files.
 - `codex-flow implement` runs in `workspace-write` sandbox — Codex can modify files in the repository.
 - After implementation, run `/review-code` as the mandatory code review checkpoint.

@@ -14,7 +14,12 @@ Backup of AI platform configurations that live in `~/.claude/` and `~/.codex/`:
   - **skills/** — Modular knowledge base (languages, domains, workflows)
   - **agents/** — Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
 
-- **`platforms/codex/`** — Codex skills and configurations (backup of `~/.codex/`)
+- **`platforms/codex/`** — Codex configuration backup (subset of `~/.codex/`)
+  - **CODEX.md** — Core Codex guidance and active-skill scope
+  - **config.toml** — Default profile and trusted project settings
+  - **rules/** — Command allow rules
+  - **skills/** — Narrowed skill set for architecture, review, testing, code quality, and selected languages
+  - **templates/** — Input templates for `codex-flow`
 
 ### Sync Script (`sync-configs.sh`)
 

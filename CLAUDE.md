@@ -11,7 +11,12 @@ Backup of AI platform configurations:
   - `PLANNING-TEMPLATE.md` - Project planning template
   - `agents/*.md` - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
   - `commands/*.md` - Slash command definitions (mr, load, ticket, review-mr, etc.)
-- **`codex/`** - Codex configurations and skills
+- **`codex/`** - Narrowed Codex config backup (subset of `~/.codex/`)
+  - `CODEX.md` - Core Codex guidance and active-skill scope
+  - `config.toml` - Default profile and trusted project settings
+  - `rules/` - Command allow rules
+  - `skills/` - Architecture/review workflow skills plus C++, Python, and Go guidance
+  - `templates/` - Input templates for `codex-flow`
 
 ### `sync-configs.sh`
 Two-way sync utility for platform configurations between this repo and `~/.claude/` / `~/.codex/`.

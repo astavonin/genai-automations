@@ -50,6 +50,7 @@ Eight quality attributes for evaluating software design and implementation.
 - Integration tests written (not just planned) for component boundaries
 - Integration tests tagged to run separately from unit tests
 - Edge cases covered; no flaky tests
+- When a coverage target can be extracted from repo policy, CI, or review context, expect `>= 80%` coverage unless the project defines a stricter rule
 
 ### 5. Performance
 **Definition:** Does the system meet performance requirements?

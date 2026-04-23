@@ -20,6 +20,7 @@ Is the design understandable, structured, and consistent?
 
 ### 4. Testability
 Does the design define how behavior and invariants can be validated?
+When a coverage target can be extracted from the repository, design, or review context, treat `>= 80%` as the expected minimum unless the project states a stricter rule.
 
 ### 5. Performance
 Are performance implications, hot paths, or scale boundaries acknowledged where relevant?
@@ -44,4 +45,5 @@ For workflow and command designs, also verify:
 
 ## Reference Checklist
 
-Use `references/design-review-checklist.md` for the narrowed design and architecture review checklist.
+Use `references/review-checklist.md` for the narrowed design and architecture review checklist.
+`references/design-review-checklist.md` remains as a compatibility alias.

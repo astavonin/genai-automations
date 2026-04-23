@@ -8,9 +8,9 @@
 It validates the Markdown request, loads the workflow skill bundle into the prompt, invokes
 `codex exec`, and writes a standardized Markdown artifact.
 
-`codex-flow` currently invokes `codex exec` with
-`--dangerously-bypass-approvals-and-sandbox` by default so local verification commands can run on
-hosts where the Codex sandbox fails.
+`codex-flow` currently invokes `codex exec` with `--model gpt-5.4` and
+`-c model_reasoning_effort=xhigh`, plus `--dangerously-bypass-approvals-and-sandbox` by default so
+local verification commands can run on hosts where the Codex sandbox fails.
 
 ## Install
 

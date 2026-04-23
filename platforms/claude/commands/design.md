@@ -42,7 +42,7 @@ Main conversation (no specialized agent)
 - Header metadata (goal, milestone + GL/GH ref, feature ref, branch, status, revision)
 - Problem statement
 - Goals and non-goals
-- Implementation context (repo, language, requirements, constraints, verification command, context files)
+- Implementation context (repo, requirements, constraints, verification command, context files)
 - Architecture overview with Mermaid diagram
 - Detailed design
 - Files changed table

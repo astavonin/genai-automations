@@ -1,3 +1,9 @@
+default_profile = "full"
+
+[profiles.full]
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+
 [projects."/home/astavonin/projects/genai-automations"]
 trust_level = "trusted"
 

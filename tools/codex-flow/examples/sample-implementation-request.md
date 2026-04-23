@@ -29,7 +29,6 @@ without requiring a large code change or broad repo context.
 ## 3. Implementation Context
 
 **Repository:** `/tmp/codex-flow-smoke-repo`
-**Language:** `python`
 
 **Requirements:**
 - Add a function `format_greeting(name: str) -> str`

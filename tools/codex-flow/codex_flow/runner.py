@@ -31,6 +31,8 @@ IGNORED_REVIEW_ARTIFACT_SUFFIXES = {
 IGNORED_REVIEW_ARTIFACT_NAMES = {
     ".coverage",
 }
+DEFAULT_CODEX_MODEL = "gpt-5.4"
+DEFAULT_REASONING_EFFORT = "xhigh"
 
 
 def run_implementation(request_path: Path) -> Path:
@@ -93,6 +95,10 @@ def _invoke_codex(
         command = [
             "codex",
             "exec",
+            "--model",
+            DEFAULT_CODEX_MODEL,
+            "--config",
+            f"model_reasoning_effort={DEFAULT_REASONING_EFFORT}",
             "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check",
             "--cd",

@@ -25,7 +25,7 @@ Review architecture proposals, workflow designs, and technical plans with eviden
 Use:
 - `~/.codex/skills/domains/architecture/SKILL.md`
 - `~/.codex/skills/domains/quality-attributes/SKILL.md`
-- `~/.codex/skills/domains/quality-attributes/references/design-review-checklist.md`
+- `~/.codex/skills/domains/quality-attributes/references/review-checklist.md`
 - `references/architecture-review-template.md`
 
 ## Guardrails

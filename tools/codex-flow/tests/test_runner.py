@@ -82,6 +82,10 @@ def test_run_implementation_writes_standardized_output(
 
     def fake_run(command: list[str], input: str, text: bool, capture_output: bool, check: bool):
         assert command[:2] == ["codex", "exec"]
+        assert "--model" in command
+        assert command[command.index("--model") + 1] == "gpt-5.4"
+        assert "--config" in command
+        assert command[command.index("--config") + 1] == "model_reasoning_effort=xhigh"
         assert "--dangerously-bypass-approvals-and-sandbox" in command
         assert "--sandbox" not in command
         output_index = command.index("--output-last-message") + 1
@@ -127,6 +131,10 @@ def test_run_review_uses_read_only_and_only_writes_output(
 
     def fake_run(command: list[str], input: str, text: bool, capture_output: bool, check: bool):
         assert command[:2] == ["codex", "exec"]
+        assert "--model" in command
+        assert command[command.index("--model") + 1] == "gpt-5.4"
+        assert "--config" in command
+        assert command[command.index("--config") + 1] == "model_reasoning_effort=xhigh"
         assert "--dangerously-bypass-approvals-and-sandbox" in command
         assert "--sandbox" not in command
         output_index = command.index("--output-last-message") + 1

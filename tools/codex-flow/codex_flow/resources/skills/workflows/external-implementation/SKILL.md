@@ -4,7 +4,6 @@ The request document is a design document.
 
 Execution contract:
 - `Repository`
-- `Language`
 - `Requirements`
 - `Constraints`
 - `Verification`
