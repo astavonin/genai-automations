@@ -41,18 +41,12 @@ Before finalizing a design doc, verify that every introduced field, flag, path, 
 
 # Coding Workflow
 
-When implementing or reviewing code, skill selection is explicit:
-- C++ request: MUST use `skills/languages/cpp/`
-- Python request: MUST use `skills/languages/python/`
-- Go request: MUST use `skills/languages/go/`
-- Any code-writing, code-modification, or code-review task: MUST use `skills/domains/quality-attributes/`
-- Any test-writing or test-review task: ALSO use `skills/domains/testing/`
-- Any code-writing or code-review task: ALSO use `skills/domains/code-quality/`
-
-Do not rely on generic coding behavior when one of the language skills matches the request.
-If a task spans multiple covered languages, use each corresponding language skill for the relevant files.
-Treat `skills/domains/quality-attributes/` as a development-time constraint, not only a review aid.
-During implementation, make trade-offs against supportability, extendability, maintainability, testability, performance, safety, security, and observability explicit in the code and validation approach where relevant.
+When implementing or reviewing code:
+- use `skills/languages/cpp/` for C++
+- use `skills/languages/python/` for Python
+- use `skills/languages/go/` for Go
+- use `skills/domains/testing/` when writing or reviewing tests
+- use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 
@@ -74,5 +68,4 @@ Prefer language-idiomatic solutions, explicit validation, and project-native too
 - Do not let prompt wording stand in for runtime enforcement when a hard invariant is required.
 - Separate confirmed facts from proposed behavior.
 - For workflow docs, ensure request fields, templates, and examples stay aligned.
-- For code changes, always develop against the eight quality attributes, not just language style rules.
 - For code changes, apply the project's formatter and use the project's test and lint tooling when available.

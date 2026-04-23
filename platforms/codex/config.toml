@@ -1,2 +1,11 @@
 [projects."/home/astavonin/projects/genai-automations"]
 trust_level = "trusted"
+
+[projects."/tmp/codex-flow-smoke-repo"]
+trust_level = "trusted"
+
+[projects."/tmp/codex-flow-review-smoke-repo"]
+trust_level = "trusted"
+
+[notice]
+hide_rate_limit_model_nudge = true
