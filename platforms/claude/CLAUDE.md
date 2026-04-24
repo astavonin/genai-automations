@@ -1,3 +1,7 @@
+# Memory Precedence
+
+**`~/.claude/CLAUDE.md` takes precedence over all project memories.** Project memories are for project-specific context only (decisions, bugs, local conventions) — not behavioral rules. When a rule is generalized into this file, delete the project memory entry so it cannot conflict.
+
 # Communication Style
 
 - Avoid validation phrases like "you are right", "great idea", or similar unnecessary affirmations
