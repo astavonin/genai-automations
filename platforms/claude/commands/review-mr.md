@@ -71,30 +71,11 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 
 ### Step 4: Multi-Agent Consensus Review
 
-Run the **Consensus Review Protocol** (Steps A–E) from:
+Run the **Consensus Review Protocol** (Steps 0, A–E) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
-**Launch simultaneously: Steps A–D (Claude) and Step E (Codex) in parallel.**
-
-Do not wait for Claude agents to finish before starting Codex — they are independent.
-Aggregate once all four have returned.
-
-**Steps A–D: Claude consensus**
-
-Pass to each of the 3 independent reviewer agents:
-- Full diff (or focused subset for large diffs)
-- MR title and description
-- Review checklist from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- Instruction to produce a raw findings list: `title`, `severity`, `description`, `location(s)`
-
-After all 3 agents complete, aggregate per the protocol (Steps B–C):
-- **Issue included:** 2 or more agents flagged it
-- **Severity:** level that 2+ agents agree on; if all 3 differ, use the middle level
-
-**Step E: Codex cross-model verification**
-
-Follow Step E of the consensus protocol exactly. Before calling `codex-flow`, generate
-`planning/reviews/MR<number>-review-request.md` from the review request template:
+**Step 0 (do first, before any agents):** Write `planning/reviews/MR<number>-review-request.md`
+from the review request template:
 - **Repository:** absolute path to the current repo
 - **Review Scope:** `origin/<target_branch>...origin/<source_branch>`
 - **Output File:** `planning/reviews/MR<number>-codex-review.md`
@@ -102,12 +83,14 @@ Follow Step E of the consensus protocol exactly. Before calling `codex-flow`, ge
 - **Evidence:** `git diff origin/<target_branch>...origin/<source_branch> --stat` output
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 
-Then invoke:
-```bash
-codex-flow review planning/reviews/MR<number>-review-request.md
-```
+**Step A (single message):** Launch simultaneously:
+- 3 × reviewer (opus) Agent calls with the full diff, MR title/description, and review checklist
+- `codex-flow` Bash call with `run_in_background: true`:
+  ```bash
+  codex-flow review planning/reviews/MR<number>-review-request.md
+  ```
 
-Read `planning/reviews/MR<number>-codex-review.md` and cross-aggregate with the Claude consensus findings per the protocol.
+Aggregate once all four have returned per protocol Steps B–E.
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
@@ -123,6 +106,8 @@ GitLab will interpret these as real user mentions and send notifications.
 **5a. Generate YAML**
 
 Write the review to `planning/reviews/MR<number>-review.yaml` following the schema below.
+Include ALL findings: consensus findings first, then Codex-only findings (prefix their title
+with `[Codex]` so reviewers can distinguish them).
 
 If this file already exists (re-review), it will be overwritten. Previous review output
 is not preserved. Copy the file manually before re-running if you need to keep it.

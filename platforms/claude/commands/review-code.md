@@ -108,13 +108,24 @@ Produce a markdown report:
 
 ### High
 - **H1** [attribute] Description...
-- **H2** [attribute] Description...
 
 ### Medium
 - **M1** [attribute] Description...
 
 ### Low
 - **L1** [attribute] Description...
+
+## Codex-Only Findings
+
+Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
+
+- **X1** [severity] Description...
+
+## Test-Coverage Findings
+
+Findings from the test-coverage agent not already present in the consensus section.
+
+- **T1** [severity] Description...
 
 ## Recommendation
 <rationale and required actions if not approved; reference findings by ID e.g. "Fix C1, H2 before proceeding">

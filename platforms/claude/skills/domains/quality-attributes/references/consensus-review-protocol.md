@@ -12,11 +12,30 @@ The consensus severity is determined the same way: the severity level that **at 
 
 ## Protocol Steps
 
-### Step A: Launch 3 Independent Reviewers and Codex in Parallel (+ test-coverage agent for code reviews)
+### Step 0: Prepare Codex review request (before launching any agents)
 
-Spawn three **reviewer (opus)** agents and Codex simultaneously. For **code reviews** also spawn
-the test-coverage agent (Step F) in the same batch — do not launch it for design reviews.
-All agents run in parallel to minimise wall-clock time. Each Claude agent:
+**This step must complete before Step A.** Write the Codex review request document from the
+template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and save it to
+`planning/reviews/<feature>-review-request.md`. Fill in all fields from the current review
+context (repository, branch, scope, requirements, evidence, review focus). The `Output File`
+field must point to `planning/reviews/<feature>-codex-review.md`.
+
+This takes seconds and unblocks Codex from starting the moment Step A fires.
+
+### Step A: Launch 3 Independent Reviewers, Codex, and test-coverage agent simultaneously
+
+**Send all of the following in a single message so they run in parallel:**
+- Three **reviewer (opus)** Agent calls (Steps B–D)
+- One `codex-flow` Bash call with `run_in_background: true`:
+  ```bash
+  codex-flow review planning/reviews/<feature>-review-request.md
+  ```
+- For **code reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
+
+Do not split these across separate messages. Codex is typically the slowest; starting it in the
+same batch as the Claude agents eliminates its wall-clock cost from the critical path.
+
+Each Claude agent:
 - Receives the same input: the subject under review + MR/design context (title, description)
 - Receives: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - Works **independently** — no shared state, no knowledge of other agents' outputs
@@ -56,27 +75,10 @@ Output: a deduplicated list of findings, each with:
 - `location(s)` — from whichever agent(s) identified the specific code site
 - `fix` — synthesized recommendation (where agents agree on the approach)
 
-### Step E: Codex Cross-Model Verification
+### Step E: Codex Cross-Model Verification (aggregation)
 
-Codex runs in parallel with Step A (not after Step D). Once both the Claude consensus (Steps B–D)
-and the Codex output are available, cross-aggregate them.
-
-**Before invoking Codex, generate a review request document** from the template at
-`~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and write it to
-`planning/reviews/<feature>-review-request.md`. Fill in all fields from the current review
-context (repository, branch, scope, requirements from the design doc, evidence from `/verify`,
-review focus from the calling command). The `Output File` field must point to
-`planning/reviews/<feature>-codex-review.md` — codex-flow writes its output there automatically.
-
-Run Codex via `codex-flow`:
-
-```bash
-codex-flow review planning/reviews/<feature>-review-request.md
-```
-
-`codex-flow` validates the request document, invokes `codex exec`, enforces the read-only
-guarantee (aborts if Codex modifies any file other than `Output File`), and writes a
-standardised Markdown artifact. After it completes, read the output file:
+Codex was launched in Step A (background Bash). Once it completes (you will be notified),
+read its output:
 
 ```bash
 cat planning/reviews/<feature>-codex-review.md
@@ -151,6 +153,7 @@ To keep signal high, instruct each agent to skip:
 - Each agent must be told the same context (title, description, diff or design doc)
 - Agents must not be shown each other's output before Step B
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
-- Step E (Codex) and Step F (test-coverage agent) both run **in parallel** with Steps A–D
-- Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` — never call `codex` directly
+- **Step 0 (write review request doc) must complete before Step A fires** — it is a prerequisite, not a Codex phase
+- **Step A is a single message** containing all Agent calls + the background `codex-flow` Bash call — never split across messages
+- Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true` — never call `codex` directly
 - The final report sections are: Consensus findings → Codex-only findings → Test-coverage findings
