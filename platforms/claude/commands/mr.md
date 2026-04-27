@@ -65,7 +65,7 @@ If no linked issue is found, skip this step.
 Create `planning/mr-draft.yaml` with the following structure:
 
 ```yaml
-title: "Add adaptive camera exposure"
+title: "Add adaptive camera exposure. Ref #42"
 description: |
   # Summary
 
@@ -98,7 +98,7 @@ target_branch: "main"  # Optional (default: repo default)
 ```
 
 **YAML Fields:**
-- `title` (required) - MR title, under 70 characters
+- `title` (required) - MR title in format `<short description>. Ref #<issue-number>`, under 70 characters. Always include the issue reference.
 - `description` (required) - MR description following template structure
 - `draft` (optional) - Boolean, mark as draft MR
 - `reviewers` (optional) - List of reviewer usernames
@@ -179,7 +179,8 @@ Return the MR URL to the user and ask if they want to `open <url>` in the browse
 
 ## Critical Rules
 
-1. **Check acceptance criteria first** - Load the linked issue and verify scope/AC coverage before writing YAML
+1. **Title format** - Must be `<short description>. Ref #<issue-number>` — never omit the issue reference
+2. **Check acceptance criteria first** - Load the linked issue and verify scope/AC coverage before writing YAML
 2. **Block on gaps** - If any scope/AC items are unimplemented, explicitly present them and ask the user how to proceed; do NOT silently skip them
 3. **Generate YAML first** - Always create `planning/mr-draft.yaml` before creating MR
 4. **User verification required** - Show YAML and wait for explicit confirmation
@@ -191,7 +192,7 @@ Return the MR URL to the user and ask if they want to `open <url>` in the browse
 ## Example
 
 ```yaml
-title: "Add DMS refactoring with pipeline architecture"
+title: "Add DMS refactoring with pipeline architecture. Ref #117"
 description: |
   # Summary
 
