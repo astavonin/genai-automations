@@ -9,7 +9,7 @@ Create detailed design proposal based on requirements and research findings.
 
 ## Agent
 
-Main conversation (no specialized agent)
+**architecture-research-planner (opus)** — all design doc work, including initial creation and applying review fixes, must be delegated to this agent. Never write or edit design files inline with Write/Edit tools in the main conversation.
 
 ## Skills Required
 
@@ -18,19 +18,13 @@ Main conversation (no specialized agent)
 
 ## Actions
 
-0. Read workflow and domain skills to ensure phase context:
-   ```
-   Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
-   Read ~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md
-   Read ~/.claude/skills/domains/architecture/SKILL.md
-   Read ~/.claude/skills/domains/quality-attributes/SKILL.md
-   ```
-
-1. Analyze requirements and constraints
-2. Propose implementation approach
-3. List files to be modified/created
-4. Explain technical rationale
-5. Document trade-offs and alternatives
+0. Declare agent use: "I'll use architecture-research-planner agent to create/update the design document..."
+1. Spawn architecture-research-planner with:
+   - The research analysis from Phase 1 (if available)
+   - The DESIGN-TEMPLATE.md structure
+   - The goal, milestone, feature context
+   - For post-review fixes: the review report and enumerated findings to address
+2. Agent produces the design file following the template (all 9 sections required)
 
 ## Output
 
