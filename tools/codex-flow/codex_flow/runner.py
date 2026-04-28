@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
+import sys
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -27,6 +30,7 @@ IGNORED_REVIEW_ARTIFACT_DIRS = {
     "venv",
     "node_modules",
     ".claude",  # Claude Code session/settings files managed by the IDE, not by Codex
+    ".codex-flow",  # codex-flow diagnostics, not repository content under review
 }
 IGNORED_REVIEW_ARTIFACT_SUFFIXES = {
     ".pyc",
@@ -37,6 +41,7 @@ IGNORED_REVIEW_ARTIFACT_NAMES = {
 }
 DEFAULT_CODEX_MODEL = "gpt-5.4"
 DEFAULT_REASONING_EFFORT = "xhigh"
+VALID_CODEX_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
 
 
 def run_implementation(request_path: Path) -> Path:
@@ -48,7 +53,7 @@ def run_implementation(request_path: Path) -> Path:
         "implement",
         request.repository,
         prompt,
-        sandbox="workspace-write",
+        sandbox="danger-full-access",
     )
     request.output_path.write_text(_render_implementation_output(result), encoding="utf-8")
     return request.output_path
@@ -66,23 +71,22 @@ def run_review(request_path: Path) -> Path:
         prompt,
         sandbox="read-only",
     )
-    after = _snapshot_repository(request.repository)
-    if after != before:
-        raise WorkflowViolationError(
-            "Review mode changed repository state before the runner wrote Output File."
-        )
+    after_codex = _snapshot_repository(request.repository)
     output_path = request.output_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(_render_review_output(result), encoding="utf-8")
     final = _snapshot_repository(request.repository)
+    changed_during_codex = _changed_paths(before, after_codex)
     changed = _changed_paths(before, final)
-    allowed = {output_path.resolve()}
-    unauthorized = sorted(path for path in changed if path not in allowed)
-    if unauthorized:
-        raise WorkflowViolationError(
-            "Review mode modified files outside Output File: "
-            + ", ".join(str(path) for path in unauthorized)
+    unexpected = sorted(path for path in changed if path != output_path.resolve())
+    if unexpected:
+        trace_path = _write_review_change_trace(
+            request.repository,
+            output_path,
+            changed_during_codex,
+            unexpected,
         )
+        _warn_review_changes(request.repository, unexpected, trace_path)
     return output_path
 
 
@@ -92,6 +96,9 @@ def _invoke_codex(
     prompt: str,
     sandbox: str,
 ) -> dict:
+    if sandbox not in VALID_CODEX_SANDBOXES:
+        raise WorkflowViolationError(f"Unsupported Codex sandbox mode: {sandbox}")
+
     with tempfile.TemporaryDirectory(prefix="codex-flow-") as tempdir:
         temp_path = Path(tempdir)
         schema_path = write_schema_file(load_schema(mode), temp_path, mode)
@@ -103,16 +110,32 @@ def _invoke_codex(
             DEFAULT_CODEX_MODEL,
             "--config",
             f"model_reasoning_effort={DEFAULT_REASONING_EFFORT}",
-            "--dangerously-bypass-approvals-and-sandbox",
-            "--skip-git-repo-check",
-            "--cd",
-            str(repository),
-            "--output-schema",
-            str(schema_path),
-            "--output-last-message",
-            str(output_path),
-            "-",
         ]
+        if sandbox == "danger-full-access":
+            command.append("--dangerously-bypass-approvals-and-sandbox")
+        else:
+            command.extend(
+                [
+                    "--ignore-user-config",
+                    "--ignore-rules",
+                    "--config",
+                    "approval_policy=never",
+                    "--sandbox",
+                    sandbox,
+                ]
+            )
+        command.extend(
+            [
+                "--skip-git-repo-check",
+                "--cd",
+                str(repository),
+                "--output-schema",
+                str(schema_path),
+                "--output-last-message",
+                str(output_path),
+                "-",
+            ]
+        )
         try:
             subprocess.run(
                 command,
@@ -166,6 +189,53 @@ def _changed_paths(
         if before.get(path) != after.get(path):
             changed.add(path)
     return changed
+
+
+def _write_review_change_trace(
+    repository: Path,
+    output_path: Path,
+    changed_during_codex: set[Path],
+    unexpected: list[Path],
+) -> Path:
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "-", output_path.stem).strip("-")
+    trace_name = f"{safe_stem or 'review'}-{timestamp}.json"
+    trace_dir = repository / ".codex-flow" / "review-traces"
+    trace_dir.mkdir(parents=True, exist_ok=True)
+    trace_path = trace_dir / trace_name
+    payload = {
+        "event": "review_mode_repository_changed",
+        "timestamp_utc": timestamp,
+        "repository": str(repository.resolve()),
+        "output_file": str(output_path.resolve()),
+        "changed_during_codex": [
+            _display_repository_path(path, repository) for path in sorted(changed_during_codex)
+        ],
+        "unexpected_changed_paths": [
+            _display_repository_path(path, repository) for path in unexpected
+        ],
+    }
+    trace_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return trace_path
+
+
+def _warn_review_changes(repository: Path, changed_paths: list[Path], trace_path: Path) -> None:
+    displayed_paths = [_display_repository_path(path, repository) for path in changed_paths]
+    preview = ", ".join(displayed_paths[:5])
+    if len(displayed_paths) > 5:
+        preview = f"{preview}, ... ({len(displayed_paths)} total)"
+    print(
+        "codex-flow warning: review mode observed repository changes outside Output File; "
+        f"review output was preserved. Changed paths: {preview}. Trace: {trace_path}",
+        file=sys.stderr,
+    )
+
+
+def _display_repository_path(path: Path, repository: Path) -> str:
+    try:
+        return path.resolve().relative_to(repository.resolve()).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _is_ignored_review_artifact(path: Path, repository: Path) -> bool:

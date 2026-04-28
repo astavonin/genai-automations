@@ -8,8 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from codex_flow.exceptions import WorkflowViolationError
 from codex_flow.runner import run_implementation, run_review
+
+
+def _config_values(command: list[str]) -> list[str]:
+    return [command[index + 1] for index, value in enumerate(command) if value == "--config"]
 
 
 def _write_implementation_request(path: Path, repository: Path) -> None:
@@ -82,10 +85,11 @@ def test_run_implementation_writes_standardized_output(
 
     def fake_run(command: list[str], input: str, text: bool, capture_output: bool, check: bool):
         assert command[:2] == ["codex", "exec"]
+        assert "--ignore-user-config" not in command
+        assert "--ignore-rules" not in command
         assert "--model" in command
         assert command[command.index("--model") + 1] == "gpt-5.4"
-        assert "--config" in command
-        assert command[command.index("--config") + 1] == "model_reasoning_effort=xhigh"
+        assert _config_values(command) == ["model_reasoning_effort=xhigh"]
         assert "--dangerously-bypass-approvals-and-sandbox" in command
         assert "--sandbox" not in command
         output_index = command.index("--output-last-message") + 1
@@ -131,12 +135,17 @@ def test_run_review_uses_read_only_and_only_writes_output(
 
     def fake_run(command: list[str], input: str, text: bool, capture_output: bool, check: bool):
         assert command[:2] == ["codex", "exec"]
+        assert "--ignore-user-config" in command
+        assert "--ignore-rules" in command
         assert "--model" in command
         assert command[command.index("--model") + 1] == "gpt-5.4"
-        assert "--config" in command
-        assert command[command.index("--config") + 1] == "model_reasoning_effort=xhigh"
-        assert "--dangerously-bypass-approvals-and-sandbox" in command
-        assert "--sandbox" not in command
+        assert _config_values(command) == [
+            "model_reasoning_effort=xhigh",
+            "approval_policy=never",
+        ]
+        assert "--dangerously-bypass-approvals-and-sandbox" not in command
+        assert "--sandbox" in command
+        assert command[command.index("--sandbox") + 1] == "read-only"
         output_index = command.index("--output-last-message") + 1
         Path(command[output_index]).write_text(
             json.dumps(
@@ -208,8 +217,8 @@ def test_run_review_ignores_pytest_and_pyc_artifacts(
     assert output.exists()
 
 
-def test_run_review_fails_when_repo_changes_during_codex_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_run_review_warns_and_traces_when_repo_changes_during_codex_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     repository = tmp_path / "repo"
     repository.mkdir()
@@ -238,5 +247,17 @@ def test_run_review_fails_when_repo_changes_during_codex_run(
 
     monkeypatch.setattr("codex_flow.runner.subprocess.run", fake_run)
 
-    with pytest.raises(WorkflowViolationError, match="before the runner wrote Output File"):
-        run_review(request)
+    output = run_review(request)
+
+    captured = capsys.readouterr()
+    assert output.exists()
+    assert output.read_text(encoding="utf-8").startswith("# Review Output")
+    assert "codex-flow warning: review mode observed repository changes" in captured.err
+    assert "file.txt" in captured.err
+    trace_files = sorted((repository / ".codex-flow" / "review-traces").glob("*.json"))
+    assert len(trace_files) == 1
+    trace = json.loads(trace_files[0].read_text(encoding="utf-8"))
+    assert trace["event"] == "review_mode_repository_changed"
+    assert trace["output_file"] == str(output.resolve())
+    assert trace["changed_during_codex"] == ["file.txt"]
+    assert trace["unexpected_changed_paths"] == ["file.txt"]

@@ -9,8 +9,14 @@ It validates the Markdown request, loads the workflow skill bundle into the prom
 `codex exec`, and writes a standardized Markdown artifact.
 
 `codex-flow` currently invokes `codex exec` with `--model gpt-5.4` and
-`-c model_reasoning_effort=xhigh`, plus `--dangerously-bypass-approvals-and-sandbox` by default so
-local verification commands can run on hosts where the Codex sandbox fails.
+`-c model_reasoning_effort=xhigh`. Implementation mode uses
+`--dangerously-bypass-approvals-and-sandbox` so local verification commands can run on hosts where
+the Codex sandbox fails. Review mode ignores the user full-access profile and runs Codex with
+`--sandbox read-only`; only the `codex-flow` runner writes the requested review `Output File`.
+
+In review mode, unexpected repository changes do not discard the review output. `codex-flow`
+preserves the requested `Output File`, prints a warning to stderr, and writes a diagnostic trace
+under `.codex-flow/review-traces/` with the changed paths.
 
 ## Install
 
@@ -34,6 +40,8 @@ make install PIPX_PYTHON=/full/path/to/python3.12
 cd tools/codex-flow
 make test
 ```
+
+`make test` runs pytest through coverage and enforces the configured 80% coverage threshold.
 
 Integration smoke test fixture:
 

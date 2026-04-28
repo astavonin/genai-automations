@@ -3,6 +3,7 @@ ROOT := $(CURDIR)
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
+COVERAGE := $(VENV)/bin/coverage
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 MYPY := $(VENV)/bin/mypy
@@ -16,7 +17,7 @@ help:
 	@echo "Available commands:"
 	@echo "  make venv        - Create virtual environment"
 	@echo "  make install-dev - Install package and test dependencies into venv"
-	@echo "  make test        - Run tests"
+	@echo "  make test        - Run tests with coverage gate"
 	@echo "  make lint        - Run black, flake8, and mypy"
 	@echo "  make itest-implement - Recreate the implementation smoke repo in /tmp and run pytest there"
 	@echo "  make itest-review - Recreate the review smoke repo in /tmp and run pytest there"
@@ -37,7 +38,8 @@ install-dev: $(VENV)/bin/pip
 	$(PIP) install -e ".[dev]"
 
 test: install-dev
-	$(PYTEST)
+	$(COVERAGE) run -m pytest
+	$(COVERAGE) report
 
 lint: install-dev
 	$(BLACK) --check codex_flow tests

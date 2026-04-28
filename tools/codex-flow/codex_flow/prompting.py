@@ -150,7 +150,6 @@ def build_review_prompt(request: ReviewRequest) -> str:
         _resource_text("templates/review-output-instructions.md"),
     ]
 
-
     return "\n\n".join(
         [
             "You are running codex-flow in review mode.",
