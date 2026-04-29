@@ -1,7 +1,11 @@
 # Design — Add Greeting Helper
 
 **Goal:** `codex-flow-smoke-test`
+**Milestone:** `milestone-00-smoke-test` · `%0`
+**Feature:** `#0`
+**Branch:** `feature/codex-flow-smoke-test`
 **Status:** Draft
+**Revision:** 1
 
 ---
 
@@ -41,8 +45,18 @@ without requiring a large code change or broad repo context.
 - Only touch files needed for this feature and its test
 
 **Verification:**
+
+*Extract from the project's README or CLAUDE.md. Must cover all three workflows.*
+
 ```bash
+# Build / compile
+python -m compileall src tests
+
+# Test
 pytest
+
+# Debug / run
+python -m pytest -q
 ```
 
 **Context Files:**
@@ -60,21 +74,12 @@ external-input implementation workflow.
 
 ## 5. Detailed Design
 
-Add a small pure function in the main module and cover the expected output plus whitespace trimming
-in tests.
+Add a small pure function in the main module. Tests cover the expected output plus whitespace
+trimming without changing package boundaries or introducing new dependencies.
 
 ---
 
-## 6. Files Changed
-
-| File | Change |
-|------|--------|
-| `src/example.py` | Modify |
-| `tests/test_example.py` | Modify |
-
----
-
-## 7. Trade-offs and Alternatives
+## 6. Trade-offs and Alternatives
 
 ### Option A — Add a pure helper function
 **Pros:** Small scope, easy to test, low regression risk.
@@ -88,24 +93,6 @@ in tests.
 
 ---
 
-## 8. Open Questions
+## 7. Open Questions
 
 - [ ] Update `Context Files` if the test repository uses different paths.
-
----
-
-## 9. Test Plan
-
-**Unit tests**
-
-| Component | Scenarios |
-|-----------|-----------|
-| `format_greeting` | normal name, name with surrounding whitespace |
-
-**Integration tests**
-
-| Boundary | What it verifies |
-|----------|-----------------|
-| N/A | N/A |
-
-**Exclusions:** No integration coverage needed for this smoke test.

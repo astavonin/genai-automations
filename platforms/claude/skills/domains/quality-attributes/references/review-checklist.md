@@ -29,13 +29,9 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Self-documenting approach
 
 #### Testability
-- [ ] Test Plan section present in the design doc
-- [ ] Unit test table covers every public component/behavior or has explicit exclusion with reason
-- [ ] Integration test table covers every boundary touching external systems
-- [ ] "Explicitly not tested" list is present (even if empty — signals completeness was considered)
-- [ ] When a coverage target can be extracted from repo policy, CI, or surrounding context, the expected minimum is stated and is `>= 80%` unless the project defines a stricter rule
 - [ ] Components can be tested in isolation
 - [ ] Edge cases considered
+- [ ] Key component boundaries and interfaces are mockable/injectable
 
 **Testability analysis — answer all three:**
 - [ ] **Local/Docker integration tests:** Can integration tests be run locally or in Docker without special hardware or credentials? What setup is required?

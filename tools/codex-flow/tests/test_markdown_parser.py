@@ -19,6 +19,31 @@ def test_parse_implementation_request_extracts_contract(tmp_path: Path) -> None:
         """
 # Design — Retry Handling
 
+**Goal:** `sync`
+**Milestone:** `milestone-01-reliability` · `%12`
+**Feature:** `#34`
+**Branch:** `feature/retry-handling`
+**Status:** Draft
+**Revision:** 1
+
+---
+
+## 1. Problem Statement
+
+Retries are needed for transient sync failures.
+
+---
+
+## 2. Goals and Non-Goals
+
+### Goals
+- Retry transient failures.
+
+### Non-Goals
+- Redesign the CLI.
+
+---
+
 ## 3. Implementation Context
 
 **Repository:** `/tmp/repo`
@@ -47,6 +72,30 @@ make run
 **Context Files:**
 - `src/sync.py`
 - `tests/test_sync.py`
+
+---
+
+## 4. Architecture Overview
+
+No architecture change.
+
+---
+
+## 5. Detailed Design
+
+Keep retry handling inside the sync component boundary.
+
+---
+
+## 6. Trade-offs and Alternatives
+
+No meaningful alternatives for this narrow retry behavior.
+
+---
+
+## 7. Open Questions
+
+No open questions.
 """.strip(),
         encoding="utf-8",
     )

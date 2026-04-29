@@ -37,7 +37,7 @@ What problem does this solve? Why now?
 
 **Verification:**
 
-*Extract from the project's `README.md` or `CLAUDE.md`. Must cover all three workflows (e.g. `./dev.sh build`, `./dev.sh test`, `make`, `make test`).*
+*Extract from the project's `README.md` or `CLAUDE.md`. Must cover all three workflows.*
 
 ```bash
 # Build / compile
@@ -61,25 +61,21 @@ What problem does this solve? Why now?
 ...
 ```
 
-Brief narrative explaining the diagram.
+Brief narrative explaining the diagram (3–5 sentences max).
 
 ---
 
 ## 5. Detailed Design
 
+Describe component boundaries, interfaces, and contracts — not implementations.
+Focus on: what each component is responsible for, how components communicate,
+and any non-obvious invariants. Avoid method signatures, pseudocode, and file-level detail.
+
 *(Feature-specific subsections — add as needed)*
 
 ---
 
-## 6. Files Changed
-
-| File | Change |
-|------|--------|
-| `path/to/file` | Created / Modified / Deleted |
-
----
-
-## 7. Trade-offs and Alternatives
+## 6. Trade-offs and Alternatives
 
 ### Option A — <Chosen Approach>
 **Pros:** ...
@@ -91,28 +87,12 @@ Brief narrative explaining the diagram.
 
 **Decision:** Chose A because …
 
+*(Omit section with a one-line note if there are genuinely no alternatives)*
+
 ---
 
-## 8. Open Questions
+## 7. Open Questions
 
 - [ ] ...
 
-*(Remove section if no open questions)*
-
----
-
-## 9. Test Plan
-
-**Unit tests**
-
-| Component | Scenarios |
-|-----------|-----------|
-| `...` | happy path, error path, edge case |
-
-**Integration tests**
-
-| Boundary | What it verifies |
-|----------|-----------------|
-| `...` | ... |
-
-**Exclusions:** *(what is explicitly not tested and why)*
+*(Omit section with a one-line note if none)*

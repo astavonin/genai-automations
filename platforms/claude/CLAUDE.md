@@ -211,9 +211,10 @@ ls planning/<goal>/milestone-XX/design/
 - Output: `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
 
 ### Phase 2: Design
-- Use architecture-research-planner agent
+- **Step 1 — Q&A (main conversation):** Read analysis + ticket; ask one question at a time with concrete options; write answers into `<feature>-analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
+- **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
 - Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
-- **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 9 sections required
+- **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 7 sections required; sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions
 - After writing the design file, ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 

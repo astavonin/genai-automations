@@ -72,13 +72,15 @@ Investigate existing codebase patterns, architecture, integration points.
 
 ### Phase 2: Design
 **Command:** `/design`
-**Agent:** architecture-research-planner
+**Agent:** architecture-research-planner (Step 3 only — Q&A runs in main conversation first)
 
-Create detailed design proposal with architecture, approach, trade-offs, and test plan.
+**Step 1 — Q&A (main conversation):** Read analysis + ticket, then ask one question at a time with concrete options. Write answers to `<feature>-analysis.md` under `## Clarifications`. Non-blocking: unanswered questions become open questions in the design doc.
+
+**Step 2 — Write design doc (architecture-research-planner):** Uses enriched analysis as input.
 
 **Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
 
-**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 9 sections required. Sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
+**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 7 sections required. Sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
 After writing, ask the user if they want to `open <path>` the design file.
 

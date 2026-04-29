@@ -104,29 +104,17 @@ See `references/diagrams.md` for copy-paste examples of each type.
 
 ## Required Design Doc Sections
 
-Every design doc must include a **Test Plan** section before it can be reviewed. Template:
+Design docs follow the 7-section template at `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md`:
 
-```markdown
-## Test Plan
+1. Problem Statement
+2. Goals and Non-Goals
+3. Implementation Context
+4. Architecture Overview (Mermaid diagram required)
+5. Detailed Design (component boundaries and interfaces — not implementations)
+6. Trade-offs and Alternatives *(omit with a one-line note if none)*
+7. Open Questions *(omit with a one-line note if none)*
 
-### Unit Tests
-| Component / behavior | Scenarios |
-|----------------------|-----------|
-| Foo.bar              | valid input, nil arg, error return |
-
-### Integration Tests
-| Boundary             | What it verifies |
-|----------------------|-----------------|
-| FooService ↔ DB      | persists record, unique constraint enforced |
-
-### Explicitly not tested
-- <what and why>
-```
-
-Rules:
-- Every public function/method must appear in Unit Tests or have an explicit exclusion with reason
-- Every component boundary touching external systems must appear in Integration Tests
-- "Explicitly not tested" must be non-empty only when there is a genuine reason (third-party owned, out of scope); leaving it empty signals completeness
+Test plans and files-changed tables are **not** part of design docs — they emerge during implementation.
 
 ## Architecture Reviews
 
