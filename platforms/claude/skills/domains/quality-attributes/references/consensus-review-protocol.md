@@ -35,6 +35,23 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
 Do not split these across separate messages. Codex is typically the slowest; starting it in the
 same batch as the Claude agents eliminates its wall-clock cost from the critical path.
 
+**Immediately after (next message): start a Monitor to surface Codex progress:**
+
+```bash
+sleep 2
+PROGRESS=$(ls -t /tmp/codex-flow-progress-state-*/codex-flow/runs/*/*.jsonl 2>/dev/null | head -1)
+if [ -n "$PROGRESS" ]; then
+  tail -f "$PROGRESS" | while IFS= read -r line; do
+    jq -r '"[codex] \(.status) \(.phase): \(.message)"' <<< "$line" 2>/dev/null
+    [[ "$line" == *"workflow_complete"* ]] && break
+  done
+fi
+```
+
+Run this via the Monitor tool so each parsed line appears as a notification. The Monitor exits
+automatically when Codex emits `workflow_complete`. The background Bash completion notification
+then confirms the output file is ready to read.
+
 Each Claude agent:
 - Receives the same input: the subject under review + MR/design context (title, description)
 - Receives: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`

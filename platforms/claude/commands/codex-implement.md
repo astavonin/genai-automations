@@ -33,11 +33,30 @@ State the design document path and the implementation output path
 (`<design-stem>.implementation-output.md` in the same directory) and ask the user to confirm
 before proceeding — `codex-flow implement` modifies repository files.
 
-### Step 3: Run codex-flow
+### Step 3: Run codex-flow with progress monitoring
+
+Launch codex-flow as a background task:
 
 ```bash
 codex-flow implement <design-doc-path>
 ```
+
+Run with `run_in_background: true`. Then immediately start a Monitor to show live progress:
+
+```bash
+sleep 2
+PROGRESS=$(ls -t /tmp/codex-flow-progress-state-*/codex-flow/runs/*/*.jsonl 2>/dev/null | head -1)
+if [ -n "$PROGRESS" ]; then
+  tail -f "$PROGRESS" | while IFS= read -r line; do
+    jq -r '"[codex] \(.status) \(.phase): \(.message)"' <<< "$line" 2>/dev/null
+    [[ "$line" == *"workflow_complete"* ]] && break
+  done
+fi
+```
+
+Run via the Monitor tool — each parsed line appears as a notification. The Monitor exits when
+Codex emits `workflow_complete`. The background task completion notification confirms the output
+file is ready.
 
 `codex-flow` validates the document, invokes `codex exec` in workspace-write mode (allows
 file modifications), runs the verification commands from the design doc's `Verification`

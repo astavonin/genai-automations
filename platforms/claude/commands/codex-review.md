@@ -34,20 +34,35 @@ If no path is provided, generate a new review request document from the template
    - Review Focus (one or more bullets)
 3. Write the completed document to `planning/reviews/<feature>-review-request.md`
 
-### Step 2: Run codex-flow
+### Step 2: Run codex-flow with progress monitoring
+
+Launch codex-flow as a background task:
 
 ```bash
 codex-flow review <review-request-path>
 ```
 
-`codex-flow` validates the document, invokes `codex exec` in read-only mode, enforces
-the write-only-to-Output-File guarantee, and writes the findings to the path specified
-in the `Output File` field of the review request.
+Run with `run_in_background: true`. Then immediately start a Monitor to show live progress:
+
+```bash
+sleep 2
+PROGRESS=$(ls -t /tmp/codex-flow-progress-state-*/codex-flow/runs/*/*.jsonl 2>/dev/null | head -1)
+if [ -n "$PROGRESS" ]; then
+  tail -f "$PROGRESS" | while IFS= read -r line; do
+    jq -r '"[codex] \(.status) \(.phase): \(.message)"' <<< "$line" 2>/dev/null
+    [[ "$line" == *"workflow_complete"* ]] && break
+  done
+fi
+```
+
+Run via the Monitor tool — each parsed line appears as a notification showing what phase Codex
+is in. The Monitor exits when Codex completes. The background task completion notification
+confirms the output file is ready.
 
 ### Step 3: Read and display results
 
-Read the output file produced by `codex-flow` (the path printed by the command).
-Display the findings to the user.
+Read the output file produced by `codex-flow` (the path from the `Output File` field in the
+review request). Display the findings to the user.
 
 ## Notes
 
