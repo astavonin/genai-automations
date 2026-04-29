@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -19,6 +20,7 @@ from .prompting import (
     load_schema,
     write_schema_file,
 )
+from .progress import ProgressConfig, ProgressReporter, repository_state_dir
 
 IGNORED_REVIEW_ARTIFACT_DIRS = {
     "__pycache__",
@@ -42,52 +44,113 @@ IGNORED_REVIEW_ARTIFACT_NAMES = {
 DEFAULT_CODEX_MODEL = "gpt-5.4"
 DEFAULT_REASONING_EFFORT = "xhigh"
 VALID_CODEX_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
+DISABLED_EXTERNAL_TOOL_FEATURES = (
+    "apps",
+    "plugins",
+    "tool_search",
+    "tool_suggest",
+    "skill_mcp_dependency_install",
+    "tool_call_mcp_elicitation",
+)
+UNKNOWN_CODEX_ACTIVITY_INTERVAL = 25
+MAX_CODEX_DIAGNOSTIC_LINES = 20
 
 
-def run_implementation(request_path: Path) -> Path:
+def run_implementation(request_path: Path, progress_config: ProgressConfig | None = None) -> Path:
     """Run implementation mode and write the standardized output."""
     request = parse_implementation_request(request_path)
-    _ensure_repository(request.repository)
-    prompt = build_implementation_prompt(request)
-    result = _invoke_codex(
-        "implement",
-        request.repository,
-        prompt,
-        sandbox="danger-full-access",
-    )
-    request.output_path.write_text(_render_implementation_output(result), encoding="utf-8")
-    return request.output_path
+    reporter = ProgressReporter("implement", request.repository, progress_config)
+    try:
+        reporter.emit("request_parse", "succeeded", "Parsed implementation request")
+        _ensure_repository(request.repository)
+        prompt = build_implementation_prompt(request)
+        reporter.emit("codex_exec", "started", "Starting Codex implementation")
+        result = _invoke_codex(
+            "implement",
+            request.repository,
+            prompt,
+            sandbox="danger-full-access",
+            reporter=reporter,
+        )
+        reporter.emit("codex_exec", "succeeded", "Codex implementation completed")
+        reporter.emit("output_write", "running", "Writing implementation output")
+        request.output_path.write_text(_render_implementation_output(result), encoding="utf-8")
+        reporter.emit(
+            "output_write",
+            "succeeded",
+            "Wrote implementation output",
+            output_file=str(request.output_path.resolve()),
+        )
+        reporter.emit("workflow_complete", "succeeded", "Implementation workflow completed")
+        return request.output_path
+    except Exception:
+        reporter.emit("workflow_failed", "failed", "Implementation workflow failed")
+        raise
 
 
-def run_review(request_path: Path) -> Path:
+def run_review(request_path: Path, progress_config: ProgressConfig | None = None) -> Path:
     """Run review mode and write the standardized output."""
     request = parse_review_request(request_path)
-    _ensure_repository(request.repository)
-    before = _snapshot_repository(request.repository)
-    prompt = build_review_prompt(request)
-    result = _invoke_codex(
-        "review",
-        request.repository,
-        prompt,
-        sandbox="read-only",
-    )
-    after_codex = _snapshot_repository(request.repository)
-    output_path = request.output_path
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(_render_review_output(result), encoding="utf-8")
-    final = _snapshot_repository(request.repository)
-    changed_during_codex = _changed_paths(before, after_codex)
-    changed = _changed_paths(before, final)
-    unexpected = sorted(path for path in changed if path != output_path.resolve())
-    if unexpected:
-        trace_path = _write_review_change_trace(
+    reporter = ProgressReporter("review", request.repository, progress_config)
+    try:
+        reporter.emit("request_parse", "succeeded", "Parsed review request")
+        _ensure_repository(request.repository)
+        reporter.emit("repository_snapshot", "running", "Snapshotting repository")
+        before = _snapshot_repository(request.repository)
+        reporter.emit("repository_snapshot", "succeeded", "Repository snapshot captured")
+        prompt = build_review_prompt(request)
+        reporter.emit("codex_exec", "started", "Starting Codex review")
+        result = _invoke_codex(
+            "review",
             request.repository,
-            output_path,
-            changed_during_codex,
-            unexpected,
+            prompt,
+            sandbox="read-only",
+            reporter=reporter,
         )
-        _warn_review_changes(request.repository, unexpected, trace_path)
-    return output_path
+        reporter.emit("codex_exec", "succeeded", "Codex review completed")
+        after_codex = _snapshot_repository(request.repository)
+        output_path = request.output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        reporter.emit("output_write", "running", "Writing review output")
+        output_path.write_text(_render_review_output(result), encoding="utf-8")
+        reporter.emit(
+            "output_write",
+            "succeeded",
+            "Wrote review output",
+            output_file=str(output_path.resolve()),
+        )
+        reporter.emit("repository_check", "running", "Checking repository changes")
+        final = _snapshot_repository(request.repository)
+        changed_during_codex = _changed_paths(before, after_codex)
+        changed = _changed_paths(before, final)
+        unexpected = sorted(path for path in changed if path != output_path.resolve())
+        if unexpected:
+            trace_path = _write_review_change_trace(
+                request.repository,
+                output_path,
+                changed_during_codex,
+                unexpected,
+                reporter.state_home,
+            )
+            reporter.emit(
+                "repository_check",
+                "warning",
+                "Repository changed outside Output File",
+                changed_paths=len(unexpected),
+                trace=str(trace_path),
+            )
+            _warn_review_changes(request.repository, unexpected, trace_path)
+        else:
+            reporter.emit(
+                "repository_check",
+                "succeeded",
+                "Repository unchanged outside Output File",
+            )
+        reporter.emit("workflow_complete", "succeeded", "Review workflow completed")
+        return output_path
+    except Exception:
+        reporter.emit("workflow_failed", "failed", "Review workflow failed")
+        raise
 
 
 def _invoke_codex(
@@ -95,6 +158,7 @@ def _invoke_codex(
     repository: Path,
     prompt: str,
     sandbox: str,
+    reporter: ProgressReporter,
 ) -> dict:
     if sandbox not in VALID_CODEX_SANDBOXES:
         raise WorkflowViolationError(f"Unsupported Codex sandbox mode: {sandbox}")
@@ -106,11 +170,14 @@ def _invoke_codex(
         command = [
             "codex",
             "exec",
+            "--json",
             "--model",
             DEFAULT_CODEX_MODEL,
             "--config",
             f"model_reasoning_effort={DEFAULT_REASONING_EFFORT}",
         ]
+        for feature in DISABLED_EXTERNAL_TOOL_FEATURES:
+            command.extend(["--disable", feature])
         if sandbox == "danger-full-access":
             command.append("--dangerously-bypass-approvals-and-sandbox")
         else:
@@ -137,17 +204,33 @@ def _invoke_codex(
             ]
         )
         try:
-            subprocess.run(
+            process = subprocess.Popen(
                 command,
-                input=prompt,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
-                capture_output=True,
-                check=True,
+                bufsize=1,
             )
-        except subprocess.CalledProcessError as err:
-            raise WorkflowViolationError(
-                f"codex exec failed with exit code {err.returncode}: {err.stderr.strip()}"
-            ) from err
+        except OSError as err:
+            raise WorkflowViolationError(f"codex exec failed to start: {err}") from err
+
+        if process.stdin is None or process.stdout is None:
+            raise WorkflowViolationError("codex exec did not expose expected process streams.")
+
+        writer = threading.Thread(
+            target=_write_codex_stdin,
+            args=(process.stdin, prompt),
+            daemon=True,
+        )
+        writer.start()
+        diagnostic_lines = _stream_codex_progress(process.stdout, reporter)
+        return_code = process.wait()
+        writer.join(timeout=1)
+        if return_code != 0:
+            details = "\n".join(diagnostic_lines[-MAX_CODEX_DIAGNOSTIC_LINES:]).strip()
+            suffix = f": {details}" if details else ""
+            raise WorkflowViolationError(f"codex exec failed with exit code {return_code}{suffix}")
 
         if not output_path.exists():
             raise WorkflowViolationError("codex exec completed without producing a final response.")
@@ -158,6 +241,90 @@ def _invoke_codex(
         if not isinstance(parsed, dict):
             raise WorkflowViolationError("codex exec returned a non-object JSON response.")
         return cast(dict[Any, Any], parsed)
+
+
+def _write_codex_stdin(stdin: Any, prompt: str) -> None:
+    try:
+        stdin.write(prompt)
+        stdin.close()
+    except BrokenPipeError:
+        return
+
+
+def _stream_codex_progress(stdout: Any, reporter: ProgressReporter) -> list[str]:
+    diagnostics: list[str] = []
+    unknown_events = 0
+    for line in stdout:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            if len(diagnostics) < MAX_CODEX_DIAGNOSTIC_LINES:
+                diagnostics.append(stripped)
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if _emit_codex_progress(payload, reporter):
+            continue
+        unknown_events += 1
+        if unknown_events % UNKNOWN_CODEX_ACTIVITY_INTERVAL == 0:
+            reporter.emit(
+                "codex_activity",
+                "running",
+                "Codex is still running",
+                activity="heartbeat",
+            )
+    return diagnostics
+
+
+def _emit_codex_progress(payload: dict[str, Any], reporter: ProgressReporter) -> bool:
+    event_name = (_first_string_for_keys(payload, ("type", "event", "kind")) or "").lower()
+    if "error" in event_name:
+        reporter.emit("codex_activity", "failed", "Codex reported an error", activity="error")
+        return True
+
+    tool = _extract_tool_name(payload)
+    if tool:
+        reporter.emit(
+            "codex_activity",
+            "running",
+            f"Codex ran tool: {tool}",
+            activity="tool",
+            tool=tool,
+        )
+        return True
+    return False
+
+
+def _extract_tool_name(payload: dict[str, Any]) -> str | None:
+    direct_tool = _first_string_for_keys(payload, ("tool_name", "tool", "cmd", "command"))
+    if direct_tool:
+        return direct_tool.split()[0]
+
+    event_name = _first_string_for_keys(payload, ("type", "event", "kind"))
+    if event_name and "exec" in event_name.lower():
+        return "shell"
+    return None
+
+
+def _first_string_for_keys(value: Any, keys: tuple[str, ...]) -> str | None:
+    if isinstance(value, dict):
+        for key in keys:
+            item = value.get(key)
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+        for item in value.values():
+            found = _first_string_for_keys(item, keys)
+            if found:
+                return found
+    elif isinstance(value, list):
+        for item in value:
+            found = _first_string_for_keys(item, keys)
+            if found:
+                return found
+    return None
 
 
 def _ensure_repository(path: Path) -> None:
@@ -196,11 +363,12 @@ def _write_review_change_trace(
     output_path: Path,
     changed_during_codex: set[Path],
     unexpected: list[Path],
+    state_home: Path,
 ) -> Path:
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     safe_stem = re.sub(r"[^A-Za-z0-9_.-]+", "-", output_path.stem).strip("-")
     trace_name = f"{safe_stem or 'review'}-{timestamp}.json"
-    trace_dir = repository / ".codex-flow" / "review-traces"
+    trace_dir = repository_state_dir(repository, state_home) / "review-traces"
     trace_dir.mkdir(parents=True, exist_ok=True)
     trace_path = trace_dir / trace_name
     payload = {

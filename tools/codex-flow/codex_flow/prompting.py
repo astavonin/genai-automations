@@ -129,6 +129,8 @@ def build_implementation_prompt(request: ImplementationRequest) -> str:
             "You are running codex-flow in implementation mode.",
             "Apply the request inside the target repository, keep the change surface minimal, run the"
             " listed verification commands in order, and return only JSON matching the provided schema.",
+            "Use only the local repository and local shell evidence; do not use GitHub, MCP, app,"
+            " plugin, browser, or web-search connectors.",
             "The runner writes the Markdown artifact; do not try to write the output document yourself.",
             "Bundled workflow guidance:",
             skill_text,
@@ -156,6 +158,8 @@ def build_review_prompt(request: ReviewRequest) -> str:
             "Review the requested change scope without modifying repository files.",
             "Inspect the repository, diff, tests, and evidence as needed, then return only JSON"
             " matching the provided schema.",
+            "Use only the local repository and local shell evidence; do not use GitHub, MCP, app,"
+            " plugin, browser, or web-search connectors.",
             "Bundled workflow guidance:",
             "\n\n".join(skill_parts),
             "Authoritative review request:",
