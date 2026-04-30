@@ -39,6 +39,7 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
+   - **Each agent prompt must include the full "Design-Level Constraint" section above** — paste it verbatim before the review checklist so agents know what to flag and what to skip
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
 
@@ -63,17 +64,39 @@ Read ~/.claude/skills/workflows/push-planning/SKILL.md
 
 Follow the steps in that fragment: run `projctl sync push`. On failure, surface the standard warning and continue — do not fail this skill.
 
+## Design-Level Constraint (MANDATORY — pass to every reviewer agent)
+
+This is a **design review**, not a code review. Reviewers must stay at the architectural level.
+
+**Flag (design-level concerns):**
+- Missing or ambiguous contracts between components (e.g. "error propagation from write failures is undefined")
+- Undefined or contradictory state machine transitions
+- Component boundaries that make unit testing impossible (no seam, no injection point defined)
+- Missing non-goals or scope ambiguities that will cause disagreement during implementation
+- Design decisions that commit to a performance-hostile approach without documenting the trade-off
+- Security or safety gaps at the architecture level (e.g. "auth is never checked on inbound messages")
+- Concepts named but never defined (e.g. a field appears in a diagram but has no explanation)
+
+**Do NOT flag (implementation-level — out of scope for design review):**
+- Specific language constructs (`[[nodiscard]]`, `mutable`, `noexcept`, `static_assert`, etc.)
+- Exact method signatures, return types, or parameter names
+- Code snippets or pseudocode in findings or fixes
+- Compilation or linkage issues
+- Naming conventions for variables, enumerators, or files
+- Implementation patterns (how to guard against null, how to implement a switch, etc.)
+
+**Finding descriptions must name the architectural concern, not the fix.** The fix direction must also stay at concept level — "define an error propagation contract for write failures" not "change return type to `[[nodiscard]] bool`."
+
 ## Review Scope
 
-Each of the 3 agents evaluates all 8 quality attributes:
-- Supportability: Logging, error messages, debugging strategy
-- Extendability: Modularity, abstractions, extension points
-- Maintainability: Follows conventions, clarity, complexity
-- Testability: Unit test strategy, isolation, edge cases
-- Performance: No bottlenecks, resource usage, algorithms
-- Safety: Error handling, resource management, thread safety
-- Security: Input validation, no vulnerabilities, secrets handling
-- Observability: Logging, metrics, tracing strategy
+Each of the 3 agents evaluates these design-level attributes:
+- **Completeness:** All components, interfaces, and state transitions defined with enough clarity to implement consistently
+- **Correctness:** No internal contradictions, no undefined concepts referenced in diagrams or tables
+- **Contracts:** Error handling strategy, resource lifetime, thread-safety boundaries stated at component level
+- **Testability:** Injection points and isolation boundaries identified at design level (not implementation detail)
+- **Performance:** Design commits to no approach with known hot-path implications without documenting the trade-off
+- **Safety/Security:** No structural gap that guarantees a safety or security violation regardless of implementation
+- **Extendability:** Component boundaries allow future change without redesign
 
 ## Output Format
 
@@ -90,12 +113,10 @@ Produce a markdown report using the reviewer agent's standard template:
 ## Findings (<N total — consensus of 3 reviewers>)
 
 ### Critical
-- **C1** [attribute] Description...
-- **C2** [attribute] Description...
+- **C1** [attribute] Description of the architectural concern — fix direction at concept level only, no code or language constructs
 
 ### High
 - **H1** [attribute] Description...
-- **H2** [attribute] Description...
 
 ### Medium
 - **M1** [attribute] Description...
@@ -103,8 +124,14 @@ Produce a markdown report using the reviewer agent's standard template:
 ### Low
 - **L1** [attribute] Description...
 
+## Codex-Only Findings
+
+Findings raised by Codex not present in Claude consensus. Write "None." if empty.
+
+- **X1** [severity] Description...
+
 ## Recommendation
-<rationale and required actions if not approved; reference findings by ID e.g. "Fix C1, H2 before proceeding">
+<rationale and required actions — concept level only; no implementation specifics>
 ```
 
 IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity (C1, C2, H1, H2, M1, …). IDs are stable within a review session and used when discussing or resolving findings.
