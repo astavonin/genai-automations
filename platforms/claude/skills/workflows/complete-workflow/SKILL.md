@@ -145,7 +145,9 @@ Run all checks in this order:
 ### Phase 7: Commit
 **User handles all git commits**
 - NEVER create commits automatically
-- User commits after verification passes
+- **New commit** (initial implementation): propose message `<short description>. Ref #<issue-number>`, wait for approval
+- **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends existing commit, no new message
+- Never create a new commit for a fix; never suggest a separate commit per review finding
 
 ### Phase 8: Completion
 **Command:** `/complete`

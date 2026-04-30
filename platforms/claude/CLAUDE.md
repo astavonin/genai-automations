@@ -257,10 +257,9 @@ ls planning/<goal>/milestone-XX/design/
 - All checks must pass
 
 ### Phase 7: Commit
-- **Commit message format:** single line — `<short description>. Ref #<issue-number>`
-  - Example: `Add retry logic for failed API requests. Ref #42`
-- Always propose a commit message and wait for explicit user approval before committing
-- After approval, stage the relevant files and create the commit
+- **New commit** (initial implementation): propose message in format `<short description>. Ref #<issue-number>`, wait for approval
+- **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends the existing commit, no new message needed
+- Never create a new commit for a fix; never suggest a separate commit per review finding
 
 ### Phase 8: Completion
 **Step 1: Update Planning Files**
