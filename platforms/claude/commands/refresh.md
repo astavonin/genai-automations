@@ -34,6 +34,22 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
 4. Read workflow and planning skills:
    ```
    Read ~/.claude/skills/workflows/planning/SKILL.md
+   Read ~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md
+   ```
+
+5. Read domain skills:
+   ```
+   Read ~/.claude/skills/domains/architecture/SKILL.md
+   Read ~/.claude/skills/domains/quality-attributes/SKILL.md
+   Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
+   ```
+
+6. Read command definitions for active workflow phases:
+   ```
+   Read ~/.claude/commands/design.md
+   Read ~/.claude/commands/review-design.md
+   Read ~/.claude/commands/review-code.md
+   Read ~/.claude/commands/implement.md
    ```
 
 ## Output
