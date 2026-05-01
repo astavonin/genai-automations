@@ -44,7 +44,7 @@ Before spawning the agent, run a clarifying dialog in the main conversation.
 - Signal completion explicitly: "No further questions — ready to proceed"
 - If the user answers "skip" or "your call": pick a reasonable default, note it as an assumption
 
-**Standing question for any polling / callback / event-driven interface:** before finalizing the API surface, explicitly ask whether multiple methods that share the same read target, preconditions, and side effects should collapse into a single call with a discriminated return type (e.g. `std::variant`, enum + payload, tagged union). State the trade-off: unified call = one I/O operation per tick, exhaustive handling enforced by the type system; separate calls = phase-selective polling but risks silently missing an action type on a given tick.
+**Standing question before finalizing any API surface:** ask whether multiple methods that share the same resource, preconditions, and side effects should collapse into a single call with a discriminated return type. Separate methods risk callers silently skipping a variant; a unified call enforces exhaustive handling at the type level. State the trade-off and let the user decide.
 
 **Example question format:**
 > I checked the vendor tree — Boost is available. For the state machine, three directions:
