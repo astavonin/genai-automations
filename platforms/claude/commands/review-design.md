@@ -97,6 +97,7 @@ Each of the 3 agents evaluates these design-level attributes:
 - **Performance:** Design commits to no approach with known hot-path implications without documenting the trade-off
 - **Safety/Security:** No structural gap that guarantees a safety or security violation regardless of implementation
 - **Extendability:** Component boundaries allow future change without redesign
+- **Minimality:** Flag public interfaces where multiple methods share the same read target, preconditions, and side effects but could be expressed as a single call with a discriminated return type. Separate methods over a shared resource risk silently skipping an action type on a given call site; a unified call enforces exhaustive handling at the type level.
 
 ## Output Format
 

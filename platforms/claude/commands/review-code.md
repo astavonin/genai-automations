@@ -85,6 +85,7 @@ Each of the 3 agents evaluates:
 - **Safety:** Error handling, resource management, thread safety
 - **Security:** Input validation, no vulnerabilities
 - **Observability:** Logging, metrics, tracing
+- **Minimality:** Public API surface is no larger than required — flag multiple methods that share the same underlying resource, preconditions, and side effects where a single call with a discriminated return type would eliminate the risk of a caller silently skipping an action type
 - **Design adherence:** Matches approved design
 - **Standards compliance:** Coding standards and static analysis
 
