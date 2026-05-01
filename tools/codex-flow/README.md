@@ -69,6 +69,39 @@ It uses `python3.12` for the `pipx` environment by default. Override that if nee
 make install PIPX_PYTHON=/full/path/to/python3.12
 ```
 
+## Ubuntu Codex Sandbox Fix
+
+On Ubuntu 23.10+ / 24.04 hosts, `codex-flow review` can fail before any local command runs with:
+
+```text
+bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+```
+
+This happens when AppArmor restricts unprivileged user namespaces and `/usr/bin/bwrap` does not have
+a profile that explicitly allows `userns`. Activate the scoped fix on any clean machine with:
+
+```bash
+cd tools/codex-flow
+make codex-sandbox-status
+make codex-sandbox-fix
+make codex-sandbox-verify
+```
+
+`make codex-sandbox-fix` installs `/etc/apparmor.d/codex-bwrap` and reloads it with
+`apparmor_parser`. The profile grants `userns,` only to the bubblewrap binary while leaving the
+system-wide `kernel.apparmor_restrict_unprivileged_userns` setting intact. If `bwrap` lives somewhere
+else, pass its path:
+
+```bash
+BWRAP_PATH=/custom/path/bwrap make codex-sandbox-fix
+```
+
+Remove the profile with:
+
+```bash
+make codex-sandbox-remove
+```
+
 ## Test
 
 ```bash

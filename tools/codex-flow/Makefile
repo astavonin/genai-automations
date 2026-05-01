@@ -7,11 +7,12 @@ COVERAGE := $(VENV)/bin/coverage
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 MYPY := $(VENV)/bin/mypy
+BWRAP_APPARMOR := scripts/codex-bwrap-apparmor
 SMOKE_REPO := /tmp/codex-flow-smoke-repo
 REVIEW_SMOKE_REPO := /tmp/codex-flow-review-smoke-repo
 PIPX_PYTHON ?= python3.12
 
-.PHONY: help venv install-dev install test lint itest-implement itest-review itest-clean implement-itest review-itest itest clean
+.PHONY: help venv install-dev install test lint codex-sandbox-fix codex-sandbox-status codex-sandbox-remove codex-sandbox-verify itest-implement itest-review itest-clean implement-itest review-itest itest clean
 
 help:
 	@echo "Available commands:"
@@ -19,6 +20,9 @@ help:
 	@echo "  make install-dev - Install package and test dependencies into venv"
 	@echo "  make test        - Run tests with coverage gate"
 	@echo "  make lint        - Run black, flake8, and mypy"
+	@echo "  make codex-sandbox-fix - Install AppArmor profile for Codex/bwrap on Ubuntu"
+	@echo "  make codex-sandbox-status - Show Codex/bwrap sandbox host status"
+	@echo "  make codex-sandbox-remove - Remove the Codex/bwrap AppArmor profile"
 	@echo "  make itest-implement - Recreate the implementation smoke repo in /tmp and run pytest there"
 	@echo "  make itest-review - Recreate the review smoke repo in /tmp and run pytest there"
 	@echo "  make itest-clean - Remove smoke repos from /tmp"
@@ -45,6 +49,18 @@ lint: install-dev
 	$(BLACK) --check codex_flow tests
 	$(FLAKE8) codex_flow tests
 	$(MYPY) codex_flow
+
+codex-sandbox-fix:
+	$(BWRAP_APPARMOR) install
+
+codex-sandbox-status:
+	$(BWRAP_APPARMOR) status
+
+codex-sandbox-remove:
+	$(BWRAP_APPARMOR) remove
+
+codex-sandbox-verify:
+	$(BWRAP_APPARMOR) verify
 
 itest-implement: install-dev
 	rm -rf $(SMOKE_REPO)

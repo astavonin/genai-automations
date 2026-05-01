@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROFILE_NAME="codex-bwrap"
+PROFILE_PATH="/etc/apparmor.d/${PROFILE_NAME}"
+BWRAP_PATH="${BWRAP_PATH:-/usr/bin/bwrap}"
+APPARMOR_PARSER="${APPARMOR_PARSER:-}"
+
+usage() {
+  cat <<USAGE
+Usage: $(basename "$0") <install|remove|status|verify|print-profile>
+
+Installs a scoped AppArmor profile that grants user namespace creation to
+bubblewrap. This fixes Codex CLI sandbox failures on Ubuntu hosts where
+kernel.apparmor_restrict_unprivileged_userns=1 causes:
+
+  bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+
+Environment:
+  BWRAP_PATH   bubblewrap binary path (default: /usr/bin/bwrap)
+USAGE
+}
+
+require_bwrap() {
+  if [[ ! -x "${BWRAP_PATH}" ]]; then
+    echo "codex-flow: bwrap not found or not executable: ${BWRAP_PATH}" >&2
+    exit 1
+  fi
+}
+
+require_apparmor_parser() {
+  if [[ -n "${APPARMOR_PARSER}" && -x "${APPARMOR_PARSER}" ]]; then
+    return
+  fi
+  if command -v apparmor_parser >/dev/null 2>&1; then
+    APPARMOR_PARSER="$(command -v apparmor_parser)"
+    return
+  fi
+  if [[ -x /usr/sbin/apparmor_parser ]]; then
+    APPARMOR_PARSER="/usr/sbin/apparmor_parser"
+    return
+  fi
+  if [[ -x /sbin/apparmor_parser ]]; then
+    APPARMOR_PARSER="/sbin/apparmor_parser"
+    return
+  fi
+  if [[ -z "${APPARMOR_PARSER}" ]]; then
+    echo "codex-flow: apparmor_parser not found; install apparmor-utils/apparmor first" >&2
+    exit 1
+  fi
+  echo "codex-flow: apparmor_parser not executable: ${APPARMOR_PARSER}" >&2
+  exit 1
+}
+
+maybe_sudo() {
+  if [[ "${EUID}" -eq 0 ]]; then
+    return
+  fi
+  exec sudo BWRAP_PATH="${BWRAP_PATH}" "$0" "$@"
+}
+
+print_profile() {
+  cat <<PROFILE
+# Installed by codex-flow to let Codex CLI use bubblewrap on Ubuntu systems
+# with kernel.apparmor_restrict_unprivileged_userns=1.
+#
+# This profile follows Ubuntu's compatibility-profile pattern: it keeps bwrap
+# otherwise unconfined, but gives AppArmor a named profile where userns is
+# explicitly allowed.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile ${PROFILE_NAME} ${BWRAP_PATH} flags=(unconfined) {
+  userns,
+
+  # Site-specific additions and overrides.
+  include if exists <local/${PROFILE_NAME}>
+}
+PROFILE
+}
+
+install_profile() {
+  require_bwrap
+  require_apparmor_parser
+  maybe_sudo install "$@"
+
+  tmp_profile="$(mktemp)"
+  trap 'rm -f "${tmp_profile}"' EXIT
+  print_profile >"${tmp_profile}"
+
+  install -m 0644 "${tmp_profile}" "${PROFILE_PATH}"
+  "${APPARMOR_PARSER}" -r "${PROFILE_PATH}"
+  echo "codex-flow: installed ${PROFILE_PATH} for ${BWRAP_PATH}"
+  echo "codex-flow: run 'make codex-sandbox-verify' as your normal user to verify activation"
+}
+
+remove_profile() {
+  require_apparmor_parser
+  maybe_sudo remove "$@"
+
+  if [[ -e "${PROFILE_PATH}" ]]; then
+    "${APPARMOR_PARSER}" -R "${PROFILE_PATH}" 2>/dev/null || true
+    rm -f "${PROFILE_PATH}"
+    echo "codex-flow: removed ${PROFILE_PATH}"
+  else
+    echo "codex-flow: profile not installed: ${PROFILE_PATH}"
+  fi
+}
+
+status() {
+  echo "BWRAP_PATH=${BWRAP_PATH}"
+  if [[ -e "${PROFILE_PATH}" ]]; then
+    echo "profile=installed (${PROFILE_PATH})"
+  else
+    echo "profile=missing (${PROFILE_PATH})"
+  fi
+
+  for key in \
+    kernel.apparmor_restrict_unprivileged_userns \
+    kernel.unprivileged_userns_clone \
+    user.max_user_namespaces; do
+    sysctl "${key}" 2>/dev/null || true
+  done
+}
+
+verify_sandbox() {
+  require_bwrap
+  echo "codex-flow: verifying bwrap sandbox..."
+  "${BWRAP_PATH}" --unshare-all --dev-bind / / true
+  echo "codex-flow: bwrap sandbox verification passed"
+}
+
+main() {
+  command="${1:-}"
+  case "${command}" in
+    install)
+      shift
+      install_profile "$@"
+      ;;
+    remove)
+      shift
+      remove_profile "$@"
+      ;;
+    status)
+      status
+      ;;
+    verify)
+      verify_sandbox
+      ;;
+    print-profile)
+      print_profile
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"
