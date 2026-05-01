@@ -93,3 +93,4 @@ prefix_rule(pattern=[".venv/bin/black", "--check", "codex_flow", "tests"], decis
 prefix_rule(pattern=["/home/astavonin/projects/genai-automations/tools/codex-flow/.venv/bin/pytest"], decision="allow")
 prefix_rule(pattern=["codex-flow"], decision="allow")
 prefix_rule(pattern=["./dev.sh"], decision="allow")
+prefix_rule(pattern=["scripts/codex-bwrap-apparmor"], decision="allow")
