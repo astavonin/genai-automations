@@ -36,6 +36,12 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
 
 1. Load design document from `planning/<goal>/milestone-XX/design/<feature>-design.md`
 2. Run the **Consensus Review Protocol** (Steps A–E) against the design document
+
+   > **⚠️ PARALLEL-LAUNCH GATE**
+   > Every call in Step A MUST be in **one message**. Splitting across messages serializes the review.
+   > Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
+   > If any are missing — stop, add them, then send.
+
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex

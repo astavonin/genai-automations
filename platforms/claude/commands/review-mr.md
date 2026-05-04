@@ -83,6 +83,11 @@ from the review request template:
 - **Evidence:** `git diff origin/<target_branch>...origin/<source_branch> --stat` output
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 
+> **⚠️ PARALLEL-LAUNCH GATE**
+> Every call below MUST be in **one message**. Splitting across messages serializes the review.
+> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
+> If any are missing — stop, add them, then send.
+
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with the full diff, MR title/description, and review checklist
 - `codex-flow` Bash call with `run_in_background: true`:

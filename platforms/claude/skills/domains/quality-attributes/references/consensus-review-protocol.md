@@ -24,6 +24,11 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
 
 ### Step A: Launch 3 Independent Reviewers, Codex, and test-coverage agent simultaneously
 
+> **⚠️ PARALLEL-LAUNCH GATE**
+> Every call below MUST be in **one message**. Splitting across messages serializes the review.
+> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
+> If any are missing — stop, add them, then send.
+
 **Send all of the following in a single message so they run in parallel:**
 - Three **reviewer (opus)** Agent calls (Steps B–D)
 - One `codex-flow` Bash call with `run_in_background: true`:

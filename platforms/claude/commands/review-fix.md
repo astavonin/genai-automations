@@ -58,6 +58,11 @@ from the review request template:
 - **Evidence:** the fix diff
 - **Review Focus:** correctness, completeness, regressions, root cause, tests
 
+> **⚠️ PARALLEL-LAUNCH GATE**
+> Every call below MUST be in **one message**. Splitting across messages serializes the review.
+> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
+> If any are missing — stop, add them, then send.
+
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with:
   - The fix diff (scoped per Step 1)
