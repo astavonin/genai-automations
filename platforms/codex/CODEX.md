@@ -47,6 +47,7 @@ When implementing or reviewing code:
 - use `skills/languages/go/` for Go
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
+- document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 

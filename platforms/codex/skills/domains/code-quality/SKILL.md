@@ -19,13 +19,14 @@ Use this skill when writing or reviewing code in the narrowed Codex scope.
 ### Comments
 
 Use comments for:
+- all main interfaces, types, and data structures, using short notes that clarify purpose, invariants, ownership, lifetime, valid states, or usage constraints
 - non-obvious design intent
 - complex algorithms where the approach is not immediately clear
 - TODOs with enough context to act on them later
 - test scenario setup where the behavior being exercised is otherwise hard to follow
 - public API documentation when required by the language or project
 
-Avoid comments that restate the code.
+Avoid comments that restate the code or exist only to satisfy a comment quota.
 
 ## Linter Suppressions
 

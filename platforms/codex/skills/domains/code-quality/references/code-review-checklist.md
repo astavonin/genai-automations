@@ -12,8 +12,10 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 
 ## 2. Comments
 
+- [ ] All main interfaces, types, and data structures have short explanatory comments that clarify role, invariants, or constraints.
 - [ ] Comments explain intent, trade-offs, or non-obvious behavior.
 - [ ] Comments do not restate the code line-by-line.
+- [ ] Comments are not added only to satisfy a comment quota.
 - [ ] TODO comments include enough context to be actionable.
 - [ ] Test comments are used only when the scenario would otherwise be hard to follow.
 - [ ] Stale comments are removed or updated with the code change.
