@@ -7,6 +7,8 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] The code is understandable without excessive comments.
 - [ ] Names communicate intent clearly.
 - [ ] Functions and methods stay focused on one responsibility.
+- [ ] Functions and methods stay at or below 80 lines where practical.
+- [ ] No new or modified function or method exceeds 100 lines.
 - [ ] Complex control flow or indirection is justified.
 - [ ] New abstractions reduce complexity instead of hiding it.
 

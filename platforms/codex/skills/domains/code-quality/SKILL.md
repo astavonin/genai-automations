@@ -14,7 +14,15 @@ Use this skill when writing or reviewing code in the narrowed Codex scope.
 - Re-evaluate code structure before adding explanatory comments
 - Use comments to explain why, not what
 - Keep functions focused
+- Keep functions and methods at or below 80 lines where practical
+- Do not create or leave a modified function or method over 100 lines
 - Choose clear names over explanatory comments
+
+### Function Size
+
+Treat 80 physical lines as the target maximum for functions and methods. When a function grows past that, first look for coherent helpers, smaller data transformations, or clearer control-flow boundaries.
+
+Treat 100 physical lines as a hard ceiling for new or modified functions and methods. If an existing function already exceeds 100 lines and must be touched, split it or reduce it as part of the change; do not make it longer.
 
 ### Comments
 

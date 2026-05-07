@@ -48,6 +48,7 @@ When implementing or reviewing code:
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
 - document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
+- keep functions and methods at or below 80 lines where practical; never create or leave a modified function over 100 lines
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 
