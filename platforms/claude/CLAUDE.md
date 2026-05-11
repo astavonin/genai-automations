@@ -36,6 +36,7 @@ See language skills for detailed guidelines, patterns, and examples.
 Reference: `~/.claude/skills/domains/code-quality/`
 
 - Write self-documenting code that needs minimal comments
+- **Use `/comment` for all commenting decisions** — it enforces the full two-tier policy (WHY-only inline + public API documentation)
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings
 - Apply formatting using the current project's formatting tool for all files you create or modify
 
@@ -87,6 +88,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/implement` - Run implementation (coder or devops-engineer agent)
 - `/review-code` - Review code after implementation (MANDATORY)
 - `/verify` - Run verification (linters first, then tests, then static analysis)
+- `/comment` - Add comments to code: WHY-only inline comments + public API documentation (classes, interfaces, types, enums)
 - `/complete` - Mark work complete, update progress tracking, backup planning state
 
 ### Utility Commands

@@ -19,15 +19,15 @@ metadata:
 - Use clear, descriptive names for variables, functions, and classes
 - Keep functions focused and small
 
-### When Comments Are Necessary
+### Comment Policy
 
-Use comments for:
-- **Classes:** 1-2 line summary of purpose
-- **Methods:** Inline purpose if non-obvious
-- **TODOs:** For future work (with issue reference if possible)
-- **Unit tests:** Describe the test case scenario
-- **Integration tests:** Numbered step list at the top of the test body describing the logical flow (not the code mechanics). Each step is one line, matches execution order, omits what setUp/tearDown covers.
-- **Complex algorithms:** Explain the approach, not the syntax
+The full comment policy is defined in and enforced by the `/comment` command (`~/.claude/commands/comment.md`). Use `/comment` whenever adding or reviewing comments on any file.
+
+**Summary of the two-tier policy:**
+
+**Tier 1 — WHY-only inline comments.** Add a comment only when the WHY is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, or behavior that would surprise a careful reader. Never explain WHAT — self-documenting names do that. One short line max; if removing it would not confuse a future reader, omit it.
+
+**Tier 2 — Public API documentation.** Every public class, interface, enum, non-trivial public type alias, and non-obvious public constant must have a concise comment (one line). Enum values with non-obvious semantics get a trailing comment. Trivial accessor methods are exempt. See `/comment` for the full symbol-kind table.
 
 ### What to Avoid in Comments
 
@@ -36,6 +36,7 @@ Don't use comments for:
 - Complexity notes (simplify the code instead)
 - Responsibility lists (code structure shows this)
 - Obvious information (what the code already says)
+- Multi-line prose blocks or `@param`/`@return` boilerplate (unless the project uses Doxygen/Sphinx consistently)
 
 ## Linter Suppressions
 
