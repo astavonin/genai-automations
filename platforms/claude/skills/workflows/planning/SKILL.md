@@ -93,6 +93,7 @@ planning/
 1. Read `planning/progress.md`
 2. Read `planning/<goal>/milestone-XX/status.md`
 3. Check `planning/<goal>/milestone-XX/design/`
+4. Load live state for every active issue and open MR: `projctl load issue #N` / `projctl load mr !N`
 
 ### Research & Design
 1. Create `design/` directory

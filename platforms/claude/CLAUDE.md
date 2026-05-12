@@ -202,6 +202,11 @@ cat planning/<goal>/milestone-XX/status.md
 ls planning/<goal>/milestone-XX/design/
 ```
 
+**Step 2b: Load live ticket and MR states**
+- For every issue in the Active section of `progress.md`: `projctl load issue #N`
+- For every MR marked open/in-review in `progress.md` or `status.md`: `projctl load mr !N`
+- Flag stale entries (merged, closed, label changed) and propose planning file updates; wait for confirmation before writing.
+
 **Step 3: Reverify Knowledge**
 - Check if any planning files were updated from backup
 - Review any changes made on other machines
@@ -264,6 +269,10 @@ ls planning/<goal>/milestone-XX/design/
 - Never create a new commit for a fix; never suggest a separate commit per review finding
 
 ### Phase 8: Completion
+**Step 0: Refresh live ticket and MR states**
+- Load live state for every active issue and open MR: `projctl load issue #N` / `projctl load mr !N`
+- Incorporate any state changes into the planning update below
+
 **Step 1: Update Planning Files**
 - After user confirms work complete
 - Explicitly propose updating `planning/progress.md`

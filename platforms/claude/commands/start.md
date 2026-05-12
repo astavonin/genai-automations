@@ -145,6 +145,21 @@ For each issue:
 
 If any stale issues are found, propose the exact edits to `progress.md` (move them from Active to a completed/done section, update their status line) and wait for explicit user confirmation before writing.
 
+### 2b. Verify open MR states
+
+Extract every `!N` reference from `progress.md` and `status.md` for items marked as in-review or MR open, then fetch current state for each:
+
+```bash
+projctl load !N
+```
+
+For each MR:
+- If state is **merged** — move the corresponding issue to Recently Merged in `progress.md` and to the Closed section in `status.md`
+- If state is **closed** (not merged) — flag for user decision
+- If state is **open** — include normally; note if it has moved from draft to ready or vice versa
+
+If any stale MR entries are found, propose the exact edits and wait for explicit user confirmation before writing.
+
 ### 3. Check active milestone status:
    ```bash
    cat planning/<goal>/milestone-XX-<name>/status.md

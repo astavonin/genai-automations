@@ -24,40 +24,47 @@ Before running this command:
 
 ## Actions
 
-1. **Propose update to progress.md:**
+1. **Refresh tracked ticket and MR statuses:**
+   - Read `planning/progress.md` and the active `status.md`
+   - For every issue marked active/in-progress, run `projctl load issue #N`
+   - For every MR marked open/in-review, run `projctl load mr !N`
+   - Flag any that are now merged, closed, or have changed labels
+   - Incorporate the live states into the planning update proposed in step 2
+
+2. **Propose update to progress.md:**
    - Explicitly state intention to update
    - Wait for user confirmation
    - DO NOT update automatically
 
-2. **Update progress.md** (after confirmation):
+3. **Update progress.md** (after confirmation):
    - Mark completed tasks
    - Update active work section
    - Add timestamp
 
-3. **Update milestone status.md** (if needed):
+4. **Update milestone status.md** (if needed):
    - Update epic/issue completion status
    - Recalculate completion percentage
    - Update blockers if resolved
 
-4. **Archive design documents** (if milestone complete):
+5. **Archive design documents** (if milestone complete):
    - Move or delete temporary design artifacts
    - Update overview.md to mark milestone complete
 
-5. **Clean up internal plan files:**
+6. **Clean up internal plan files:**
    ```bash
    rm -f ~/.claude/plans/*.md
    ```
    Leftover plan files in `~/.claude/plans/` cause Claude Code to re-enter plan mode
    automatically at the next session start, which blocks the normal workflow.
 
-6. **Sync planning state to backup:**
+7. **Sync planning state to backup:**
    ```bash
    projctl sync push
    ```
    Pushes updated planning files to Google Drive backup, making them available on all machines.
    Record whether this push succeeded (needed for the compaction gate below).
 
-7. **Gated auto-compact (last step, §7.5)**
+8. **Gated auto-compact (last step, §7.5)**
 
    Evaluate three disk-checkable conditions. All three must pass for compaction to fire.
 

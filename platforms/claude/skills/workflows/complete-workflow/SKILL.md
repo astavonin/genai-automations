@@ -57,6 +57,11 @@ Load context from planning files:
 - `planning/<goal>/milestone-XX/status.md` - Milestone status
 - `planning/<goal>/milestone-XX/design/` - Design docs
 
+**Step 2b: Load live ticket and MR states**
+- For every active issue: `projctl load issue #N`
+- For every open/in-review MR: `projctl load mr !N`
+- Flag stale entries and propose updates; wait for confirmation before writing.
+
 **Step 3: Reverify Knowledge**
 - Check if any planning files were updated from backup
 - Review any changes made on other machines
@@ -151,6 +156,11 @@ Run all checks in this order:
 
 ### Phase 8: Completion
 **Command:** `/complete`
+
+**Step 0: Refresh ticket and MR statuses**
+- Load live state for every active issue and open MR tracked in `progress.md` and `status.md`
+- Use `projctl load issue #N` and `projctl load mr !N`
+- Incorporate any state changes (merged, closed, label changes) into the planning update below
 
 **Step 1: Update Progress Tracking**
 1. Explicitly propose update to `progress.md`
