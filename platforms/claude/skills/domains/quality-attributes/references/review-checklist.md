@@ -135,6 +135,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Resource cleanup (RAII, defer, etc.)
 - [ ] Thread safety correct (if applicable)
 - [ ] No undefined behavior
+- [ ] **Variable initialization uses `{}` for user-defined types and smart pointers** — `TypeName var(...)` can be parsed as a function declaration (most vexing parse); use `TypeName var{...}` instead. Exception: standard library containers (`std::string`, `std::vector`, etc.) with fill/range constructors must use `()` because `{}` routes through `initializer_list` and changes semantics.
 - [ ] **`[[nodiscard]]` on every non-void function whose return value the caller must act on** — applies to: error-indicating `bool` returns, status/result enums, factory/query functions where the only purpose is the return value. Ignoring these silently skips error handling. Trampolines and callbacks registered with external frameworks are exempt (the framework consumes the return).
 - [ ] **`[[nodiscard]]` on virtual functions: annotate every site** — the attribute does not propagate from base to overrides. Check the base declaration, every `override` in derived classes, and every test fake or mock implementing the interface.
 - [ ] **C++ typed error semantics** — recoverable I/O, network, and external API failures use project-native `std::expected`, `Result`, `StatusOr`, or status-enum patterns. Programmatic control flow does not parse diagnostic strings.

@@ -18,6 +18,7 @@ Strictly follow the C++ Core Guidelines:
 - Use STL containers and algorithms
 - Prefer `auto` where it improves readability
 - Use `constexpr` for compile-time evaluation
+- Prefer `{}` over `()` for variable initialization of user-defined types and smart pointers; `()` can be parsed as a function declaration. Exception: use `()` for standard library containers such as `std::string` and `std::vector` when the constructor is a fill or range constructor, because `{}` routes through `initializer_list` and can change semantics.
 - Prefer static polymorphism over dynamic where practical
 
 ### Safety

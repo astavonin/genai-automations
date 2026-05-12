@@ -32,6 +32,7 @@ metadata:
 - Initialize all variables
 - Avoid C-style casts (use static_cast, dynamic_cast, etc.)
 - Use range-based for loops
+- Prefer `{}` over `()` for variable initialization of user-defined types and smart pointers — `()` can be parsed as a function declaration (most vexing parse). Exception: use `()` for standard library containers (`std::string`, `std::vector`, etc.) when the constructor is a fill or range constructor, because `{}` routes through `initializer_list` and changes semantics.
 
 ### Code Organization
 - Header guards or `#pragma once`
