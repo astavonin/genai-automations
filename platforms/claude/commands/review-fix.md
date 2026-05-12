@@ -100,9 +100,11 @@ After writing, ask the user if they want to `open <path>` the review file.
 
 ### Critical
 - **C1** [attribute] Description...
+  **Required test:** <what input triggers the bug and what the test asserts> *(only for behavioral bugs)*
 
 ### High
 - **H1** [attribute] Description...
+  **Required test:** <description> *(only for behavioral bugs)*
 
 ### Medium
 - **M1** [attribute] Description...
@@ -121,6 +123,22 @@ Findings raised by Codex that did not reach 2/3 Claude consensus. Include even i
 ```
 
 IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity. IDs are stable within a review session.
+
+## Behavioral Bug Test Requirement
+
+Any finding that identifies **incorrect runtime behavior** MUST include a `**Required test:**` line as part of the finding body. This applies regardless of severity.
+
+**Incorrect runtime behavior** means the code:
+- Produces wrong output or corrupts data
+- Silently accepts input that should be rejected
+- Gets stuck or loops incorrectly
+- Bypasses a stated security or correctness invariant
+
+This does NOT apply to quality findings (naming, observability, performance, maintainability) that have no wrong-output consequence.
+
+The `**Required test:**` line must describe the minimal test that would fail before the fix and pass after:
+- What precondition / input triggers the bug
+- What outcome the test asserts
 
 ## Assessment
 

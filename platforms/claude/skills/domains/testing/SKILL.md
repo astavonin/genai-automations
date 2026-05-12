@@ -53,6 +53,33 @@ Name tests after **behavior and expected outcome**, not the function name:
 ### Edge Cases
 Always test: empty input, null/None values, max/min values, invalid input, error conditions.
 
+### Failure Scenario Coverage (mandatory)
+Every public function or method that can fail MUST have at least one test per distinct failure mode:
+- Invalid or out-of-range input
+- Dependency or resource errors (network failure, DB unavailable, file not found)
+- Boundary violations (empty collection, max size exceeded, zero divisor)
+- Concurrent or ordering violations (if applicable)
+
+A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
+
+### Assertion Correctness (mandatory)
+- Assert **concrete expected values**, not just non-null or existence (`assert result is not None` is not a correctness check)
+- Error-path assertions MUST check the specific error type, code, or message — not just that "some error occurred"
+- Test name MUST match what the assertions actually verify — a mismatch is a correctness bug, not a style issue
+- Ask: would this test fail if the implementation returned a wrong-but-non-null value or a different error?
+
+### Behavioral Correctness (mandatory)
+Write explicit tests for every scenario where incorrect runtime behavior is possible:
+- **Wrong output or data corruption** — e.g., response body from a redirect written into a download file
+- **Silent acceptance of invalid input** — e.g., treating an HTTP 3xx or 4xx as success
+- **Liveness violations** — e.g., a complete-file condition that retries infinitely instead of returning early
+- **Security or correctness invariant bypasses** — e.g., TLS version silently downgraded
+
+These are not optional edge cases — they are required test cases. Each must:
+- Have a name that identifies the behavioral invariant being asserted (e.g., `maps_redirect_to_permanent_redirect_with_zero_bytes`)
+- Set up the exact precondition that would trigger the incorrect behavior
+- Assert the correct outcome explicitly (status code, byte count, returned value)
+
 ## Integration Testing
 
 Use integration tests when two or more real components interact (DB, HTTP, broker). Use unit tests for isolated logic.

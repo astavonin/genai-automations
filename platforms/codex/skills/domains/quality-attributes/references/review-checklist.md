@@ -63,6 +63,9 @@ Use this checklist when conducting design and architecture reviews in the narrow
 - [ ] Validation or verification approach is described.
 - [ ] Important scenarios, edge cases, or failure modes are identified.
 - [ ] The design includes a concrete test plan when implementation is expected.
+- [ ] The test plan covers all public API paths affected by the change.
+- [ ] The test plan includes each distinct failure mode for public functions or methods that can fail.
+- [ ] Behavioral correctness scenarios are called out explicitly: wrong output, data corruption, silent invalid-input acceptance, liveness violations, and security or correctness invariant bypasses.
 - [ ] When a coverage target can be extracted from repository policy, CI, or the surrounding context, the expected minimum is stated and is `>= 80%` unless a stricter project rule exists.
 - [ ] The design explains what can be tested locally or in containerized environments.
 - [ ] The design calls out blockers for real-environment, hardware, or credentialed testing when relevant.
@@ -97,6 +100,7 @@ Use this checklist when conducting design and architecture reviews in the narrow
 - [ ] Findings are prioritized over summary text.
 - [ ] Confirmed issues are separated from open questions or missing evidence.
 - [ ] Recommendations are concrete and tied to the design, not generic advice.
+- [ ] Any finding that identifies incorrect runtime behavior includes a `Required test:` line describing the triggering input or precondition and the asserted outcome.
 
 ## Severity Guidance
 

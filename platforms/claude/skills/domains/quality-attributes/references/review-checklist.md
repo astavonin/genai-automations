@@ -114,6 +114,13 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Integration tests exist (not just planned) for component boundaries
 - [ ] Integration tests are tagged/marked to run separately
 - [ ] No flaky tests (non-deterministic assertions, bare sleeps)
+- [ ] **Behavioral bug findings require a `Required test:` line** — any finding that identifies incorrect runtime behavior (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `**Required test:**` line describing: what precondition/input triggers the bug and what outcome the test asserts. Quality findings (naming, observability, performance, maintainability) with no wrong-output consequence are exempt.
+
+**Test correctness — answer all four:**
+- [ ] **Assertion specificity:** Assertions check concrete values or behavior, not vacuous checks (`assert result is not None`, `assert called_once()` with no argument verification). Each assertion should fail if the implementation returns a wrong-but-non-null value.
+- [ ] **Name/assertion alignment:** The test name describes the same scenario and outcome that the assertions actually verify. A mismatch (name says "returns error on missing token", body asserts status 200) is a correctness bug.
+- [ ] **Falsifiability:** Would this test fail if the production code were broken in exactly the way the name implies? Mentally delete the production logic and ask whether the test catches it.
+- [ ] **Failure scenario coverage:** Every public function or method that can fail MUST have at least one test for each distinct failure mode — invalid input, resource exhaustion, dependency error, boundary violation. A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 
 #### Performance
 - [ ] No unnecessary operations in hot paths
@@ -154,8 +161,10 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Unit tests comprehensive
 - [ ] All tests pass locally
 - [ ] Integration tests pass (if applicable)
-- [ ] Test names are descriptive
-- [ ] Test assertions are clear
+- [ ] Test names are descriptive and match what the assertions actually verify
+- [ ] Assertions are specific — concrete expected values, not just non-null or call-count checks
+- [ ] Every function/method that can fail has tests for each distinct failure mode (not just the happy path)
+- [ ] Error paths assert the exact error type, message, or code — not just that "some error occurred"
 
 ### Documentation
 - [ ] Public APIs documented

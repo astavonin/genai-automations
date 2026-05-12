@@ -126,6 +126,7 @@ Before saving, parse and verify:
 4. Each finding has required fields: `severity`, `title`, `description`
 5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
 6. Severity values are exactly one of: `Critical`, `High`, `Medium`, `Low` (case-sensitive)
+7. Any finding that identifies **incorrect runtime behavior** (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `Required test:` line inside its `fix:` field describing: what input triggers the bug and what the test asserts
 
 If validation fails:
 - Report the specific validation errors to the user

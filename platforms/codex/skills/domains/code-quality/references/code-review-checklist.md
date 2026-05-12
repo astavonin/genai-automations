@@ -38,21 +38,29 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 ## 5. Tests
 
 - [ ] Tests cover the intended behavior change.
-- [ ] Tests include important error paths or edge cases when relevant.
+- [ ] Tests cover all public API paths affected by the change.
+- [ ] Tests include each distinct failure mode for public functions or methods that can fail.
+- [ ] Tests cover important error paths or edge cases when relevant.
+- [ ] Assertions check concrete values or observable behavior, not only non-null values, existence, or call counts.
+- [ ] Error-path assertions check the specific error type, code, or message.
+- [ ] Test names match the scenario and outcome that the assertions actually verify.
 - [ ] Tests remain readable and focused on behavior.
 - [ ] Test setup avoids unnecessary complexity.
 
 ## 6. Review Output Expectations
 
 - [ ] Findings focus on real risks, regressions, or maintainability issues.
+- [ ] Any finding that identifies incorrect runtime behavior includes a `Required test:` line describing the input or precondition that triggers the bug and the outcome the test asserts.
 - [ ] Style-only feedback is raised only when it affects readability or project consistency.
 - [ ] Suggested fixes are concrete and proportional to the issue.
+
+Behavioral runtime bugs include wrong output, data corruption, silent invalid-input acceptance, liveness failures, and security or correctness invariant bypasses. Quality-only findings without a wrong-output consequence do not need a `Required test:` line.
 
 ## Severity Guidance
 
 | Level | Meaning |
 |---|---|
 | `critical` | The change introduces a correctness, safety, or severe maintainability problem. |
-| `major` | A substantial readability, test, or suppression issue needs correction. |
+| `major` | A substantial readability, test, or suppression issue needs correction, including missing failure-scenario tests for security, data integrity, or resource-management behavior. |
 | `minor` | The change is workable but should be tightened for clarity or consistency. |
 | `suggestion` | Optional improvement that is not required for correctness. |

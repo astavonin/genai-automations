@@ -95,6 +95,22 @@ Each of the 3 agents evaluates:
 - **Design adherence:** Matches approved design
 - **Standards compliance:** Coding standards and static analysis
 
+## Behavioral Bug Test Requirement
+
+Any finding that identifies **incorrect runtime behavior** MUST include a `**Required test:**` line as part of the finding body. This applies regardless of severity.
+
+**Incorrect runtime behavior** means the code:
+- Produces wrong output or corrupts data (e.g., writes redirect response body into a download file)
+- Silently accepts input that should be rejected (e.g., treats HTTP 3xx as success)
+- Gets stuck or loops incorrectly (e.g., complete-file → 416 → infinite retry)
+- Bypasses a stated security or correctness invariant
+
+This does NOT apply to quality findings (naming, observability, performance, maintainability) that have no wrong-output consequence.
+
+The `**Required test:**` line must describe the minimal test that would fail before the fix and pass after:
+- What precondition / input triggers the bug
+- What outcome the test asserts
+
 ## Output Format
 
 Produce a markdown report:
@@ -111,10 +127,11 @@ Produce a markdown report:
 
 ### Critical
 - **C1** [attribute] Description...
-- **C2** [attribute] Description...
+  **Required test:** <what input triggers the bug and what the test asserts> *(only for behavioral bugs)*
 
 ### High
 - **H1** [attribute] Description...
+  **Required test:** <description> *(only for behavioral bugs)*
 
 ### Medium
 - **M1** [attribute] Description...
@@ -128,9 +145,20 @@ Findings raised by Codex that did not reach 2/3 Claude consensus. Include even i
 
 - **X1** [severity] Description...
 
-## Test-Coverage Findings
+## Test Correctness Findings
 
-Findings from the test-coverage agent not already present in the consensus section.
+Findings about test quality not already present in the consensus section. Focus on correctness gaps, not style.
+
+Reviewers MUST check:
+- **Missing failure scenarios** — public functions/methods that can fail but have no test for invalid input, dependency errors, or boundary violations. Flag each uncovered failure mode as a separate finding.
+- **Vacuous assertions** — assertions that pass even when the implementation is wrong (e.g., only checking non-null, only checking call count without argument verification).
+- **Name/assertion mismatch** — test name describes a scenario the assertions do not actually verify.
+- **Under-specified error assertions** — error-path tests that only assert "an error occurred" without checking the error type, code, or message.
+
+Severity guidance:
+- `High` — missing failure-scenario test for a function that handles security, data integrity, or resource management
+- `Medium` — missing failure-scenario test for non-critical paths; vacuous or mismatched assertions
+- `Low` — under-specified error assertions where the type/message check would be easy to add
 
 - **T1** [severity] Description...
 

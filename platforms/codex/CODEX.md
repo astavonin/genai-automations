@@ -49,6 +49,8 @@ When implementing or reviewing code:
 - use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
 - document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
 - keep functions and methods at or below 80 lines where practical; never create or leave a modified function over 100 lines
+- cover public API paths, distinct failure modes, edge cases, and behavioral correctness scenarios with concrete tests
+- when a review finding identifies incorrect runtime behavior, include a `Required test:` line describing what input or precondition triggers the bug and what outcome the test asserts
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 
@@ -71,3 +73,5 @@ Prefer language-idiomatic solutions, explicit validation, and project-native too
 - Separate confirmed facts from proposed behavior.
 - For workflow docs, ensure request fields, templates, and examples stay aligned.
 - For code changes, apply the project's formatter and use the project's test and lint tooling when available.
+- Do not accept happy-path-only tests for code paths that can fail; missing failure-scenario coverage is a correctness gap.
+- Do not rely on vacuous assertions such as non-null checks, existence checks, or call counts without verifying concrete behavior.

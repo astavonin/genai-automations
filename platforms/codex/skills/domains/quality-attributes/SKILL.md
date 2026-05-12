@@ -20,6 +20,7 @@ Is the design understandable, structured, and consistent?
 
 ### 4. Testability
 Does the design define how behavior and invariants can be validated?
+The test plan must identify public API paths, behavioral correctness scenarios, and distinct failure modes that require tests.
 When a coverage target can be extracted from the repository, design, or review context, treat `>= 80%` as the expected minimum unless the project states a stricter rule.
 
 ### 5. Performance

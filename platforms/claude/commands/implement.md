@@ -110,7 +110,10 @@ fi
 
 1. Select appropriate agent based on task type
 2. Write code following approved design
-3. Include comprehensive unit tests (mandatory)
+3. Include comprehensive unit tests (mandatory):
+   - Cover all public API paths
+   - Cover edge cases: empty input, null/None, boundary values, error paths
+   - **Cover behavioral correctness scenarios** — any path where incorrect runtime behavior is possible (wrong output, silent invalid-input acceptance, liveness violations, security bypass) requires an explicit test. See `~/.claude/skills/domains/testing/SKILL.md` → Behavioral Correctness.
 4. Verify build passes after each change
 5. Follow language-specific style guides:
    - C++: C++ Core Guidelines
