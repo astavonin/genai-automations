@@ -35,7 +35,19 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] The code follows established repository conventions where they exist.
 - [ ] New patterns are consistent with nearby code unless there is a clear reason to diverge.
 
-## 5. Tests
+## 5. C++ Error Handling, When Applicable
+
+- [ ] Recoverable I/O, network, and external API failures use explicit return channels instead of exceptions.
+- [ ] Code uses project-native `std::expected`, `Result`, `StatusOr`, or status-enum patterns instead of inventing one-off result wrappers.
+- [ ] Programmatic control flow branches on typed errors, status enums, or error codes, not parsed diagnostic strings.
+- [ ] Error-indicating `bool` returns, status/result enums, and factory/query returns that callers must act on are marked `[[nodiscard]]`.
+- [ ] Intentional discards of `[[nodiscard]]` results are explicit and justified.
+- [ ] Exceptions are caught and converted at destructors, C callbacks, C ABI boundaries, thread entry points, and cleanup paths.
+- [ ] Required output parameters use references; pointers are reserved for truly optional outputs where `nullptr` is meaningful.
+- [ ] Shared error-detail strings are propagated by reference through chained calls instead of allocating per call in hot paths.
+- [ ] System-call failures capture `errno` immediately and log enough context to diagnose the failure.
+
+## 6. Tests
 
 - [ ] Tests cover the intended behavior change.
 - [ ] Tests cover all public API paths affected by the change.
@@ -47,7 +59,7 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] Tests remain readable and focused on behavior.
 - [ ] Test setup avoids unnecessary complexity.
 
-## 6. Review Output Expectations
+## 7. Review Output Expectations
 
 - [ ] Findings focus on real risks, regressions, or maintainability issues.
 - [ ] Any finding that identifies incorrect runtime behavior includes a `Required test:` line describing the input or precondition that triggers the bug and the outcome the test asserts.

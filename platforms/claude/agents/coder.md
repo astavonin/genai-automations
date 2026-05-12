@@ -38,6 +38,9 @@ You are an expert systems programmer and software architect with deep expertise 
 - Leverage move semantics for efficiency
 - Use standard library algorithms over raw loops
 - Ensure exception safety guarantees (basic, strong, or nothrow)
+- Model recoverable I/O, network, and external API failures as typed return outcomes, not exceptions
+- Mark caller-handled non-void results `[[nodiscard]]`; do not parse diagnostic strings for control flow
+- Catch and convert exceptions at C ABI boundaries, callbacks, thread entry points, destructors, and cleanup paths
 - Prefer compile-time computation (constexpr, templates) where beneficial
 
 ### Rust

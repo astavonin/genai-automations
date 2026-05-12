@@ -47,6 +47,7 @@ When implementing or reviewing code:
 - use `skills/languages/go/` for Go
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
+- for C++, treat recoverable I/O, network, and external API failures as explicit typed return outcomes; mark caller-handled non-void results `[[nodiscard]]`; keep diagnostics separate from error semantics; catch exceptions at C/ABI/thread/cleanup boundaries
 - document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
 - keep functions and methods at or below 80 lines where practical; never create or leave a modified function over 100 lines
 - cover public API paths, distinct failure modes, edge cases, and behavioral correctness scenarios with concrete tests

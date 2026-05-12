@@ -79,6 +79,8 @@ Use this checklist when conducting design and architecture reviews in the narrow
 - [ ] Failure modes and edge cases are called out explicitly.
 - [ ] Destructive or state-changing behavior is bounded clearly.
 - [ ] Recovery or fallback behavior is described when relevant.
+- [ ] C++ APIs identify caller-handled failure returns and require `[[nodiscard]]` on non-void results the caller must act on.
+- [ ] C++ designs separate typed error semantics from diagnostic text and define where exceptions are converted at C/ABI/thread/cleanup boundaries.
 
 #### Security
 - [ ] Trust boundaries, input validation, or path constraints are defined when relevant.
