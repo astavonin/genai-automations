@@ -98,6 +98,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/ticket` - Create milestones, epics, and/or issues as YAML for `projctl create`
 - `/review-mr` - Review an MR and generate YAML findings for `projctl comment`
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
+- `/verify-docs` - Verify design doc integrity and consistency after Q&A resolution or review finding fixes — run before re-review (architecture-research-planner agent)
 - `/write` - Research a topic and produce a structured Markdown draft (writer agent)
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
 - `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent

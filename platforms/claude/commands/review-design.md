@@ -149,6 +149,16 @@ IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Numbe
 - ⚠️ **Request Changes:** One or more High findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → return to Phase 2
 
+## After Resolving CHANGES REQUESTED Findings
+
+When a review returns CHANGES REQUESTED and the findings are resolved through Q&A and doc updates:
+
+1. Run `/verify-docs` on all modified files before requesting re-review.
+2. Fix any blockers reported by `/verify-docs`.
+3. Only then re-run `/review-design` for the follow-up review cycle.
+
+This prevents the next reviewer from raising findings that are artifacts of incomplete or inconsistent doc updates rather than genuine design issues.
+
 ## Critical Rule
 
 **NO code implementation without approval.**

@@ -174,6 +174,14 @@ IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Numbe
 - ⚠️ **Request Changes:** One or more High findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → redesign needed
 
+## After Resolving CHANGES REQUESTED Findings
+
+When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/design/` files:
+
+1. Run `/verify-docs` on all modified files before requesting re-review.
+2. Fix any blockers reported by `/verify-docs`.
+3. Only then re-run `/review-code`.
+
 ## Next Step
 
 After approval, use `/verify` to run tests and static analysis.
