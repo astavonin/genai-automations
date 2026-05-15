@@ -76,6 +76,10 @@ Use Mermaid for all architecture diagrams. Always use `<br/>` for line breaks in
 - Use consistent naming across all diagrams in the same document
 - Add notes for non-obvious relationships
 - Prefer the diagram types above; use flowcharts only as a last resort
+- `<br/>` is supported in node labels but NOT in edge labels (`|...|`); `()` and `{}` are also special shape syntax and cannot appear unescaped in edge labels
+
+**Validation (mandatory after every diagram write or edit):**
+Call `mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram` with the diagram code. Check that `valid: true` before moving on. Do not skip this step even for small edits — silent parse errors (e.g. `<br/>` in edge labels) render invisible to the author but break the diagram for every reader.
 
 See `references/diagrams.md` for copy-paste examples of each type.
 
