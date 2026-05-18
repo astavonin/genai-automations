@@ -121,6 +121,8 @@ Implement approved design with:
 
 Review code against 8 quality attributes and design adherence.
 
+**Design doc:** Before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/design/<feature>-design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
+
 **Output:** Write report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`.
 After writing, ask the user if they want to `open <path>` the review file.
 

@@ -248,6 +248,7 @@ ls planning/<goal>/milestone-XX/design/
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
+- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/design/<feature>-design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
 - **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`** (single file, always overwritten — no versioning suffixes)
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file
