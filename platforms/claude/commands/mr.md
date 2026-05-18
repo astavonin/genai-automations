@@ -172,7 +172,7 @@ Return the MR URL to the user and ask if they want to `open <url>` in the browse
 **Guidelines:**
 - **Summary:** 1-2 sentences maximum, architecture level (WHAT and WHY)
 - **Implementation Details:** 2-4 bullet points, high-level changes only
-- **How It Was Tested:** 2-3 bullet points, concise test approach
+- **How It Was Tested:** 1-2 bullets max — which test commands were run and whether they passed. Never include assertion counts, test case counts, or file-level test details.
 - Use `|` for multi-line YAML strings
 - Keep descriptions SHORT and HIGH-LEVEL
 - Avoid file-level details - reviewers can see the code
