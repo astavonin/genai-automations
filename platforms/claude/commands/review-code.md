@@ -150,6 +150,7 @@ Findings raised by Codex that did not reach 2/3 Claude consensus. Include even i
 Findings about test quality not already present in the consensus section. Focus on correctness gaps, not style.
 
 Reviewers MUST check:
+- **New code without dedicated test file** — for every new source unit (`.h`/`.cc` pair, standalone utility, or module) introduced in this PR, verify that a corresponding dedicated test file exists. Indirect exercise through a higher-level test suite is not sufficient — each unit needs its own tests. Flag as `High` if missing.
 - **Missing failure scenarios** — public functions/methods that can fail but have no test for invalid input, dependency errors, or boundary violations. Flag each uncovered failure mode as a separate finding.
 - **Vacuous assertions** — assertions that pass even when the implementation is wrong (e.g., only checking non-null, only checking call count without argument verification).
 - **Name/assertion mismatch** — test name describes a scenario the assertions do not actually verify.
