@@ -56,9 +56,16 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
    - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
    - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
 
-6. After writing, ask the user if they want to `open <path>` the review file
-7. Wait for user approval (MANDATORY)
-8. Block until approved
+6. **If the review status is `APPROVED`, update the design doc header:**
+   ```bash
+   # In planning/<goal>/milestone-XX/design/<feature>-design.md, change:
+   # **Status:** Draft  →  **Status:** Approved
+   ```
+   Use the Edit tool to make this change. Skip this step if status is `CHANGES REQUESTED` or `REJECTED`.
+
+7. After writing, ask the user if they want to `open <path>` the review file
+8. Wait for user approval (MANDATORY)
+9. Block until approved
 
 ## Final Step — Push planning to backup
 
