@@ -130,15 +130,22 @@ Add any references, related issues, or notes.
 
 `weight` = hours of work. **Minimum is 8 (one full day).** Never use a round placeholder — always reason through the estimate.
 
-**Assume LLM-assisted development:** code generation, boilerplate, docs, and test scaffolding are significantly accelerated. Estimate for a developer working with an LLM co-pilot, not alone.
+**Assume LLM-assisted development.** Design is the dominant cost because it is the primary input driving LLM-assisted coding — the better the design doc, the faster the implementation. Within any impl ticket, time splits roughly as:
+
+| Phase | Share | Rationale |
+|-------|-------|-----------|
+| Design (inline, per-ticket) | 50% | Reading existing code, resolving edge cases, writing the approach — the LLM cannot skip this |
+| Coding | 20% | LLM generates most code from the design; human reviews and adjusts |
+| Review + fixes | 30% | Code review, CI, addressing findings |
 
 **Reference scale:**
 
 | Weight | Meaning | Typical task shape |
 |--------|---------|-------------------|
-| 8 | 1 day | Single well-scoped change, clear acceptance criteria, low unknowns |
-| 16 | 2 days | Moderate complexity, some design decisions, straightforward testing |
-| 24 | 3 days | Multiple components, non-trivial integration, or significant test coverage needed |
+| 8 | 1 day | Trivial: script, config, no real design work. Minimum floor — even simple tickets have branch/CI/MR/review overhead |
+| 16 | 2 days | Simple impl: inline design is straightforward, bounded scope, clear acceptance criteria |
+| 24 | 3 days | Standard impl: non-trivial inline design, multiple components, meaningful test coverage |
+| 32 | 4 days | Architecture/high-level design ticket (separate research issue): research + design doc + review cycle |
 | 40 | 1 week | **Stop — see rule below** |
 
 **40h rule — NEVER create a 40h issue.** If your estimate reaches 40h, stop and do one of:
@@ -148,22 +155,18 @@ Add any references, related issues, or notes.
 Always present the split/epic proposal to the user and get confirmation before writing YAML.
 
 **Estimation checklist — for each issue, ask:**
-1. How many distinct components/files need to change?
-2. Is there design ambiguity that requires exploration?
+1. How complex is the inline design? (reading existing code, resolving unknowns, documenting the approach)
+2. How many distinct components/files need to change?
 3. How much test coverage is expected (unit + integration)?
 4. Are there external dependencies (APIs, schema migrations, config changes)?
 5. Does it require review cycles or coordination?
 
-**LLM acceleration factors (reduce raw estimate by these):**
-- Boilerplate / CRUD code: −50%
-- Test scaffolding: −40%
-- Documentation: −60%
-- Novel algorithms or debugging unknown systems: no reduction
-
 **Example reasoning:**
-> "Add REST endpoint for user preferences — CRUD handler, validation, unit tests. With LLM: handler ~2h, validation ~1h, tests ~2h, review ~1h → 6h → round up to 8 (minimum)."
+> "Shell script with two subcommands, integration test: design is trivial (~1h), coding ~1h, tests ~2h, review ~1h → ~5h → round up to 8 (minimum floor)."
 
-> "Refactor auth middleware to meet compliance requirements — cross-cutting, affects 8 files, needs integration tests, security review. With LLM: 2 days implementation + 1 day testing/review → 24."
+> "C++ subprocess runner with timeout, SIGTERM passthrough, stderr capture, 15 Catch2 test cases: inline design ~12h (reading fork/execve patterns, edge cases), coding ~5h, review ~7h → 24h."
+
+> "Architecture design ticket (research + design doc + review): research ~8h, writing doc ~8h, review cycle ~8h → 32h (not split — this IS the design phase)."
 
 ### 6. Show YAML for Verification
 
