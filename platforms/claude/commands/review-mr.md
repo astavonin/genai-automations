@@ -89,7 +89,7 @@ from the review request template:
 > If any are missing — stop, add them, then send.
 
 **Step A (single message):** Launch simultaneously:
-- 3 × reviewer (opus) Agent calls with the full diff, MR title/description, and review checklist
+- 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below)
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
   codex-flow review planning/reviews/MR<number>-review-request.md
@@ -113,6 +113,8 @@ GitLab will interpret these as real user mentions and send notifications.
 Write the review to `planning/reviews/MR<number>-review.yaml` following the schema below.
 Include ALL findings: consensus findings first, then Codex-only findings (prefix their title
 with `[Codex]` so reviewers can distinguish them).
+
+**Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced.
 
 If this file already exists (re-review), it will be overwritten. Previous review output
 is not preserved. Copy the file manually before re-running if you need to keep it.
@@ -157,6 +159,15 @@ To post inline comments to the MR:
 
 The command never posts automatically. Posting requires explicit user action.
 
+---
+
+## Reply Drafting Guidelines
+
+When drafting replies to reviewer comments (for posting via `projctl comment` with a `replies:` section), apply the same writing style as finding descriptions (see above), plus:
+
+- When agreeing: state what was fixed, one sentence, done.
+- When pushing back: explain the reasoning directly — the goal is shared understanding, not winning the point.
+
 **Re-posting warning:** Running `comment` more than once on the same YAML will create duplicate comments on the MR. If a previous posting attempt failed or was partial, resolve the underlying issue (e.g. fix `:1` line numbers in the YAML) before re-running — do not retry blindly.
 
 ---
@@ -182,11 +193,13 @@ findings:
     guideline: "C++ Core Guidelines F.53"  # OPTIONAL: null if none
 ```
 
-**Description writing rules:**
-- 1–3 sentences maximum — state what breaks and what the impact is
-- Plain language: write for a developer skimming a review, not a formal report
-- Never passive-aggressive: no "you should have", "obviously", "this ignores", "dangerously", "poorly"
-- Focus on the problem, not the author — describe what the code does, not what the person did
+**Writing style — applies to all review output (finding descriptions, fix suggestions, and replies):**
+- Sound human: write like messaging a colleague, not filing a report. No opener boilerplate ("Thank you for the feedback", "Great point", "You are correct that…").
+- Be friendly: acknowledge the point before explaining or disagreeing. Short sentences, first person is fine.
+- Never blame: don't mention how a mistake happened ("I forgot", "this was left over", "accidentally"). Don't attribute problems to prior authors or external constraints. State what's wrong or what changed — nothing more.
+- Focus on the problem, not the person: describe what the code does, not what the author did or failed to do.
+- 1–3 sentences per finding description — state what breaks and what the impact is.
+- No passive-aggressive language: never "you should have", "obviously", "this ignores", "dangerously", "poorly".
 - Bad: "This function dangerously ignores the error return value." Good: "If the error return is ignored here, the caller proceeds with an invalid state."
 
 **Schema rules:**
