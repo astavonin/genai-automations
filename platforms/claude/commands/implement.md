@@ -20,7 +20,7 @@ Implement the approved design following the chosen agent's expertise.
 
 ## File Overwrite Convention
 
-`/review-code` always writes a **single** file `<feature>-code-review.md`, overwriting any prior content. No versioning suffixes. The gate below reads from this single file. Git history preserves prior versions.
+`/review-code` always writes a **single** file `code-review.md` inside the issue folder, overwriting any prior content. No versioning suffixes. The gate below reads from this single file. Git history preserves prior versions.
 
 ## Actions
 
@@ -32,8 +32,8 @@ Before doing anything else, evaluate two disk-checkable preconditions. Both must
 
 ```bash
 # Locate the design and design-review files for this feature
-DESIGN="planning/<goal>/milestone-XX/design/<feature>-design.md"
-REVIEW="planning/<goal>/milestone-XX/reviews/<feature>-design-review.md"
+DESIGN="planning/<goal>/milestone-XX/issues/<NNN-name>/design.md"
+REVIEW="planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md"
 
 # Check all four sub-conditions:
 # a) design file exists
@@ -52,7 +52,7 @@ All four sub-conditions must pass. If any fail, precondition 1 fails.
 **Precondition 2 — no open code-review cycle:**
 
 ```bash
-CODE_REVIEW="planning/<goal>/milestone-XX/reviews/<feature>-code-review.md"
+CODE_REVIEW="planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md"
 
 # Either the file does not exist (first /implement run for this feature):
 if [ ! -f "$CODE_REVIEW" ]; then

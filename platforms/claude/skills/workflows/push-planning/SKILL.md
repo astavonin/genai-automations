@@ -17,9 +17,9 @@ Push planning state to Google Drive backup after a durable artifact has been wri
 
 Include this fragment as the **last step** of any skill that writes a durable planning artifact:
 
-- `/design` — after writing `<feature>-design.md`
-- `/review-design` — after writing `<feature>-design-review.md`
-- `/review-code` — after writing `<feature>-code-review.md` (see elevated warning note below)
+- `/design` — after writing `issues/<NNN-name>/design.md`
+- `/review-design` — after writing `issues/<NNN-name>/design-review.md`
+- `/review-code` — after writing `issues/<NNN-name>/code-review.md` (see elevated warning note below)
 
 ## Steps
 

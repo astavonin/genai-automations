@@ -34,7 +34,7 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
 
 ## File Overwrite Convention (§7.4)
 
-This skill always writes a **single** file `<feature>-code-review.md`, **overwriting** any prior content. No versioning suffixes (`-v1`, `-v2`). No appending. Each run replaces. Git history in `planning/` preserves prior reviews if needed. The gate always reads the single latest file.
+This skill always writes a **single** file `code-review.md` inside the issue folder, **overwriting** any prior content. No versioning suffixes (`-v1`, `-v2`). No appending. Each run replaces. Git history in `planning/` preserves prior reviews if needed. The gate always reads the single latest file.
 
 ## Actions
 
@@ -49,11 +49,11 @@ This skill always writes a **single** file `<feature>-code-review.md`, **overwri
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
 2. Format consolidated findings as a markdown review report (see Output Format below)
-3. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`** (overwriting any prior version)
+3. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (overwriting any prior version)
 
 4. **Verify the status marker** before declaring the review complete:
    ```bash
-   head -20 planning/<goal>/milestone-XX/reviews/<feature>-code-review.md | grep -m 1 '^\*\*Status:\*\*'
+   head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md | grep -m 1 '^\*\*Status:\*\*'
    ```
    - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
    - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
@@ -177,7 +177,7 @@ IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Numbe
 
 ## After Resolving CHANGES REQUESTED Findings
 
-When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/design/` files:
+When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/issues/*/` files:
 
 1. Run `/verify-docs` on all modified files before requesting re-review.
 2. Fix any blockers reported by `/verify-docs`.

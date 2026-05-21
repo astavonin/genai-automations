@@ -126,6 +126,42 @@ If any files exist, **immediately warn the user before proceeding:**
 
 Do NOT continue with context loading until the user resolves this.
 
+### ⚠️ Pre-flight: Detect Old Planning Folder Format
+
+Check for milestone folders still using the old flat `design/` or `reviews/` layout instead of per-issue `issues/<NNN-name>/`:
+
+```bash
+find planning/ -type d \( -name "design" -o -name "reviews" \) -path "*/milestone-*/*" 2>/dev/null
+```
+
+If any are found, **stop and propose a migration before continuing.** Do not load context from stale paths.
+
+**Migration plan to propose (confirm before executing):**
+
+For each old `milestone-XX/design/` found, list its files and determine the target issue folder from the filename prefix. Convention: `<feature>-design.md` → `issues/<NNN-feature>/design.md`. If the issue number is not embedded in the filename, check the ticket system (`projctl load issue`) or ask the user.
+
+Mapping rules:
+- `<feature>-analysis.md` → `issues/<NNN-feature>/analysis.md`
+- `<feature>-design.md` → `issues/<NNN-feature>/design.md`
+- `<feature>-design-review.md` → `issues/<NNN-feature>/design-review.md`
+- `<feature>-code-review.md` → `issues/<NNN-feature>/code-review.md`
+
+For each old `milestone-XX/reviews/` found:
+- MR YAML files (`MR*-review.yaml`) → `planning/reviews/`
+- Review-request and codex-review files → `planning/reviews/`
+- Per-issue design/code review reports → their `issues/<NNN-name>/` folder
+
+Migration commands (using plain `mv` — `planning/` is not git-tracked):
+```bash
+mkdir -p planning/<goal>/milestone-XX/issues/<NNN-name>/
+mv planning/<goal>/milestone-XX/design/<feature>-design.md \
+   planning/<goal>/milestone-XX/issues/<NNN-name>/design.md
+# ... repeat for each file
+rmdir planning/<goal>/milestone-XX/design/   # only after all files moved
+```
+
+Present the complete proposed move list and wait for explicit user confirmation before running any `mv` commands. After migration, continue to step 1.
+
 ### 1. Read current progress:
    ```bash
    cat planning/progress.md
@@ -165,9 +201,9 @@ If any stale MR entries are found, propose the exact edits and wait for explicit
    cat planning/<goal>/milestone-XX-<name>/status.md
    ```
 
-### 4. List design documents if they exist:
+### 4. List active issues if they exist:
    ```bash
-   ls planning/<goal>/milestone-XX-<name>/design/
+   ls planning/<goal>/milestone-XX-<name>/issues/
    ```
 
 ### 5. Display summary:

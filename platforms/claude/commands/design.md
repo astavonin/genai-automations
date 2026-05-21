@@ -28,7 +28,7 @@ Read ~/.claude/skills/domains/quality-attributes/SKILL.md
 ```
 
 Also read:
-- `planning/<goal>/milestone-XX/design/<feature>-analysis.md` (if it exists)
+- `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` (if it exists)
 - The linked issue via `projctl load issue <N>` (if a ticket number is known)
 
 ### Step 1: Q&A Phase (main conversation — back-and-forth dialog)
@@ -58,7 +58,7 @@ Before spawning the agent, run a clarifying dialog in the main conversation.
 
 ### Step 2: Write clarifications to analysis doc
 
-After the dialog, append a `## Clarifications` section to `planning/<goal>/milestone-XX/design/<feature>-analysis.md`. If that file does not exist, create it with just this section.
+After the dialog, append a `## Clarifications` section to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`. If that file does not exist, create it with just this section.
 
 ```markdown
 ## Clarifications
@@ -81,11 +81,11 @@ Pass to the agent:
 - The goal, milestone, feature context
 - For post-review fixes: the review report and the enumerated findings to address
 
-The agent produces `planning/<goal>/milestone-XX/design/<feature>-design.md` following the template (all 7 sections required; sections 6–7 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why).
+The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 7 sections required; sections 6–7 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why).
 
 ## Output
 
-**File:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
+**File:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 
 **Contains:**
 - Header metadata (goal, milestone + GL/GH ref, feature ref, branch, status, revision)

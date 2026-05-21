@@ -31,7 +31,7 @@ Investigate existing codebase patterns and architecture using the architecture-r
 
 ## Output
 
-**File:** `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
+**File:** `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
 
 **Contains:**
 - Codebase analysis

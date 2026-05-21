@@ -10,7 +10,7 @@ Run `codex-flow implement` against a design document and display the implementat
 ## Usage
 
 ```
-/codex-implement planning/<goal>/milestone-XX/design/<feature>-design.md
+/codex-implement planning/<goal>/milestone-XX/issues/<NNN-name>/design.md
 ```
 
 If no path is provided, look for the current milestone's design document.
@@ -23,7 +23,7 @@ If no path is provided, look for the current milestone's design document.
 
 **If no path was provided:** scan `planning/` for the active milestone's design doc:
 ```bash
-ls planning/<goal>/milestone-XX/design/*-design.md
+ls planning/<goal>/milestone-XX/issues/
 ```
 If exactly one is found, use it. If multiple are found, ask the user to specify.
 

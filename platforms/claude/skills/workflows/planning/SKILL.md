@@ -17,15 +17,20 @@ Planning directory structure and progress tracking workflow.
 
 ```
 planning/
-├── progress.md                           # Current work tracking
+├── progress.md                           # Active work only: current, last 3 merged, next steps
+├── reviews/                              # MR review YAMLs (projctl comment input; ephemeral)
+│   └── MR<N>-review.yaml
 ├── <goal-name>/
 │   ├── overview.md                       # Milestone roadmap
 │   └── milestone-XX-<name>/
-│       ├── status.md                     # Progress tracking
-│       ├── design/                       # Temporary design docs
-│       │   ├── <feature>-analysis.md    # Research findings
-│       │   └── <feature>-design.md      # Design proposals
-│       └── epic-YY-<name>.md            # Epic details (optional)
+│       ├── status.md                     # Issue list with phase + dependency diagram
+│       ├── tickets/                      # YAML files for projctl create
+│       └── issues/
+│           └── <NNN-name>/              # One folder per issue
+│               ├── analysis.md          # Research findings (Phase 1)
+│               ├── design.md            # Design proposal (Phase 2)
+│               ├── design-review.md     # Design review (Phase 3)
+│               └── code-review.md       # Code review (Phase 5)
 ```
 
 ## File Purposes
@@ -56,63 +61,58 @@ planning/
 **Style:** Concise, focus on WHAT not HOW
 
 ### status.md
-**Purpose:** Milestone execution progress
-**Updated:** Weekly or when status changes
+**Purpose:** Full milestone picture — all issues, phases, dependency order
+**Updated:** When issue phase changes
 
 **Contains:**
-- Completion percentage
-- Epic breakdown with status
-- Blockers
-- Timeline status
-- Risk summary
-- Next actions (task checklist)
+- Issue table with phase column (`merged ✅ / MR review 🔍 / design ✅ / backlog ⏳`)
+- Dependency order diagram
+- Artifact index (links to issue folders)
 
-**Style:** Scannable, checklist format
+**Style:** Scannable table; no backlog lists in progress.md
 
-### design/
-**Purpose:** Temporary design and research artifacts
-**Updated:** During research and design phases
+### issues/<NNN-name>/
+**Purpose:** All artifacts for one issue in one place
+**Updated:** During research, design, review phases
 
 **Contains:**
-- Research findings (`<feature>-analysis.md`)
-- Design proposals (`<feature>-design.md`)
-- Architecture diagrams (Mermaid)
-- Technical decisions
+- `analysis.md` — research findings (Phase 1)
+- `design.md` — design proposal (Phase 2)
+- `design-review.md` — design review (Phase 3)
+- `code-review.md` — code review (Phase 5)
+- `codex-*.md` — codex review outputs (optional)
 
-**Style:** Detailed technical content
+**Style:** Detailed technical content; filenames inside the folder are generic (no issue-number prefix)
 
 **Key Difference:**
-- `status.md` = WHAT to do (task list, progress %)
-- `design/` = HOW to do it (architecture, approach)
-
-**Lifecycle:** Temporary - archived after milestone completion
+- `status.md` = WHAT phase each issue is in
+- `issues/<NNN-name>/` = HOW — the full design and review record for that issue
 
 ## Workflow Integration
 
 ### Starting Work
 1. Read `planning/progress.md`
 2. Read `planning/<goal>/milestone-XX/status.md`
-3. Check `planning/<goal>/milestone-XX/design/`
+3. Check `planning/<goal>/milestone-XX/issues/`
 4. Load live state for every active issue and open MR: `projctl load issue #N` / `projctl load mr !N`
 
 ### Research & Design
-1. Create `design/` directory
-2. Research phase → `<feature>-analysis.md`
-3. Design phase → `<feature>-design.md`
+1. Create `issues/<NNN-name>/` directory
+2. Research phase → `issues/<NNN-name>/analysis.md`
+3. Design phase → `issues/<NNN-name>/design.md`
 
 ### Progress Updates
-- Daily: Update `progress.md`
-- Weekly: Update `status.md`
-- Milestone complete: Archive `design/`, update `overview.md`
+- Active issue changes: Update `progress.md`
+- Issue phase changes: Update phase column in `status.md`
 
 ## File Location Rules
 
 **ALL project-related files go under `planning/`, never `/tmp` or other system directories.**
 
 This includes:
-- YAML input files for `projctl` (tickets, epics) → `planning/<goal>/milestone-XX/`
-- MR drafts → `planning/mr-draft.yaml`
-- Review artifacts, drafts, notes → `planning/<goal>/milestone-XX/design/`
+- YAML input files for `projctl` (tickets, epics) → `planning/<goal>/milestone-XX/tickets/`
+- MR review YAMLs → `planning/reviews/MR<N>-review.yaml`
+- Design, analysis, review artifacts → `planning/<goal>/milestone-XX/issues/<NNN-name>/`
 
 `/tmp` is for throwaway system scratch only. If a file is related to the project — even if it is a draft pending user confirmation — it belongs in `planning/`.
 
@@ -128,8 +128,9 @@ This includes:
 - Don't put architecture diagrams in `status.md`
 - Don't put code snippets in `status.md` or `progress.md`
 - Don't put detailed design in `status.md`
-- ✅ DO: Put architecture/design in `design/` folder
-- ✅ DO: Keep `status.md` as task checklists only
+- ✅ DO: Put architecture/design in `issues/<NNN-name>/` folder
+- ✅ DO: Keep `status.md` as the phase table + dependency diagram only
+- ✅ DO: Keep `progress.md` to ≤ 30 lines — active item, last 3 merged, next steps
 
 ### Update Frequently
 - `progress.md` - daily or every work session

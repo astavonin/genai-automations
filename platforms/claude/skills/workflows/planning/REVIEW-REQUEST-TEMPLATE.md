@@ -12,7 +12,7 @@
 
 Brief description of what was changed and why.
 
-**Design doc:** `planning/<goal>/milestone-XX/design/<feature>-design.md` *(if applicable)*
+**Design doc:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` *(if applicable)*
 
 ---
 

@@ -10,7 +10,7 @@ Run after resolving design review findings (Q&A phase) or after applying code re
 ## When to Run
 
 - After completing a Q&A resolution session for a `/review-design` CHANGES REQUESTED result — before requesting re-review
-- After applying code review findings that touch `docs/` or `planning/**/design/` — before requesting re-review
+- After applying code review findings that touch `docs/` or `planning/**/issues/*/` — before requesting re-review
 - Any time multiple design docs are updated in sequence and cross-reference each other
 
 ## Inputs
@@ -34,8 +34,7 @@ git diff --name-only origin/master | grep -E '\.md$'
 
 Read each file. Focus on:
 - `docs/` — architecture / user-facing docs
-- `planning/**/design/` — design documents
-- `planning/**/reviews/` — review reports (check status marker consistency)
+- `planning/**/issues/*/` — design documents and review reports (check status marker consistency)
 
 ### Step 2 — Run consistency sweep
 
@@ -88,11 +87,11 @@ Blockers are items that would cause the next reviewer to raise a finding (stale 
 
 ### Step 4 — Fix blockers
 
-Fix blockers using **architecture-research-planner agent** (required for all `planning/**/design/` edits per the standard rule). For `docs/` files, architecture-research-planner is also preferred. Propose warnings to the user — fix only if confirmed.
+Fix blockers using **architecture-research-planner agent** (required for all `planning/**/issues/*/` edits per the standard rule). For `docs/` files, architecture-research-planner is also preferred. Propose warnings to the user — fix only if confirmed.
 
 ## Constraints
 
 - Do NOT re-run the full `/review-design` consensus protocol — this is a targeted consistency sweep, not a new review cycle.
 - Do NOT modify code files — doc verification only.
-- Architecture-research-planner must be used for any design doc edits (`planning/**/design/`). Never use Write/Edit tools directly on those files.
-- When architecture-research-planner applies review-finding fixes, it must produce clean prose only — **never add `RESOLVED` markers, finding IDs, or review-cycle annotations** to design or user-facing docs. Resolution tracking belongs in the review report (`reviews/*-design-review.md`) and the review-request doc, not in the design content itself.
+- Architecture-research-planner must be used for any design doc edits (`planning/**/issues/*/`). Never use Write/Edit tools directly on those files.
+- When architecture-research-planner applies review-finding fixes, it must produce clean prose only — **never add `RESOLVED` markers, finding IDs, or review-cycle annotations** to design or user-facing docs. Resolution tracking belongs in the review report (`issues/*/design-review.md`) and the review-request doc, not in the design content itself.

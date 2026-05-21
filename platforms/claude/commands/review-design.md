@@ -34,7 +34,7 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
 
 ## Actions
 
-1. Load design document from `planning/<goal>/milestone-XX/design/<feature>-design.md`
+1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 2. Run the **Consensus Review Protocol** (Steps A–E) against the design document
 
    > **⚠️ PARALLEL-LAUNCH GATE**
@@ -47,18 +47,18 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
    - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
    - **Each agent prompt must include the full "Design-Level Constraint" section above** — paste it verbatim before the review checklist so agents know what to flag and what to skip
 3. Format consolidated findings as a markdown review report (see Output Format below)
-4. **Write the report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
+4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 
 5. **Verify the status marker** before declaring the review complete:
    ```bash
-   head -20 planning/<goal>/milestone-XX/reviews/<feature>-design-review.md | grep -m 1 '^\*\*Status:\*\*'
+   head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md | grep -m 1 '^\*\*Status:\*\*'
    ```
    - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
    - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
 
 6. **If the review status is `APPROVED`, update the design doc header:**
    ```bash
-   # In planning/<goal>/milestone-XX/design/<feature>-design.md, change:
+   # In planning/<goal>/milestone-XX/issues/<NNN-name>/design.md, change:
    # **Status:** Draft  →  **Status:** Approved
    ```
    Use the Edit tool to make this change. Skip this step if status is `CHANGES REQUESTED` or `REJECTED`.

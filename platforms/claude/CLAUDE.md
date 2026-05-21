@@ -200,7 +200,7 @@ timeout 30 projctl sync status
 ```bash
 cat planning/progress.md
 cat planning/<goal>/milestone-XX/status.md
-ls planning/<goal>/milestone-XX/design/
+ls planning/<goal>/milestone-XX/issues/
 ```
 
 **Step 2b: Load live ticket and MR states**
@@ -216,19 +216,19 @@ ls planning/<goal>/milestone-XX/design/
 ### Phase 1: Research
 - Use architecture-research-planner agent
 - Investigate existing codebase patterns and architecture
-- Output: `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
+- Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
 
 ### Phase 2: Design
-- **Step 1 — Q&A (main conversation):** Read analysis + ticket; ask one question at a time with concrete options; write answers into `<feature>-analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
+- **Step 1 — Q&A (main conversation):** Read analysis + ticket; ask one question at a time with concrete options; write answers into `analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
 - **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
-- Output: `planning/<goal>/milestone-XX/design/<feature>-design.md`
+- Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 7 sections required; sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions
 - After writing the design file, ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`**
+- **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file
 - Present design to user
@@ -238,7 +238,7 @@ ls planning/<goal>/milestone-XX/design/
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
 ### Phase 4: Implementation
-- **First step:** gated auto-compact (§7.3, §7.4) — both preconditions must pass: (1) design.md + design-review.md exist on disk, mtime-ordered, status=APPROVED; (2) no code-review exists OR code-review status=APPROVED. Log gate decision. Skip silently with §8.2 warning if gate fails.
+- **First step:** gated auto-compact (§7.3, §7.4) — both preconditions must pass: (1) `issues/<NNN-name>/design.md` + `design-review.md` exist on disk, mtime-ordered, status=APPROVED; (2) no `code-review.md` exists OR it has status=APPROVED. Log gate decision. Skip silently with §8.2 warning if gate fails.
 - Use coder agent (code) OR devops-engineer agent (CI/CD)
 - Follow approved design
 - Include comprehensive unit tests
@@ -248,8 +248,8 @@ ls planning/<goal>/milestone-XX/design/
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
-- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/design/<feature>-design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
-- **Write review report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`** (single file, always overwritten — no versioning suffixes)
+- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
+- **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file
 - Block until approved
@@ -332,17 +332,30 @@ Reference: `~/.claude/skills/workflows/planning/`
 **Directory structure:**
 ```
 planning/
-├── progress.md                      # Current work (updated daily)
+├── progress.md                      # Active work only: current issue, last 3 merged, next steps
+├── reviews/                         # Ephemeral operational files (MR YAMLs, review-request docs, Codex output)
+│   ├── MR<N>-review.yaml
+│   └── <feature>-review-request.md
 ├── <goal>/
-│   ├── overview.md                  # Milestone roadmap
+│   ├── overview.md                  # Milestone roadmap for this goal
 │   └── milestone-XX-<name>/
-│       ├── status.md                # Progress tracking (WHAT to do)
-│       └── design/                  # Design docs (HOW to do it)
+│       ├── status.md                # Issue list with phase column + dependency diagram
+│       ├── tickets/                 # YAML files for projctl create
+│       └── issues/
+│           └── <NNN-name>/          # One folder per issue
+│               ├── analysis.md      # Research output (Phase 1)
+│               ├── design.md        # Design doc (Phase 2)
+│               ├── design-review.md # Design review (Phase 3)
+│               └── code-review.md   # Code review (Phase 5)
 ```
 
-**Key principle:** Separate tracking from design
-- `status.md` = WHAT to do (task checklists, progress %)
-- `design/` = HOW to do it (architecture, diagrams, approach)
+**Key principles:**
+- `progress.md` = what's active right now (≤ 30 lines; no backlog lists)
+- `status.md` = full milestone picture: all issues, phases, dependency order
+- `issues/<NNN-name>/` = everything for one issue in one place; filenames inside are generic (`design.md`, not `verifier-design.md`)
+- `planning/reviews/` = ephemeral operational files: MR review YAMLs (`projctl comment` input), Codex review-request docs, fix-review docs — not issue tracking artifacts
+
+**Old format migration:** If a milestone folder contains a flat `design/` or `reviews/` subdirectory, it uses the pre-migration layout. `/start` detects this automatically and proposes a migration to `issues/<NNN-name>/` before loading context. Never read from old paths — migrate first.
 
 # Post-Write Actions
 
@@ -350,9 +363,9 @@ After writing certain files, always ask the user if they want to open the file w
 
 | File type | When to ask |
 |-----------|-------------|
-| Design docs (`planning/**/design/*.md`) | After Phase 2 design doc is written |
-| Design review reports (`planning/**/reviews/*-design-review.md`) | After Phase 3 review is written |
-| Code review reports (`planning/**/reviews/*-code-review.md`) | After Phase 5 review is written |
+| Design docs (`planning/**/issues/*/design.md`) | After Phase 2 design doc is written |
+| Design review reports (`planning/**/issues/*/design-review.md`) | After Phase 3 review is written |
+| Code review reports (`planning/**/issues/*/code-review.md`) | After Phase 5 review is written |
 | MR review YAML (`planning/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
 | Issue/Epic YAML files (any YAML created for `projctl create`) | After the YAML is written |
 

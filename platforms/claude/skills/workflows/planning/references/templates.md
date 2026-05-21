@@ -8,18 +8,22 @@ This template defines the planning structure and workflow for tracking long-term
 
 ```
 planning/
-├── progress.md                           # Current work tracking (root level)
+├── progress.md                           # Active work only: current, last 3 merged, next steps
+├── reviews/                              # MR review YAMLs (projctl comment input; ephemeral)
+│   └── MR<N>-review.yaml
 │
 ├── <goal-name>/                          # One folder per long-term goal
 │   ├── overview.md                       # High-level milestone list
 │   │
 │   ├── milestone-XX-<name>/              # One folder per milestone
-│   │   ├── status.md                     # Milestone progress tracking
-│   │   ├── design/                       # Temporary design/architecture docs
-│   │   │   ├── <feature>-design.md      # Design proposals
-│   │   │   └── <component>-analysis.md  # Research findings
-│   │   ├── epic-YY-<name>.md            # Epic details (when needed)
-│   │   └── ...                           # Additional epic files
+│   │   ├── status.md                     # Issue table with phase column + dependency diagram
+│   │   ├── tickets/                      # YAML files for projctl create
+│   │   └── issues/
+│   │       └── <NNN-name>/              # One folder per issue
+│   │           ├── analysis.md          # Research findings (Phase 1)
+│   │           ├── design.md            # Design proposal (Phase 2)
+│   │           ├── design-review.md     # Design review (Phase 3)
+│   │           └── code-review.md       # Code review (Phase 5)
 │   │
 │   └── milestone-ZZ-<name>/
 │       └── status.md
@@ -110,32 +114,26 @@ planning/
 
 ---
 
-### `milestone-XX-<name>/design/`
+### `milestone-XX-<name>/issues/<NNN-name>/`
 
-**Purpose:** Temporary design and research artifacts for the milestone
-**Updated:** During research and design phases
-**Format:** Architecture docs, diagrams, analysis
+**Purpose:** All artifacts for a single issue in one place
+**Updated:** During research, design, and review phases
+**Format:** Architecture docs, diagrams, reviews
 
 **Contains:**
-- Research findings and codebase analysis
-- Architecture diagrams (Mermaid)
-- Design proposals and alternatives
-- Technical decision rationale
-- Implementation approach details
+- `analysis.md` — research findings and codebase analysis (Phase 1)
+- `design.md` — design proposal, architecture diagrams, alternatives (Phase 2)
+- `design-review.md` — design review output (Phase 3)
+- `code-review.md` — code review output (Phase 5)
+- `codex-*.md` — codex review outputs (optional)
 
-**Style:** Detailed technical content with diagrams
+**Style:** Detailed technical content; filenames inside are generic (no issue-number prefix — the folder name carries the issue number)
 
 **Key Difference from status.md:**
-- `status.md` = WHAT to do (task list, progress %)
-- `design/` = HOW to do it (architecture, approach, diagrams)
+- `status.md` = WHAT phase each issue is in (the table)
+- `issues/<NNN-name>/` = HOW — the full design and review record for that issue
 
-**When to create:**
-- Research phase produces analysis documents
-- Design phase produces design proposals
-- Complex features need architecture diagrams
-- Technical decisions need documentation
-
-**Lifecycle:** Temporary - archived or deleted after milestone completion
+**When to create:** One folder per issue that has any planning artifact (analysis, design, or review). Issues with no planning artifacts (simple backlog items) don't need a folder.
 
 ---
 
@@ -175,29 +173,29 @@ cat planning/progress.md
 # Check active milestone status
 cat planning/<goal>/milestone-XX-<name>/status.md
 
-# Check design docs if they exist
-ls planning/<goal>/milestone-XX-<name>/design/
+# Check issue folders if they exist
+ls planning/<goal>/milestone-XX-<name>/issues/
 ```
 
 ### 2. Research & Design Phase
 
 **When starting a new feature/epic:**
 ```bash
-# Create design directory
-mkdir -p planning/<goal>/milestone-XX-<name>/design/
+# Create issue directory (NNN = issue number, name = short slug)
+mkdir -p planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/
 
 # Research phase (architecture-research-planner agent)
-# Output: planning/<goal>/milestone-XX-<name>/design/<feature>-analysis.md
+# Output: planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/analysis.md
 # Contains: codebase analysis, diagrams, findings
 
 # Design phase
-# Output: planning/<goal>/milestone-XX-<name>/design/<feature>-design.md
+# Output: planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/design.md
 # Contains: approach, architecture, diagrams, alternatives
 ```
 
 **Keep separate:**
-- `status.md` = Brief reference to design doc + task checklist
-- `design/<feature>.md` = Detailed architecture and approach
+- `status.md` = phase column for each issue (the table)
+- `issues/<NNN-name>/design.md` = Detailed architecture and approach
 
 ### 3. Daily Work
 
@@ -218,11 +216,9 @@ mkdir -p planning/<goal>/milestone-XX-<name>/design/
 ### 5. Milestone Completion
 
 **Actions:**
-1. Update milestone status.md (100% complete)
+1. Update milestone status.md (all issues marked merged ✅)
 2. Update goal overview.md (mark milestone ✅)
-3. Archive or delete design/ folder (temporary artifacts)
-4. Archive or move epic files (optional)
-5. Update progress.md (next milestone)
+3. Update progress.md (point to next milestone)
 
 ### 6. New Milestone
 
@@ -359,8 +355,9 @@ None
 - Don't put architecture diagrams in status.md
 - Don't put code snippets in status.md or progress.md
 - Don't put detailed design in status.md
-- ✅ DO: Put architecture/design in milestone-XX/design/ folder
-- ✅ DO: Keep status.md as task checklists only
+- ✅ DO: Put architecture/design in `issues/<NNN-name>/` folder
+- ✅ DO: Keep status.md as the phase table + dependency diagram only
+- ✅ DO: Keep progress.md to ≤ 30 lines
 
 ---
 
@@ -368,11 +365,12 @@ None
 
 **Key Points:**
 
-1. **Three-level structure:** progress.md → overview.md → status.md
+1. **Four-level structure:** progress.md → overview.md → status.md → issues/<NNN-name>/
 2. **Separate tracking from design:**
-   - status.md = WHAT (task checklists, progress %)
-   - design/ = HOW (architecture, diagrams, approach)
-3. **Concise over comprehensive:** Task checklists in status, details in design/
-4. **Update frequently:** progress.md daily, status.md weekly
-5. **Epic files:** Only when needed for complex tracking
-6. **Design artifacts:** Temporary, milestone-scoped, archived after completion
+   - progress.md = what's active right now (≤ 30 lines)
+   - status.md = all issues with phase column + dependency diagram
+   - issues/<NNN-name>/ = HOW — design, analysis, reviews for one issue
+3. **Navigate by issue:** find everything about #302 in `issues/302-verifier/`
+4. **Filenames inside issue folders are generic:** `design.md` not `verifier-design.md`
+5. **Tickets in tickets/:** YAML files for projctl create live in `tickets/`, not mixed with design artifacts
+6. **MR YAML files stay at planning/reviews/:** operational, ephemeral, cross-milestone

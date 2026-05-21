@@ -46,9 +46,9 @@ Before running this command:
    - Recalculate completion percentage
    - Update blockers if resolved
 
-5. **Archive design documents** (if milestone complete):
-   - Move or delete temporary design artifacts
-   - Update overview.md to mark milestone complete
+5. **Update overview.md** (if milestone complete):
+   - Mark the milestone as complete in `overview.md`
+   - Issue folders under `issues/` are permanent records — do not move or delete them
 
 6. **Clean up internal plan files:**
    ```bash

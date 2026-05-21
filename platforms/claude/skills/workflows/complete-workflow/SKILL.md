@@ -55,7 +55,7 @@ Pulls latest planning state from Google Drive backup to ensure you have the most
 Load context from planning files:
 - `planning/progress.md` - Current active work
 - `planning/<goal>/milestone-XX/status.md` - Milestone status
-- `planning/<goal>/milestone-XX/design/` - Design docs
+- `planning/<goal>/milestone-XX/issues/` - Per-issue artifact folders
 
 **Step 2b: Load live ticket and MR states**
 - For every active issue: `projctl load issue #N`
@@ -73,17 +73,17 @@ Load context from planning files:
 
 Investigate existing codebase patterns, architecture, integration points.
 
-**Output:** `planning/<goal>/milestone-XX/design/<feature>-analysis.md`
+**Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
 
 ### Phase 2: Design
 **Command:** `/design`
 **Agent:** architecture-research-planner (Step 3 only — Q&A runs in main conversation first)
 
-**Step 1 — Q&A (main conversation):** Read analysis + ticket, then ask one question at a time with concrete options. Write answers to `<feature>-analysis.md` under `## Clarifications`. Non-blocking: unanswered questions become open questions in the design doc.
+**Step 1 — Q&A (main conversation):** Read analysis + ticket, then ask one question at a time with concrete options. Write answers to `analysis.md` under `## Clarifications`. Non-blocking: unanswered questions become open questions in the design doc.
 
 **Step 2 — Write design doc (architecture-research-planner):** Uses enriched analysis as input.
 
-**Output:** `planning/<goal>/milestone-XX/design/<feature>-design.md`
+**Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 
 **Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 7 sections required. Sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
@@ -96,7 +96,7 @@ After writing, ask the user if they want to `open <path>` the design file.
 
 Review design against 8 quality attributes. Block until approved.
 
-**Output:** Write report to `planning/<goal>/milestone-XX/reviews/<feature>-design-review.md`.
+**Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`.
 After writing, ask the user if they want to `open <path>` the review file.
 
 **Outcomes:**
@@ -121,9 +121,9 @@ Implement approved design with:
 
 Review code against 8 quality attributes and design adherence.
 
-**Design doc:** Before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/design/<feature>-design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
+**Design doc:** Before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
 
-**Output:** Write report to `planning/<goal>/milestone-XX/reviews/<feature>-code-review.md`.
+**Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`.
 After writing, ask the user if they want to `open <path>` the review file.
 
 **Outcomes:**
