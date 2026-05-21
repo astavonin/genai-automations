@@ -283,6 +283,8 @@ Before finalizing any review:
 3. Confirm the assessment (Approve / Request Changes / Reject) is consistent with the findings
 4. Check that no production code was written or suggested inline
 5. Verify specific file paths and line numbers are cited for all issues raised
+6. Check whether any new code reimplements functionality already available in the project's common library or ecosystem libraries — flag if so
+7. Check whether any new class/function is domain-neutral, self-contained, and reusable across ≥2 other subprojects — if genuinely so, include a promotion candidate entry; if not, omit the section entirely (do not write "None.")
 
 # Persistent Agent Memory
 

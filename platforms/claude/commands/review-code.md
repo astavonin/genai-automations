@@ -94,6 +94,7 @@ Each of the 3 agents evaluates:
 - **Minimality:** Public API surface is no larger than required — flag multiple methods that share the same underlying resource, preconditions, and side effects where a single call with a discriminated return type would eliminate the risk of a caller silently skipping an action type
 - **Design adherence:** Matches approved design
 - **Standards compliance:** Coding standards and static analysis
+- **Library reuse:** New classes/functions that duplicate functionality already available in the project's own common/utility code or in well-established ecosystem libraries (STL, Boost, OpenSSL, stdlib equivalents for each language). Flag custom implementations that should be replaced — prefer battle-tested library code over reinvention.
 
 ## Behavioral Bug Test Requirement
 
@@ -144,6 +145,41 @@ Produce a markdown report:
 Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
 
 - **X1** [severity] Description...
+
+## Library Reuse Findings
+
+Findings where new code duplicates functionality from the project's own common/utility modules or from available ecosystem libraries. Reviewers MUST check:
+
+- **Project-internal duplication** — new functions/classes that replicate logic already present in the project's shared utilities, base classes, or helper modules. Flag as `High` if the duplicated code handles correctness-critical logic (parsing, serialization, crypto, error propagation).
+- **Ecosystem library substitution** — custom implementations of functionality covered by standard or widely-adopted libraries (e.g., hand-rolled base64 when OpenSSL/Boost.Beast/stdlib provides it; manual JSON parsing when a project-approved library exists; custom thread pool when `std::thread` / `concurrent.futures` / `goroutines` suffice). Flag as `Medium` unless the custom code is security-sensitive, in which case `High`.
+- **Vendored or pinned library ignored** — the project already vendors or pins a library that covers the use case but the new code does not use it.
+
+Severity guidance:
+- `High` — duplication in security, crypto, parsing, or data-integrity paths; or ignoring an already-vendored library
+- `Medium` — general algorithmic duplication that a standard library covers; minor helper reimplementation
+- `Low` — style-level preference (e.g., using raw loops where a standard algorithm reads more clearly)
+
+- **R1** [severity] Description...
+
+## Common Library Promotion Candidates
+
+Only include this section when a genuine candidate is found — do **not** add it as a template placeholder or write "None." Proposals driven by the template rather than by real evidence are noise and MUST be suppressed.
+
+A candidate qualifies when it meets ALL of the following criteria:
+
+- **Domain-neutral** — logic is not specific to one subproject's business rules; it solves a generic problem (data transformation, I/O, concurrency, protocol handling, validation, etc.)
+- **Self-contained** — has few or no dependencies on subproject-local state, types, or configuration
+- **Stable interface** — the public API is unlikely to churn as the subproject evolves
+- **Broadly applicable** — at least two other subprojects would plausibly call this code today or in the near term
+
+For each genuine candidate, provide:
+```
+**Candidate:** <function or class name>
+**Location:** <file path and line range>
+**Rationale:** <one sentence — what generic problem it solves>
+**Reuse signal:** <list the subprojects or contexts that would benefit>
+**Suggested home:** <proposed module/package path in the common library>
+```
 
 ## Test Correctness Findings
 

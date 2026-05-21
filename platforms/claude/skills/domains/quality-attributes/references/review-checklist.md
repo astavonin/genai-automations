@@ -161,6 +161,8 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Functions/methods are focused and small
 - [ ] No commented-out code
 - [ ] No TODO comments without issue references
+- [ ] **Library reuse:** No reimplementation of functionality already available in the project's common/utility modules or in ecosystem libraries (STL, Boost, OpenSSL, stdlib equivalents per language) — prefer existing, battle-tested code over custom implementations
+- [ ] **Common library promotion:** If any new class/function is domain-neutral, self-contained, and would benefit ≥2 other subprojects, note it as a promotion candidate — only when genuinely warranted, never as a template placeholder
 
 ### Testing
 - [ ] Unit tests comprehensive
