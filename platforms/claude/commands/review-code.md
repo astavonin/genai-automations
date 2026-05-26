@@ -9,7 +9,8 @@ description: Review code after implementation using reviewer agent
 
 ## Agents
 
-**3 × reviewer (opus)** — run in parallel per consensus protocol
+**1 × reviewer (opus)** — single deep review (replaces the 3-agent consensus to eliminate approval prompts)
+**1 × codex-flow** — Codex cross-check runs as a background Bash call (no approval prompt with `codex-flow` in allow list)
 
 ## Setup
 
@@ -17,8 +18,11 @@ Read review skills before starting:
 ```
 Read ~/.claude/skills/domains/quality-attributes/SKILL.md
 Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
 ```
+
+**Then pre-read ALL implementation files** that will be reviewed — do this in the main conversation before launching the reviewer agent. Pass the file contents inline in the agent prompt so the agent never calls Read itself. This is mandatory: sub-agent Read calls trigger approval prompts; inline content does not.
+
+Typical files to pre-read: all `.h`, `.cc`, `.py`, `.sh` files changed on the branch, plus the design doc acceptance criteria section and the review checklist. Use `git diff origin/master...HEAD --name-only` to enumerate them.
 
 ## Status Marker Convention (§4)
 

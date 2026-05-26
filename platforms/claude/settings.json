@@ -22,6 +22,7 @@
       "Bash(uniq:*)",
       "Bash(jq:*)",
       "Bash(codex:*)",
+      "Bash(codex-flow:*)",
       "Bash(timeout:*)",
       "Bash(script:*)",
       "Bash(docker:*)",
