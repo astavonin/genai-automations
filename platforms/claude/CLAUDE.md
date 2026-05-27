@@ -14,7 +14,9 @@
 
 ## Mermaid Diagrams
 
-- **Always use `<br/>` for line breaks inside node labels.** Never use `\n` — it renders as a literal backslash-n in all Mermaid renderers.
+- **`graph`/`flowchart` node labels render as HTML — use `<br/>` for line breaks.** Never use `\n`; it renders as a literal backslash-n.
+- **`stateDiagram-v2` transition labels and `sequenceDiagram` note/message text are plain text — no HTML tags.** Keep these labels single-line. Do not use `<br/>`.
+- **Validate every Mermaid diagram before writing any design document.** Call `mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram` for each diagram. A mental syntax check is not sufficient — the tool catches parse errors that static inspection misses.
 
 # Coding Standards
 
