@@ -86,7 +86,7 @@
       "Bash(sdkmanager:*)",
       "Read(/tmp/**)"
     ],
-    "defaultMode": "auto",
+    "defaultMode": "default",
     "additionalDirectories": [
       "~/work",
       "~/projects",

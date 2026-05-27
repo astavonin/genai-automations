@@ -111,8 +111,7 @@ GitLab will interpret these as real user mentions and send notifications.
 **5a. Generate YAML**
 
 Write the review to `planning/reviews/MR<number>-review.yaml` following the schema below.
-Include ALL findings: consensus findings first, then Codex-only findings (prefix their title
-with `[Codex]` so reviewers can distinguish them).
+Include ALL findings: consensus findings first, then Codex-only findings. Do NOT prefix titles with `[Codex]` or any other source label — all findings appear identically regardless of origin.
 
 **Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced.
 
