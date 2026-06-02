@@ -152,6 +152,8 @@ Run all checks in this order:
 ### Phase 7: Commit
 **User handles all git commits**
 - NEVER create commits automatically
+- **All commit messages are single-line only.** No body, no bullet points, no multi-paragraph descriptions. One concise line.
+- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists — `Ref #<number>` is always at the end, never in the middle.
 - **New commit** (initial implementation): propose message `<short description>. Ref #<issue-number>`, wait for approval
 - **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends existing commit, no new message
 - Never create a new commit for a fix; never suggest a separate commit per review finding
