@@ -135,6 +135,15 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Resource cleanup (RAII, defer, etc.)
 - [ ] Thread safety correct (if applicable)
 - [ ] No undefined behavior
+
+**Rust — Borrow Checker Effectiveness (applies to all Rust reviews):**
+- [ ] **No expensive resource recreated per call** — check hot paths (loops, per-frame, per-request) for patterns where a stream, connection, buffer, or file handle is created and immediately dropped. This is the primary symptom of a missing scoped guard. Flag as `High` if the recreation defeats a streaming/pooling architecture.
+- [ ] **Self-referential struct need is addressed idiomatically** — when a struct must hold both an owner and something that borrows from it, verify the solution follows the preference order: scoped guard (`T<'a>`) → typestate → split ownership → `ouroboros`/`self_cell` → `unsafe + Pin`. Flag any jump to `unsafe` or external crate without evidence that scoped guard was evaluated.
+- [ ] **Scoped guard pattern used for exclusive scoped resources** — resources with a clear "active / inactive" lifecycle (streams, locks, transactions) should use a guard type that borrows the session/owner (`fn activate(&mut self) -> Guard<'_>`). This makes lifecycle visible in the type system and prevents double-activation or use-after-stop at compile time.
+- [ ] **No lifetime erasure via `transmute`** — `std::mem::transmute::<T<'a>, T<'static>>` is only safe when the owner is `Pin`-ned and demonstrably outlives the borrower. Requires an explicit `// SAFETY:` comment stating the invariant. Flag as `Critical` if no safety comment or if the owner is not pinned.
+- [ ] **`unsafe` blocks have a documented invariant** — every `unsafe` block must have a `// SAFETY:` comment explaining why it is sound. Flag as `Critical` if missing.
+- [ ] **Borrow checker friction treated as a design signal** — if the implementation works around the borrow checker (via `unsafe`, transmute, or an external self-referential crate) without evidence that idiomatic alternatives were evaluated, flag as `Medium` and ask for the tradeoff analysis. The goal is working *with* the borrow checker, not routing around it.
+
 - [ ] **Variable initialization uses `{}` for user-defined types and smart pointers** — `TypeName var(...)` can be parsed as a function declaration (most vexing parse); use `TypeName var{...}` instead. Exception: standard library containers (`std::string`, `std::vector`, etc.) with fill/range constructors must use `()` because `{}` routes through `initializer_list` and changes semantics.
 - [ ] **`[[nodiscard]]` on every non-void function whose return value the caller must act on** — applies to: error-indicating `bool` returns, status/result enums, factory/query functions where the only purpose is the return value. Ignoring these silently skips error handling. Trampolines and callbacks registered with external frameworks are exempt (the framework consumes the return).
 - [ ] **`[[nodiscard]]` on virtual functions: annotate every site** — the attribute does not propagate from base to overrides. Check the base declaration, every `override` in derived classes, and every test fake or mock implementing the interface.
@@ -153,6 +162,24 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Metrics available
 - [ ] Traceable across boundaries
 - [ ] Performance can be monitored
+
+### Test Quality Pass (mandatory — runs after quality-attribute scan)
+
+This is a dedicated enumeration pass, separate from the Testability attribute check above. It must be completed for every code review; a general "testability is adequate" summary does not satisfy it.
+
+**Step 1 — Per-test scan:** List every test function touched by the diff. For each one, verify:
+- [ ] **Assertion specificity:** Assertions check concrete values or behavior — not vacuous checks (`assert result is not None`, `assert called_once()` without argument verification). The test must fail if the implementation returns a wrong-but-non-null value.
+- [ ] **Name/assertion alignment:** The test name describes the same scenario and outcome the assertions actually verify. A mismatch (name says "rollback sets rollbackDetected", body never asserts `error_code == "rollbackDetected"`) is a correctness bug.
+- [ ] **Falsifiability:** Mentally delete the production logic being tested — would the test catch the breakage? If not, the test does not verify what it claims.
+- [ ] **No bare sleeps for async behavior:** `time.sleep(N)` or `std::this_thread::sleep_for` used to wait for async side-effects is a race. Replace with polling or a signal/event.
+
+**Step 2 — Per-function negative coverage:** For every public function or method that has at least one test, verify:
+- [ ] At least one negative/failure test exists for each distinct failure mode (wrong input, null return, resource exhaustion, dependency error, boundary violation).
+- [ ] Safety invariants have explicit negative tests — e.g. "action must NOT fire when ID mismatches" requires a test that asserts the action was not taken, not just that no exception was raised.
+- [ ] Error path tests assert the specific error type, code, or message — not just that "some error occurred".
+- [ ] Integration tests cover cancellation, timeout, and partial-completion paths, not just the happy path.
+
+**Reporting:** Cite every gap by test name and criterion. Do not aggregate into a single "tests need improvement" finding.
 
 ### Code Standards
 - [ ] Follows project coding style

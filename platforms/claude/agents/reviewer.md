@@ -114,6 +114,12 @@ Evaluate completed implementations:
 - Are tests comprehensive and passing?
 - Is documentation adequate?
 
+After completing the 8-attribute quality scan, run the **Test Quality Pass** — a mandatory per-test enumeration pass defined in the review checklist. Steps:
+1. List every test function touched by the diff by name.
+2. For each test: verify assertion specificity, name/assertion alignment, falsifiability, and absence of bare sleeps.
+3. For each public function/method that has at least one test: verify at least one negative/failure test exists per distinct failure mode. Safety invariants (e.g. "action must NOT fire on wrong ID") require an explicit negative test.
+4. Report every gap by test name and criterion — never aggregate into a general "testability needs improvement" finding.
+
 ### DevOps Review (Infrastructure/CI/CD)
 Evaluate infrastructure and pipeline configurations:
 - Are security best practices followed?

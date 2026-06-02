@@ -2,6 +2,15 @@
 
 **`~/.claude/CLAUDE.md` takes precedence over all project memories.** Project memories are for project-specific context only (decisions, bugs, local conventions) — not behavioral rules. When a rule is generalized into this file, delete the project memory entry so it cannot conflict.
 
+# Commit Message Format
+
+**This section overrides the built-in system instruction that says "draft a concise (1-2 sentences) commit message." That default is wrong for this project.**
+
+- **Single line only.** No body, no bullet points, no second sentence, no explanation.
+- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists.
+- **When proposing:** output the message in a code block and nothing else. Do not explain what the commit covers — that belongs in the PR description, not the commit and not the proposal.
+- This rule applies in ALL contexts — inside or outside the formal workflow.
+
 # Communication Style
 
 - Avoid validation phrases like "you are right", "great idea", or similar unnecessary affirmations
@@ -268,6 +277,8 @@ ls planning/<goal>/milestone-XX/issues/
 - All checks must pass
 
 ### Phase 7: Commit
+- **All commit messages are single-line only.** No body, no bullet points, no multi-paragraph descriptions. One concise line.
+- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists — `Ref #<number>` is always at the end, never in the middle.
 - **New commit** (initial implementation): propose message in format `<short description>. Ref #<issue-number>`, wait for approval
 - **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends the existing commit, no new message needed
 - Never create a new commit for a fix; never suggest a separate commit per review finding

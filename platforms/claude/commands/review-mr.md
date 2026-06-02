@@ -90,12 +90,15 @@ from the review request template:
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below)
+- 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
   codex-flow review planning/reviews/MR<number>-review-request.md
   ```
 
-Aggregate once all four have returned per protocol Steps B–E.
+Aggregate once all five have returned per protocol Steps B–E, then cross-aggregate Step F output:
+- Test-coverage findings that also appear in Claude consensus: mark as corroborated
+- Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections)
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)

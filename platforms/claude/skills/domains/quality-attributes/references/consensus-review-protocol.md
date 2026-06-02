@@ -78,6 +78,8 @@ describe the same root cause in the same code location (fuzzy match on concept, 
 
 Discard any finding that only 1 agent raised.
 
+**Exception — test-correctness findings:** findings about name/assertion alignment, vacuous assertions, missing negative paths, or bare sleeps require only **1 of 3** agents to flag — include any such finding raised by a single agent. These require careful per-test reading and are unlikely to be caught redundantly across independent agents; applying the 2/3 filter would silently drop real correctness bugs.
+
 ### Step C: Aggregate — Severity Consensus
 
 For each included finding, collect the severities reported by the agents that flagged it:
@@ -149,8 +151,10 @@ Evaluate the subject under review for:
    - No assertion or a single trivial assertion that can never fail
    - Flaky indicators (time-dependent assertions, non-deterministic ordering)
 5. Mock overuse — infrastructure (DB, cache, broker) mocked instead of using a fake or testcontainers
+6. Name/assertion alignment — enumerate EVERY test function by name. For each one: does the test name describe the same scenario and outcome that the assertions actually verify? A mismatch (e.g. name says "rollback sets rollbackDetected" but body never asserts error_code == "rollbackDetected") is a test correctness bug. Rate as High.
+7. Per-function negative coverage — for every public function or method that has at least one test: verify at least one negative/failure test exists for each distinct failure mode (wrong input, null return, resource error, boundary violation). Safety invariants (e.g. "action must NOT fire when ID mismatches") require an explicit negative test asserting the action was NOT taken. Rate missing safety-invariant tests as High, other missing failure tests as Medium.
 
-Rate each finding: Critical (no tests for public API), High (significant gap), Medium (anti-pattern, missing edge case), Low (minor improvement).
+Rate each finding: Critical (no tests for public API), High (significant gap or safety-invariant violation), Medium (anti-pattern, missing edge case), Low (minor improvement).
 Output a raw list: title, severity, description, location.
 ```
 
