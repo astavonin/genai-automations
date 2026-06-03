@@ -96,7 +96,11 @@ Eight quality attributes for evaluating software design and implementation.
 Evaluate proposed design against all 8 attributes before implementation.
 
 ### Code Review
-Verify implementation meets quality standards for all 8 attributes after implementation.
+Verify implementation meets quality standards for all 8 attributes after implementation. After the 8-attribute scan, also run both mandatory enumeration passes (always required, not part of the attribute scan):
+- **Test Quality Pass** — per-test enumeration: assertion specificity, name/assertion alignment, falsifiability, negative coverage
+- **Cross-Site Consistency Pass** — audit all invocation sites for every changed contract: function signatures, build commands, interfaces, config values
+
+See `references/review-checklist.md` for the full procedure for both passes.
 
 ## References (checklist lookup — explicitly read when doing reviews)
 

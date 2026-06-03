@@ -4,11 +4,15 @@ A shared multi-agent review mechanism used by all `/review*` commands.
 
 ## How It Works
 
-Three independent reviewer agents evaluate the subject in parallel. A finding is only
-included in the final output if **at least 2 of 3 agents** independently flag it.
-The consensus severity is determined the same way: the severity level that **at least
-2 agents agree on**. If all three differ, use the middle severity (e.g., Critical/High/Low
-→ use High).
+Three focus-differentiated reviewer agents evaluate the subject in parallel. The full pipeline is Steps 0–H:
+
+- **Step 0:** Write Codex review-request doc before any agents launch
+- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code reviews only) launch simultaneously
+- **Steps B–D:** Claude consensus — findings need 2/3 agreement; single-agent findings route to Step G except test-correctness and cross-site findings which go directly to the report
+- **Step E:** Codex cross-aggregate — Codex-only findings route to Step G
+- **Step F:** Test-coverage agent (code reviews only) — findings included directly, not filtered by consensus
+- **Step G:** Single-finding reverification — 2 agents verify each single-agent/Codex-only finding; include if ≥1 confirms
+- **Step H:** Manual passes (code reviews only) — Cross-Site Consistency Pass and Test Quality Pass completion check
 
 ## Protocol Steps
 
@@ -24,10 +28,11 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
 
 ### Step A: Launch 3 Independent Reviewers, Codex, and test-coverage agent simultaneously
 
-> **⚠️ PARALLEL-LAUNCH GATE**
-> Every call below MUST be in **one message**. Splitting across messages serializes the review.
-> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
-> If any are missing — stop, add them, then send.
+> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+> 1. All Agent calls for this review are present in this message.
+> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+>
+> **No justification overrides this gate.** "GitLab unreachable", interruptions, time pressure, and any other reason do NOT permit skipping `codex-flow`. If `codex-flow` cannot launch, do not send the agent calls either — surface the blocker to the user and resolve it before proceeding.
 
 **Send all of the following in a single message so they run in parallel:**
 - Three **reviewer (opus)** Agent calls (Steps B–D)
@@ -57,11 +62,27 @@ Run this via the Monitor tool so each parsed line appears as a notification. The
 automatically when Codex emits `workflow_complete`. The background Bash completion notification
 then confirms the output file is ready to read.
 
-Each Claude agent:
-- Receives the same input: the subject under review + MR/design context (title, description)
-- Receives: `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- Works **independently** — no shared state, no knowledge of other agents' outputs
-- Produces a raw findings list: each finding has a `title`, `severity`, and `description`
+Each Claude agent receives the same input (subject, MR/design context, full design doc if one exists, review checklist) and works independently. Assign differentiated focus areas to reduce overlap and increase depth per domain:
+
+**Agent 1 — Safety, Security, Performance:**
+- Safety: error handling, edge cases, resource cleanup (RAII/defer), thread safety, undefined behavior
+- Security: input validation, injection vulnerabilities, secrets handling, authentication/authorization
+- Performance: hot-path operations, memory leaks, algorithm efficiency, caching
+
+**Agent 2 — Testability, Correctness:**
+- Testability: full Test Quality Pass (enumerate every test — assertion specificity, name/assertion alignment, falsifiability, negative paths)
+- Correctness: behavioral bugs — wrong output, data corruption, silent invalid-input acceptance, invariant bypasses
+- Code standards: library reuse, common library promotion
+
+**Agent 3 — Observability, Maintainability, Extendability, Supportability:**
+- Observability: logging at critical paths, metrics, cross-boundary tracing
+- Maintainability: naming, complexity, comments explain WHY not WHAT, project conventions
+- Extendability: modularity, abstraction level, extension points
+- Supportability: actionable error messages, debugging information, operational concerns
+
+Focus area is a depth-first emphasis, not an exclusive scope. An agent that notices a Critical or High issue outside its focus area must still report it.
+
+Each agent produces a raw findings list: each finding has a `title`, `severity`, and `description`.
 
 Severity scale (same for all agents):
 - `Critical` — will definitely fail, crash, or cause data loss
@@ -76,9 +97,13 @@ describe the same root cause in the same code location (fuzzy match on concept, 
 
 **Inclusion rule:** include a finding only if **2 or more agents** flagged it.
 
-Discard any finding that only 1 agent raised.
+Do not discard single-agent findings — route them to **Step G** for reverification.
 
-**Exception — test-correctness findings:** findings about name/assertion alignment, vacuous assertions, missing negative paths, or bare sleeps require only **1 of 3** agents to flag — include any such finding raised by a single agent. These require careful per-test reading and are unlikely to be caught redundantly across independent agents; applying the 2/3 filter would silently drop real correctness bugs.
+**Exception — single-agent findings that bypass Step G and go directly to the final report:**
+- **Test-correctness findings** (name/assertion alignment, vacuous assertions, missing negative paths, bare sleeps): include directly. These are observable facts; a reverifier would confirm the same fact.
+- **Cross-site consistency findings** (build flag mismatches across Makefile/CI jobs, function signature mismatches across declarations/overrides/mocks, config value mismatches across consumers): include directly. These are enumerable facts, not judgment calls.
+
+All other single-agent findings → Step G reverification.
 
 ### Step C: Aggregate — Severity Consensus
 
@@ -101,6 +126,12 @@ Output: a deduplicated list of findings, each with:
 
 ### Step E: Codex Cross-Model Verification (aggregation)
 
+**Codex-skip handler:** If `codex-flow` was not launched in Step A for any reason:
+- Do NOT proceed to Steps F–H or write the review file.
+- Surface: `⚠️ Codex cross-check was not run. Review is incomplete. Launching Codex now.`
+- Run `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true`.
+- Wait for completion, then continue with Step E aggregation below.
+
 Codex was launched in Step A (background Bash). Once it completes (you will be notified),
 read its output:
 
@@ -118,9 +149,11 @@ cat planning/reviews/<feature>-codex-review.md
 
 Two findings refer to the same issue if they describe the same root cause at the same code location (fuzzy match on concept, not wording).
 
-The final output handed to the calling command contains:
+After Step E, the working set contains:
 1. Consensus findings (with corroboration tags where applicable)
-2. Codex-only findings (separate section, labeled clearly)
+2. Codex-only findings (routed to Step G for reverification)
+
+The full report is assembled after Steps F–H complete.
 
 ### Step F: Test-Coverage and Pitfalls Agent (code review only — skip for design reviews)
 
@@ -138,6 +171,8 @@ Do NOT report on code correctness, security, or architecture — those are cover
 
 Read ~/.claude/skills/domains/testing/SKILL.md for the testing rules.
 Read ~/.claude/skills/domains/testing/references/advanced-testing.md for anti-patterns.
+
+If a design doc exists (passed inline below), read it. For each acceptance criterion listed, verify that at least one test explicitly covers it. Report any acceptance criterion with no corresponding test as a High finding titled "No test for acceptance criterion: <criterion text>".
 
 Evaluate the subject under review for:
 1. Missing unit tests — public functions/methods with no test, untested edge cases (null, empty, boundary, error)
@@ -166,6 +201,51 @@ Output a raw list: title, severity, description, location.
 | Claude consensus only | Include as-is |
 | Test-coverage agent only | Include under **"Test-coverage findings"** (separate section) |
 
+### Step G: Single-Finding Reverification
+
+After Steps B–F complete, collect all findings that require reverification:
+- Single-agent Claude findings **not** covered by the direct-inclusion exceptions in Step B
+- Codex-only findings from Step E
+
+If the set is empty, skip Step G entirely.
+
+For each finding, launch **2 independent reviewer (opus) agents** in parallel with this focused prompt:
+
+```
+You are verifying a specific code review finding. Your ONLY job is to determine whether this finding is a genuine issue in the code shown. Do not report other findings.
+
+Finding:
+  Title: [title]
+  Severity: [severity]
+  Description: [description]
+  Location: [file:line]
+
+Relevant code (±20 lines of context around the cited location):
+[code excerpt]
+
+Is this a genuine issue? Answer YES or NO followed by one sentence of reasoning.
+```
+
+**Aggregation rule:**
+- ≥1 of 2 verifiers answers YES → include in final report, marked **✓ Reverified**
+- Both answer NO → discard
+
+Run all reverification agents for all findings in a single parallel batch — do not serialize per finding.
+
+**Note:** Step F (test-coverage agent) findings are not subject to Step G — they come from a dedicated specialized agent and are included directly in the Test-coverage findings section.
+
+### Step H: Manual Passes (code review only — always required after Steps B–G)
+
+After all agent and Codex outputs are aggregated, the **main reviewer** must manually complete both enumeration passes. These cannot be delegated to agents — they require deliberate cross-file auditing that agents perform inconsistently.
+
+**1. Cross-Site Consistency Pass**
+For every function/method signature, build command, interface definition, or configuration value modified by the diff: enumerate every site that references that contract (call sites, overrides, mocks, CI jobs, Makefile targets, config consumers) and verify they are consistent. Follow the full procedure in `review-checklist.md`. These findings are NOT filtered by the 2/3 consensus rule — any mismatch found here is included regardless of whether agents flagged it.
+
+**2. Test Quality Pass completion check**
+Verify the test-coverage agent (Step F) enumerated every test function touched by the diff by name. For any test function not enumerated by the agent, manually complete the per-test checks: assertion specificity, name/assertion alignment, falsifiability, bare sleeps.
+
+Add all Step H findings to the final report under **"Manual pass findings"** (separate section after test-coverage findings).
+
 ## What Each Agent Should NOT Flag
 
 To keep signal high, instruct each agent to skip:
@@ -182,4 +262,4 @@ To keep signal high, instruct each agent to skip:
 - **Step 0 (write review request doc) must complete before Step A fires** — it is a prerequisite, not a Codex phase
 - **Step A is a single message** containing all Agent calls + the background `codex-flow` Bash call — never split across messages
 - Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true` — never call `codex` directly
-- The final report sections are: Consensus findings → Codex-only findings → Test-coverage findings
+- The final report sections are: Consensus findings → Codex-only findings → Reverified findings (Step G) → Test-coverage findings (Step F) → Manual pass findings (Step H)

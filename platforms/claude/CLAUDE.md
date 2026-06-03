@@ -260,6 +260,7 @@ ls planning/<goal>/milestone-XX/issues/
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
 - **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
+- **Instruct the reviewer to run both mandatory passes from the checklist:** Test Quality Pass (per-test enumeration) and Cross-Site Consistency Pass (audit all invocation sites for every changed contract — signatures, build flags, interfaces, config values). AC verification does not substitute for these passes.
 - **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file

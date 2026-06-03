@@ -123,6 +123,8 @@ Review code against 8 quality attributes and design adherence.
 
 **Design doc:** Before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
 
+**Mandatory passes:** Instruct the reviewer to run both mandatory passes after the 8-attribute scan — Test Quality Pass (per-test enumeration) and Cross-Site Consistency Pass (audit all invocation sites for every changed contract: function signatures, build commands, interfaces, config values). AC verification does not substitute for either pass.
+
 **Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`.
 After writing, ask the user if they want to `open <path>` the review file.
 

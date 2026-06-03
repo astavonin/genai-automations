@@ -247,6 +247,53 @@ Same command: `make test`
 - CI runs on Ubuntu latest, you may use different OS
 ```
 
+## Build Flag Parity
+
+When multiple invocation sites build the same artifact (a Makefile target, a CI `build` job, a CI `build-mlci` job), all flags must be identical unless a difference is intentional and documented.
+
+**Flags to audit across every site:**
+- Base command: `docker build` vs `docker buildx build` — these are not equivalent; `buildx` is required for `--platform` and multi-arch support
+- `--platform linux/amd64` — must match the target execution environment
+- `--provenance=false --sbom=false` — controls attestation metadata; omitting silently enables it on some BuildKit versions
+- Cache args: `--cache-from`, `--build-arg BUILDKIT_INLINE_CACHE=1`
+- Image name variable: pick one (`$REGISTRY_PATH` vs `$CI_REGISTRY_IMAGE`); two variables resolving to the same path are a divergence risk
+
+### ❌ Inconsistent flags across sites
+```makefile
+# Makefile: correct
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false ...
+```
+```yaml
+# CI build job: missing --platform, --provenance, --sbom; wrong base command
+docker build --cache-from $REGISTRY_PATH:latest ...
+
+# CI build-mlci job: has --platform but still missing --provenance, --sbom
+docker buildx build --platform linux/amd64 --load ...
+```
+
+### ✅ All sites aligned
+```yaml
+# CI build job
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false \
+  --cache-from $REGISTRY_PATH:latest --build-arg BUILDKIT_INLINE_CACHE=1 \
+  -t $REGISTRY_PATH:${devtag} .
+
+# CI build-mlci job
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false \
+  --load -t $REGISTRY_PATH/mlci:${devtag} -f Dockerfile.mlci .
+```
+```makefile
+# Makefile — same flags, same command
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false --load ...
+```
+
+**Checklist:**
+- [ ] Same base command (`docker buildx build`) used everywhere?
+- [ ] `--platform` present in all jobs targeting the same architecture?
+- [ ] `--provenance` and `--sbom` flags consistent (or absent with intent) across all sites?
+- [ ] Cache flags present in CI jobs that benefit from layer caching?
+- [ ] Single variable used for registry path (no aliases)?
+
 ## Common Pitfalls
 
 ### ❌ Platform-Specific Commands

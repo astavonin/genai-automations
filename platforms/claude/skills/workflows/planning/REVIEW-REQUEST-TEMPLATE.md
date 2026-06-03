@@ -45,9 +45,11 @@ For design-only reviews with no commands to run, use the placeholder below as-is
 
 ## Review Focus
 
-Priority quality attributes:
+Priority quality attributes (used to steer agent focus among the 8 attributes):
 - correctness
 - regression risk
+
+> **Note:** Test Quality Pass and Cross-Site Consistency Pass are mandatory for all code reviews and run regardless of what is listed here. Review Focus does not opt out of either pass.
 
 ---
 

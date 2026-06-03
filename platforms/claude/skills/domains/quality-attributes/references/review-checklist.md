@@ -181,6 +181,25 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 
 **Reporting:** Cite every gap by test name and criterion. Do not aggregate into a single "tests need improvement" finding.
 
+### Cross-Site Consistency Pass (mandatory — runs after quality-attribute scan)
+
+This is a dedicated enumeration pass. Whenever a change touches a shared contract — a function signature, build command, interface definition, or configuration value — every site that references that contract must be audited for consistency. This pass is the primary defense against mismatches that per-file quality checks miss.
+
+**Step 1 — Identify changed contracts:** List every item modified by the diff that is referenced in more than one place: function/method signatures, build commands and flags, interface definitions, configuration keys and variable names.
+
+**Step 2 — For each changed contract, enumerate and compare all sites:**
+- **Function/method signatures:** base declaration, every override/implementation, every mock/fake/stub, every test fixture that constructs the class, every call site with explicit template args or casts.
+- **Build commands:** every invocation site — Makefile targets, each CI job, docker-compose build configs, wrapper scripts. Compare: base command (`docker build` vs `docker buildx build`), `--platform`, cache args (`--cache-from`, `BUILDKIT_INLINE_CACHE`), attestation flags (`--provenance`, `--sbom`), and any other flags. All sites that build the same artifact must be identical unless the difference is intentional and documented.
+- **Interface definitions:** every implementing class and every test double (mock, fake, stub).
+- **Configuration values and variable names:** every consumer — env files, CI variable declarations, deployment configs, documentation. Flag both value mismatches and variable aliasing (two variables pointing to the same resource).
+
+**Step 3 — Flag mismatches by severity:**
+- Flag or argument present at one site but absent at another: **Medium**
+- Flag with different values across sites (e.g. `--platform linux/amd64` in one job, absent in another): **High**
+- Redundant variable aliases (two CI variables resolving to the same registry path): **Medium** — they create confusion and divergence risk
+
+**Reporting:** Cite every mismatch with all affected file locations. Do not summarize as "flags are inconsistent" — name each site and the specific difference.
+
 ### Code Standards
 - [ ] Follows project coding style
 - [ ] No magic numbers (use named constants)

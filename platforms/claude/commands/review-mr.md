@@ -69,9 +69,16 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 3. Suggest reviewing specific files or splitting the review across sessions
 4. Optionally proceed with the most critical changed files only
 
+### Step 3b: Pre-read Context
+
+Before launching any agents, gather inline context to pass in agent prompts:
+- **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if it exists and is not in the diff; for Go, read interface definition files the changed package implements
+- **Full design doc** (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — the entire file, not just acceptance criteria
+- **Prior review:** if `planning/reviews/MR<number>-review.yaml` exists from a prior review cycle, read it. Instruct each agent: "A prior review exists. For each prior finding, verify whether it has been addressed. Re-raise unaddressed findings at their original severity."
+
 ### Step 4: Multi-Agent Consensus Review
 
-Run the **Consensus Review Protocol** (Steps 0, A–E) from:
+Run the **Consensus Review Protocol** (Steps 0, A–H) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
 **Step 0 (do first, before any agents):** Write `planning/reviews/MR<number>-review-request.md`
@@ -80,13 +87,14 @@ from the review request template:
 - **Review Scope:** `origin/<target_branch>...origin/<source_branch>`
 - **Output File:** `planning/reviews/MR<number>-codex-review.md`
 - **Requirements:** key requirements extracted from the MR description
-- **Evidence:** `git diff origin/<target_branch>...origin/<source_branch> --stat` output
+- **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here. If unavailable, use `git diff --stat` as a fallback.
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 
-> **⚠️ PARALLEL-LAUNCH GATE**
-> Every call below MUST be in **one message**. Splitting across messages serializes the review.
-> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
-> If any are missing — stop, add them, then send.
+> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+> 1. All Agent calls (3 reviewers + test-coverage) are present in this message.
+> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+>
+> **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below)
@@ -96,9 +104,10 @@ from the review request template:
   codex-flow review planning/reviews/MR<number>-review-request.md
   ```
 
-Aggregate once all five have returned per protocol Steps B–E, then cross-aggregate Step F output:
+Aggregate once all five have returned per protocol Steps B–H, then cross-aggregate Step F output:
 - Test-coverage findings that also appear in Claude consensus: mark as corroborated
 - Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections)
+- Step G reverified findings: merge into the YAML findings list, marked with a "(reverified)" note in the description
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
@@ -125,7 +134,7 @@ is not preserved. Copy the file manually before re-running if you need to keep i
 
 Before saving, parse and verify:
 1. Valid YAML syntax (no parse errors)
-2. Required top-level fields present: `mr_number`, `title`, `review_date`, `findings`
+2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `findings`
 3. `mr_number` is an integer (not a string)
 4. Each finding has required fields: `severity`, `title`, `description`
 5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
@@ -180,6 +189,7 @@ When drafting replies to reviewer comments (for posting via `projctl comment` wi
 mr_number: 134                          # integer, REQUIRED
 title: "Brief MR title"                 # string, REQUIRED (match MR title)
 review_date: "2026-02-11"               # YYYY-MM-DD, REQUIRED
+codex: ran                              # REQUIRED: "ran" | "not run: <reason>"
 
 findings:
   - severity: Critical                  # REQUIRED: Critical | High | Medium | Low
@@ -218,6 +228,7 @@ findings:
 mr_number: 134
 title: "Brief MR title"
 review_date: "2026-02-11"
+codex: ran
 findings: []
 ```
 
@@ -229,6 +240,7 @@ findings: []
 mr_number: 156
 title: "Add adaptive cache invalidation"
 review_date: "2026-02-11"
+codex: ran
 
 findings:
   - severity: Critical

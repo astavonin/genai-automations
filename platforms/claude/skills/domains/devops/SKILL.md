@@ -22,6 +22,7 @@ Create identical experiences between local development and CI environments:
 - Avoid CI-specific magic - if it runs in CI, developers can run it locally
 - Environment variables with sensible defaults for local development
 - Document unavoidable differences
+- **Build commands use identical flags across all invocation sites** — Makefile targets and every CI job that builds the same artifact must agree on `--platform`, cache args, `--provenance`, `--sbom`, and any other flags; differences are bugs unless explicitly documented
 
 ### 2. Resource Efficiency
 Optimize resource consumption aggressively:
@@ -80,6 +81,8 @@ Before finalizing DevOps configurations:
 - [ ] Secrets handled securely?
 - [ ] Caching implemented where beneficial?
 - [ ] Versions pinned for reproducibility?
+- [ ] Build flags (`--platform`, `--provenance`, `--sbom`, cache args) identical across all invocation sites (Makefile, each CI job, wrapper scripts)?
+- [ ] No redundant variable aliases pointing to the same registry path or resource?
 
 ## References
 

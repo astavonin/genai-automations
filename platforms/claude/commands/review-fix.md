@@ -46,8 +46,12 @@ This anchors the review — findings irrelevant to the fix are out of scope.
 
 ### Step 3: Multi-Agent Consensus Review
 
-Run the **Consensus Review Protocol** (Steps 0, A–E) from:
+Run the **Consensus Review Protocol** (Steps 0, A–H) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
+
+**Pre-read context** before launching agents:
+- **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if not in the diff
+- **Full design doc** if one exists — pass the entire file
 
 **Step 0 (do first, before any agents):** Write `planning/reviews/<fix-description>-fix-review-request.md`
 from the review request template:
@@ -55,18 +59,20 @@ from the review request template:
 - **Review Scope:** the fix diff range established in Step 1
 - **Output File:** `planning/reviews/<fix-description>-codex-fix-review.md`
 - **Requirements:** what the fix was supposed to solve (from Step 2)
-- **Evidence:** the fix diff
+- **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here
 - **Review Focus:** correctness, completeness, regressions, root cause, tests
 
-> **⚠️ PARALLEL-LAUNCH GATE**
-> Every call below MUST be in **one message**. Splitting across messages serializes the review.
-> Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
-> If any are missing — stop, add them, then send.
+> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+> 1. All Agent calls (3 reviewers) are present in this message.
+> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+>
+> **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with:
   - The fix diff (scoped per Step 1)
   - The problem statement (from Step 2)
+  - Interface files and design doc (pre-read above)
   - The review checklist
   - Instruction: **review the fix only** — do not flag pre-existing issues outside the diff
 - `codex-flow` Bash call with `run_in_background: true`:
@@ -82,7 +88,7 @@ Focus areas for a fix review:
 - **Safety / Security:** No new vulnerabilities introduced
 - **Tests:** Is the fix covered by a test?
 
-Aggregate once all four have returned per the consensus protocol.
+Aggregate per protocol Steps B–H. Note: Step F (test-coverage agent) is optional for fix reviews — include it when the fix touches test files or adds new tests.
 
 ### Step 4: Output
 
@@ -95,6 +101,7 @@ After writing, ask the user if they want to `open <path>` the review file.
 **Fix:** <one-line description of what was fixed>
 **Problem:** <what was broken>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
+**Codex:** ✓ ran | ✗ not run — <reason if skipped>
 
 ## Findings (<N total — consensus of 3 reviewers>)
 
@@ -117,6 +124,12 @@ After writing, ask the user if they want to `open <path>` the review file.
 Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
 
 - **X1** [severity] Description...
+
+## Reverified Findings
+
+Single-agent Claude findings and Codex-only findings that survived Step G reverification (≥1 of 2 verifiers confirmed). Include even if 0 — write "None."
+
+- **V1** [severity] ✓ Reverified — Description...
 
 ## Recommendation
 <rationale; if not approved, what must change — reference findings by ID e.g. "Fix C1, H1 before proceeding">

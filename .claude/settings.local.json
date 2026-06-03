@@ -26,7 +26,18 @@
       "WebFetch(domain:docs.gitlab.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:git.sr.ht)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Skill(deep-research)",
+      "Workflow(deep-research)",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:diffray.ai)",
+      "WebFetch(domain:milvus.io)",
+      "WebFetch(domain:blog.mozilla.ai)",
+      "WebFetch(domain:www.themoonlight.io)",
+      "WebFetch(domain:gitautoreview.com)",
+      "WebFetch(domain:www.arxiv.org)",
+      "WebFetch(domain:openreview.net)",
+      "WebFetch(domain:www.researchgate.net)"
     ]
   }
 }

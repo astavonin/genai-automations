@@ -120,6 +120,8 @@ After completing the 8-attribute quality scan, run the **Test Quality Pass** —
 3. For each public function/method that has at least one test: verify at least one negative/failure test exists per distinct failure mode. Safety invariants (e.g. "action must NOT fire on wrong ID") require an explicit negative test.
 4. Report every gap by test name and criterion — never aggregate into a general "testability needs improvement" finding.
 
+After the Test Quality Pass, run the **Cross-Site Consistency Pass** — a mandatory enumeration pass defined in the review checklist. For every function/method signature, build command, interface definition, or configuration value modified by the diff: enumerate every site that references that contract (all call sites, overrides, mocks, CI jobs, Makefile targets, config consumers) and verify they are consistent. This pass applies to ALL review types — code changes, CI/CD configs, and infrastructure. Flag mismatches per the severity rules in the checklist. Cite every mismatch with all affected file locations — never aggregate into a summary.
+
 ### DevOps Review (Infrastructure/CI/CD)
 Evaluate infrastructure and pipeline configurations:
 - Are security best practices followed?
@@ -127,6 +129,7 @@ Evaluate infrastructure and pipeline configurations:
 - Is the configuration maintainable?
 - Does it work consistently across environments?
 - Are failure modes handled appropriately?
+- **Cross-Site Consistency Pass (mandatory):** For every build command, CI job variable, or config value modified by the diff, enumerate all invocation sites (Makefile, each CI job, wrapper scripts) and verify flag parity (`--platform`, `--provenance`, `--sbom`, cache args). Flag any missing flag or redundant variable alias.
 
 ## Status Marker (MANDATORY)
 

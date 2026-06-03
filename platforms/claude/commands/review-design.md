@@ -35,16 +35,17 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
 ## Actions
 
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
-2. Run the **Consensus Review Protocol** (Steps A–E) against the design document
+2. Run the **Consensus Review Protocol** (Steps 0, A–G; skip Step F and Step H — both are code-only) against the design document
 
-   > **⚠️ PARALLEL-LAUNCH GATE**
-   > Every call in Step A MUST be in **one message**. Splitting across messages serializes the review.
-   > Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
-   > If any are missing — stop, add them, then send.
+   > **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+   > 1. All Agent calls (3 reviewers) are present in this message.
+   > 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+   >
+   > **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
 
-   - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel
+   - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel — skip Step F (no code or tests to evaluate)
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
+   - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step G (single-finding reverification)
    - **Each agent prompt must include the full "Design-Level Constraint" section above** — paste it verbatim before the review checklist so agents know what to flag and what to skip
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
@@ -123,6 +124,7 @@ Produce a markdown report using the reviewer agent's standard template:
 
 **Subject:** <feature name>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
+**Codex:** ✓ ran | ✗ not run — <reason if skipped>
 
 ## Findings (<N total — consensus of 3 reviewers>)
 

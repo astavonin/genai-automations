@@ -9,8 +9,9 @@ description: Review code after implementation using reviewer agent
 
 ## Agents
 
-**1 × reviewer (opus)** — single deep review (replaces the 3-agent consensus to eliminate approval prompts)
-**1 × codex-flow** — Codex cross-check runs as a background Bash call (no approval prompt with `codex-flow` in allow list)
+**3 × reviewer (opus)** — parallel focus-differentiated reviewers per consensus protocol (Steps A–D)
+**1 × reviewer (opus)** — test-coverage agent (Step F)
+**1 × codex-flow** — Codex cross-check, background Bash call (no approval prompt with `codex-flow` in allow list)
 
 ## Setup
 
@@ -22,7 +23,15 @@ Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
 
 **Then pre-read ALL implementation files** that will be reviewed — do this in the main conversation before launching the reviewer agent. Pass the file contents inline in the agent prompt so the agent never calls Read itself. This is mandatory: sub-agent Read calls trigger approval prompts; inline content does not.
 
-Typical files to pre-read: all `.h`, `.cc`, `.py`, `.sh` files changed on the branch, plus the design doc acceptance criteria section and the review checklist. Use `git diff origin/master...HEAD --name-only` to enumerate them.
+Typical files to pre-read:
+- All source files changed on the branch (`.h`, `.cc`, `.cpp`, `.py`, `.go`, `.rs`, `.sh`, etc.) — use `git diff origin/master...HEAD --name-only` to enumerate them
+- **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if it exists and is not already in the diff; for Go, read the interface definition files the changed package implements
+- **Full design doc** (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — pass the entire file, not just the acceptance criteria section
+- The review checklist
+
+**Prior review:** If `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md` exists from a previous review cycle, read it. Include it in every agent prompt with the instruction: "A prior review exists. For each finding previously marked CHANGES REQUESTED or REJECTED, verify whether it has been addressed in the current implementation. Re-raise unaddressed findings at their original severity; note addressed ones explicitly."
+
+**Evidence for Codex:** Before writing the Step 0 review-request document, run the project's build and test commands and capture their output (exit codes + last 40 lines). Populate the Evidence section with this data. If the build or tests fail, note this prominently — Codex must factor it into its assessment.
 
 ## Status Marker Convention (§4)
 
@@ -42,16 +51,17 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
 
 ## Actions
 
-1. Run the **Consensus Review Protocol** (Steps A–E) against the implementation
+1. Run the **Consensus Review Protocol** (Steps A–H) against the implementation
 
-   > **⚠️ PARALLEL-LAUNCH GATE**
-   > Every call in Step A MUST be in **one message**. Splitting across messages serializes the review.
-   > Self-check before sending: does this response contain every Agent call AND the `codex-flow` Bash call?
-   > If any are missing — stop, add them, then send.
+   > **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+   > 1. All Agent calls (3 reviewers + test-coverage) are present in this message.
+   > 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+   >
+   > **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
 
-   - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel
+   - **Launch simultaneously:** 3 focus-differentiated Claude reviewer agents + test-coverage agent (Step F) + Codex (Step E) in parallel — see protocol for agent focus assignments
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate once all four have returned: Steps B–D for Claude consensus, then cross-aggregate with Codex
+   - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding reverification) → Step H (manual passes)
 2. Format consolidated findings as a markdown review report (see Output Format below)
 3. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (overwriting any prior version)
 
@@ -86,19 +96,16 @@ Do not fail this skill — return success after surfacing the warning.
 
 ## Review Scope
 
-Each of the 3 agents evaluates:
-- **Supportability:** Logging, error messages, debugging
-- **Extendability:** Modularity, abstractions, future-proofing
-- **Maintainability:** Code clarity, naming, complexity
-- **Testability:** Unit tests, test coverage, edge cases
-- **Performance:** No bottlenecks, efficient algorithms
-- **Safety:** Error handling, resource management, thread safety
-- **Security:** Input validation, no vulnerabilities
-- **Observability:** Logging, metrics, tracing
+Agents use differentiated focus areas — see the consensus protocol for per-agent assignments. All agents still report Critical/High issues outside their primary focus.
+
+- **Agent 1:** Safety, Security, Performance
+- **Agent 2:** Testability, Correctness, Code standards (library reuse, promotion)
+- **Agent 3:** Observability, Maintainability, Extendability, Supportability
+
+Additional cross-cutting checks applied by all agents:
 - **Minimality:** Public API surface is no larger than required — flag multiple methods that share the same underlying resource, preconditions, and side effects where a single call with a discriminated return type would eliminate the risk of a caller silently skipping an action type
 - **Design adherence:** Matches approved design
-- **Standards compliance:** Coding standards and static analysis
-- **Library reuse:** New classes/functions that duplicate functionality already available in the project's own common/utility code or in well-established ecosystem libraries (STL, Boost, OpenSSL, stdlib equivalents for each language). Flag custom implementations that should be replaced — prefer battle-tested library code over reinvention.
+- **Standards compliance:** Coding standards and static analysis per language guidelines
 
 ## Behavioral Bug Test Requirement
 
@@ -127,6 +134,7 @@ Produce a markdown report:
 
 **Subject:** <feature / PR title>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
+**Codex:** ✓ ran | ✗ not run — <reason if skipped>
 
 ## Findings (<N total — consensus of 3 reviewers>)
 
@@ -149,6 +157,12 @@ Produce a markdown report:
 Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
 
 - **X1** [severity] Description...
+
+## Reverified Findings
+
+Single-agent Claude findings and Codex-only findings that survived Step G reverification (≥1 of 2 verifiers confirmed). Include even if 0 — write "None."
+
+- **V1** [severity] ✓ Reverified — Description...
 
 ## Library Reuse Findings
 
@@ -185,9 +199,9 @@ For each genuine candidate, provide:
 **Suggested home:** <proposed module/package path in the common library>
 ```
 
-## Test Correctness Findings
+## Test-coverage Findings
 
-Findings about test quality not already present in the consensus section. Focus on correctness gaps, not style.
+Findings from the Step F test-coverage agent not already present in the consensus section. Focus on correctness gaps, not style.
 
 Reviewers MUST check:
 - **New code without dedicated test file** — for every new source unit (`.h`/`.cc` pair, standalone utility, or module) introduced in this PR, verify that a corresponding dedicated test file exists. Indirect exercise through a higher-level test suite is not sufficient — each unit needs its own tests. Flag as `High` if missing.
@@ -202,6 +216,12 @@ Severity guidance:
 - `Low` — under-specified error assertions where the type/message check would be easy to add
 
 - **T1** [severity] Description...
+
+## Manual Pass Findings
+
+Findings from the Step H manual passes (Cross-Site Consistency Pass and Test Quality Pass completion check). Include even if 0 — write "None."
+
+- **P1** [severity] Description...
 
 ## Recommendation
 <rationale and required actions if not approved; reference findings by ID e.g. "Fix C1, H2 before proceeding">
