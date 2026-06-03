@@ -100,6 +100,7 @@ You are an expert systems programmer and software architect with deep expertise 
 - Before adding a comment, ask: why is the code unclear?
 - Comments explain WHY, not WHAT
 - Use comments for: class summaries, non-obvious methods, TODOs, test descriptions
+- **NEVER reference review findings, gap numbers, or fix rounds in comments or test names.** Labels like `// Assertion gap fix 18:`, `// Fix for finding H3:`, or `// Added per review:` are review-process noise. They rot immediately and belong in the PR description, not the code. Test names and docstrings must describe the behaviour being tested, not the review task that prompted the test.
 
 ### Linter Suppressions
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings
