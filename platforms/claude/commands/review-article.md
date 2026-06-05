@@ -79,20 +79,10 @@ reviews if needed.
 
 ## Status Marker Convention
 
-Every article review file MUST contain exactly one status marker as the **first non-empty
-line after the H1 title**, within the first 20 lines:
-
 ```
-**Status:** APPROVED
+Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
 ```
-
-Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED` — all uppercase, no emoji.
-
-Verify with:
-```bash
-head -20 planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md \
-  | grep -m 1 '^\*\*Status:\*\*'
-```
+(`review_file = planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`)
 
 ## Pass 1 — Spec Compliance
 

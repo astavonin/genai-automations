@@ -24,6 +24,12 @@ template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and
 context (repository, branch, scope, requirements, evidence, review focus). The `Output File`
 field must point to `planning/reviews/<feature>-codex-review.md`.
 
+**⚠️ Heading format is validated literally by codex-flow.** The first line of the document MUST be:
+```
+# Review Request — <name>
+```
+Any variation (`# Code Review Request:`, `# Review:`, `# Code Review —`, etc.) causes an immediate rejection with "Review request must start with a Review Request heading." Copy line 1 of the template verbatim and substitute only `<Feature / Fix Name>`.
+
 This takes seconds and unblocks Codex from starting the moment Step A fires.
 
 ### Step A: Launch 3 Independent Reviewers, Codex, and test-coverage agent simultaneously

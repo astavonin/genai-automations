@@ -14,11 +14,8 @@ a structured YAML findings file for posting inline comments via `projctl comment
 
 ## Setup
 
-Read review skills before starting:
 ```
-Read ~/.claude/skills/domains/quality-attributes/SKILL.md
-Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
+Read ~/.claude/skills/workflows/review-setup/SKILL.md
 ```
 
 ## Prerequisites
@@ -90,11 +87,10 @@ from the review request template:
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here. If unavailable, use `git diff --stat` as a fallback.
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 
-> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
-> 1. All Agent calls (3 reviewers + test-coverage) are present in this message.
-> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
->
-> **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
+```
+Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
+```
+(`test_coverage = yes`)
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below)
@@ -169,6 +165,21 @@ To post inline comments to the MR:
 ```
 
 The command never posts automatically. Posting requires explicit user action.
+
+### Step 7: Update Planning State and Push
+
+**If the MR being reviewed is linked to an active issue in `progress.md`** (look for the MR number in the Active section or `status.md`):
+
+Update `planning/progress.md` Active entry:
+- Append `- MR review written: <N> findings (Critical: N, High: N, Medium: N, Low: N)`
+- Update `**Last Updated:**` to today's date.
+
+**Always** push planning to backup after writing the YAML:
+```bash
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+Follow the steps in that fragment. Surface the §8.2 warning block on failure; do not fail the skill.
 
 ---
 

@@ -42,6 +42,11 @@ Investigate existing codebase patterns and architecture using the architecture-r
 
 **After writing:** Ask the user if they want to `open <path>` the analysis file.
 
+**Planning checkpoint** (`new_phase = research ✅`, `progress_line = - research complete — analysis.md written`, `escalation = standard`):
+```
+Read ~/.claude/skills/workflows/planning-checkpoint/SKILL.md
+```
+
 ## Usage
 
 ```

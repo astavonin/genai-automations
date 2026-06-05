@@ -144,6 +144,26 @@ projctl create-mr --fill --draft
 
 Return the MR URL to the user and ask if they want to `open <url>` in the browser.
 
+### 6. Update Planning State (mandatory)
+
+Extract the MR number from the URL (e.g. `!188` from `.../merge_requests/188`).
+
+**Update `planning/progress.md`:**
+- In the **Active** section, find the entry for the linked issue(s).
+- Add or replace the MR reference line: `- MR !<N> open — pipeline pending, <N> reviewers assigned, awaiting review`
+- Update `**Last Updated:**` to today's date.
+
+**Update `planning/<goal>/milestone-XX/status.md`:**
+- In the issue table, set the MR column to `!<N>` for each linked issue row.
+- Update the Phase column to `in review 👀`.
+
+Then push planning to backup:
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+
+Follow the steps in that fragment. Surface the §8.2 warning block on failure; do not fail the skill.
+
 ## MR Description Template
 
 **Structure (mandatory):**

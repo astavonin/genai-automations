@@ -65,11 +65,30 @@ planning/
 **Updated:** When issue phase changes
 
 **Contains:**
-- Issue table with phase column (`merged ✅ / MR review 🔍 / design ✅ / backlog ⏳`)
+- Issue table with phase column (see canonical vocabulary below)
 - Dependency order diagram
 - Artifact index (links to issue folders)
 
 **Style:** Scannable table; no backlog lists in progress.md
+
+### Canonical Phase Vocabulary
+
+Every command that updates the Phase column in `status.md` MUST use exactly these labels:
+
+| Phase | Meaning | Set by |
+|-------|---------|--------|
+| `backlog ⏳` | Not started | Initial state |
+| `research ✅` | `analysis.md` written | `/research` |
+| `design 📝` | `design.md` written, awaiting review | `/design` |
+| `changes requested 🔄` | Review returned CHANGES REQUESTED (design or code) | `/review-design` or `/review-code` |
+| `implementing 🔨` | Design approved, implementation in progress | `/review-design` APPROVED |
+| `code review ⏳` | Implementation done, awaiting code review | `/implement` |
+| `code review ✅` | Code review APPROVED, ready for MR | `/review-code` APPROVED |
+| `in review 👀` | MR open, awaiting human review | `/mr` |
+| `merged ✅` | MR merged and closed | `/complete` |
+| `rejected ❌` | Review returned REJECTED — redesign required | `/review-design` or `/review-code` |
+
+Do not invent new phase labels. If a transition is not listed here, leave the Phase column unchanged and record the event in the Notes column only.
 
 ### issues/<NNN-name>/
 **Purpose:** All artifacts for one issue in one place

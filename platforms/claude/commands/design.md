@@ -99,19 +99,14 @@ The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` fo
 
 **After writing:** Ask the user if they want to `open <path>` the design file.
 
+**Planning checkpoint** (`new_phase = design 📝`, `progress_line = - design complete — design.md written, awaiting review`, `escalation = standard`; if the issue is not yet in the Active section, add a minimal entry first):
+```
+Read ~/.claude/skills/workflows/planning-checkpoint/SKILL.md
+```
+
 ## Key Principle
 
 Design files describe **HOW** the system is structured (architecture, component contracts, trade-offs), not **WHAT** to do (that's in status.md) and not **HOW EXACTLY** to implement (that emerges during coding).
-
-## Final Step — Push planning to backup
-
-After writing the design file, push planning state to backup using the shared push fragment:
-
-```
-Read ~/.claude/skills/workflows/push-planning/SKILL.md
-```
-
-Follow the steps in that fragment: run `projctl sync push`. On failure, surface the standard warning and continue — do not fail this skill.
 
 ## Next Step
 

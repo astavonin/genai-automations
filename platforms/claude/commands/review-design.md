@@ -13,49 +13,37 @@ description: Review design before implementation using reviewer agent
 
 ## Setup
 
-Read review skills before starting:
 ```
-Read ~/.claude/skills/domains/quality-attributes/SKILL.md
-Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
+Read ~/.claude/skills/workflows/review-setup/SKILL.md
 ```
 
-## Status Marker Convention (§4)
-
-Every design review file MUST contain exactly one status marker as the **first non-empty line after the H1 title**, within the first 20 lines:
+## Status Marker Convention
 
 ```
-**Status:** APPROVED
+Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
 ```
-
-Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED` — all uppercase, no emoji, no verb/noun mixing.
-
-This marker is machine-readable and used by the `/implement` gate (`head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`). A review without the canonical marker will cause the compaction gate to skip at `/implement`.
 
 ## Actions
 
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 2. Run the **Consensus Review Protocol** (Steps 0, A–G; skip Step F and Step H — both are code-only) against the design document
 
-   > **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
-   > 1. All Agent calls (3 reviewers) are present in this message.
-   > 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
-   >
-   > **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
+   ```
+   Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
+   ```
+   (`test_coverage = no`)
 
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel — skip Step F (no code or tests to evaluate)
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step G (single-finding reverification)
-   - **Each agent prompt must include the full "Design-Level Constraint" section above** — paste it verbatim before the review checklist so agents know what to flag and what to skip
+   - **Each agent prompt must include the full "Design-Level Constraint" section below** — paste it verbatim before the review checklist so agents know what to flag and what to skip
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 
-5. **Verify the status marker** before declaring the review complete:
-   ```bash
-   head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md | grep -m 1 '^\*\*Status:\*\*'
+5. **Verify the status marker** (`review_file = planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`):
    ```
-   - If the marker is found with a canonical state (`APPROVED`, `CHANGES REQUESTED`, or `REJECTED`) → proceed.
-   - If the marker is missing or malformed → **do not declare the review complete**. Surface an error and either re-invoke the reviewer agent or ask the user to add the marker manually before continuing.
+   Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
+   ```
 
 6. **If the review status is `APPROVED`, update the design doc header:**
    ```bash
@@ -64,19 +52,13 @@ This marker is machine-readable and used by the `/implement` gate (`head -20 <fi
    ```
    Use the Edit tool to make this change. Skip this step if status is `CHANGES REQUESTED` or `REJECTED`.
 
-7. After writing, ask the user if they want to `open <path>` the review file
-8. Wait for user approval (MANDATORY)
-9. Block until approved
+7. **Update planning state** (`approved_phase = implementing 🔨`, `review_label = design review`, `approved_next = ready for implementation`, `escalation = standard`):
+   ```
+   Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
+   ```
 
-## Final Step — Push planning to backup
-
-After the review file is written and the marker verified, push planning state to backup:
-
-```
-Read ~/.claude/skills/workflows/push-planning/SKILL.md
-```
-
-Follow the steps in that fragment: run `projctl sync push`. On failure, surface the standard warning and continue — do not fail this skill.
+8. After writing, ask the user if they want to `open <path>` the review file
+9. Block until approved (MANDATORY — no code without approval)
 
 ## Design-Level Constraint (MANDATORY — pass to every reviewer agent)
 
@@ -115,7 +97,7 @@ Each of the 3 agents evaluates these design-level attributes:
 
 ## Output Format
 
-Produce a markdown report using the reviewer agent's standard template:
+Produce a markdown report:
 
 ```markdown
 # Design Review
@@ -150,7 +132,7 @@ Findings raised by Codex not present in Claude consensus. Write "None." if empty
 <rationale and required actions — concept level only; no implementation specifics>
 ```
 
-IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity (C1, C2, H1, H2, M1, …). IDs are stable within a review session and used when discussing or resolving findings.
+IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity. IDs are stable within a review session.
 
 ## Assessment
 

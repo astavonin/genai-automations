@@ -14,11 +14,8 @@ to a previous implementation. Scope is the fix only, not surrounding unchanged c
 
 ## Setup
 
-Read review skills before starting:
 ```
-Read ~/.claude/skills/domains/quality-attributes/SKILL.md
-Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
-Read ~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md
+Read ~/.claude/skills/workflows/review-setup/SKILL.md
 ```
 
 ## Actions
@@ -62,11 +59,10 @@ from the review request template:
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here
 - **Review Focus:** correctness, completeness, regressions, root cause, tests
 
-> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
-> 1. All Agent calls (3 reviewers) are present in this message.
-> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
->
-> **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first.
+```
+Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
+```
+(`test_coverage = no`)
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with:
@@ -95,66 +91,28 @@ Aggregate per protocol Steps B–H. Note: Step F (test-coverage agent) is option
 **Write the report to `planning/reviews/<fix-description>-fix-review.md`** (use a short slug for `<fix-description>`, e.g. `tier-timeout-fix`).
 After writing, ask the user if they want to `open <path>` the review file.
 
-```markdown
-# Fix Review
-
-**Fix:** <one-line description of what was fixed>
-**Problem:** <what was broken>
-**Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
-**Codex:** ✓ ran | ✗ not run — <reason if skipped>
-
-## Findings (<N total — consensus of 3 reviewers>)
-
-### Critical
-- **C1** [attribute] Description...
-  **Required test:** <what input triggers the bug and what the test asserts> *(only for behavioral bugs)*
-
-### High
-- **H1** [attribute] Description...
-  **Required test:** <description> *(only for behavioral bugs)*
-
-### Medium
-- **M1** [attribute] Description...
-
-### Low
-- **L1** [attribute] Description...
-
-## Codex-Only Findings
-
-Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
-
-- **X1** [severity] Description...
-
-## Reverified Findings
-
-Single-agent Claude findings and Codex-only findings that survived Step G reverification (≥1 of 2 verifiers confirmed). Include even if 0 — write "None."
-
-- **V1** [severity] ✓ Reverified — Description...
-
-## Recommendation
-<rationale; if not approved, what must change — reference findings by ID e.g. "Fix C1, H1 before proceeding">
+Output format (`review_type = Fix Review`, `fix_review_extras = yes`):
 ```
-
-IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity. IDs are stable within a review session.
+Read ~/.claude/skills/workflows/review-output-format/SKILL.md
+```
 
 ## Behavioral Bug Test Requirement
 
-Any finding that identifies **incorrect runtime behavior** MUST include a `**Required test:**` line as part of the finding body. This applies regardless of severity.
-
-**Incorrect runtime behavior** means the code:
-- Produces wrong output or corrupts data
-- Silently accepts input that should be rejected
-- Gets stuck or loops incorrectly
-- Bypasses a stated security or correctness invariant
-
-This does NOT apply to quality findings (naming, observability, performance, maintainability) that have no wrong-output consequence.
-
-The `**Required test:**` line must describe the minimal test that would fail before the fix and pass after:
-- What precondition / input triggers the bug
-- What outcome the test asserts
+```
+Read ~/.claude/skills/workflows/behavioral-bug-test/SKILL.md
+```
 
 ## Assessment
 
 - ✅ **Approve:** Zero Critical and zero High findings → fix is good to go
 - ⚠️ **Request Changes:** One or more High findings → revise the fix
 - ❌ **Reject:** One or more Critical findings → fix is incorrect or introduces new problems
+
+## Final Step — Update Planning State
+
+**If the fix is linked to an issue** (look for `Ref #NNN` in commits or branch name):
+
+**Planning update** (`approved_phase = code review ✅`, `review_label = fix review`, `approved_next = ready to merge or re-submit`, `escalation = standard`):
+```
+Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
+```

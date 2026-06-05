@@ -15,11 +15,15 @@ Push planning state to Google Drive backup after a durable artifact has been wri
 
 ## When to Use
 
-Include this fragment as the **last step** of any skill that writes a durable planning artifact:
+> **Superseded for most commands.** Use `planning-checkpoint` (single-outcome phase transitions) or `review-planning-update` (3-way review outcomes) instead — both include the push logic. This fragment is retained for commands with **custom column updates** that don't fit the standard pattern (currently: `/verify` — Notes-only append; `/mr` — sets MR column + Phase in one step).
 
-- `/design` — after writing `issues/<NNN-name>/design.md`
-- `/review-design` — after writing `issues/<NNN-name>/design-review.md`
-- `/review-code` — after writing `issues/<NNN-name>/code-review.md` (see elevated warning note below)
+Include this fragment when a command writes a durable artifact or records a state transition that does NOT fit `planning-checkpoint` or `review-planning-update`. Push must fire **before** any blocking step.
+
+Current callers (commands with custom column updates that don't fit the standard pattern):
+- `/mr` — after MR number written to progress.md and status.md (sets MR column + Phase simultaneously)
+- `/verify` — after verification passes and planning state updated (Notes-only append, no Phase change)
+- `/review-mr` — after MR review YAML written and progress.md updated
+- `/review-article` — after article review written and planning state updated
 
 ## Steps
 

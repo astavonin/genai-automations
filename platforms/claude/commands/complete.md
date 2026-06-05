@@ -41,9 +41,8 @@ Before running this command:
    - Update active work section
    - Add timestamp
 
-4. **Update milestone status.md** (if needed):
-   - Update epic/issue completion status
-   - Recalculate completion percentage
+4. **Update milestone status.md:**
+   - Set Phase to `merged ✅` for every issue completed in this work item (use canonical phase vocabulary from `planning/SKILL.md`)
    - Update blockers if resolved
 
 5. **Update overview.md** (if milestone complete):

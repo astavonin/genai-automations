@@ -141,6 +141,15 @@ Implementation complete with:
 "I'll use devops-engineer agent to create the CI pipeline configuration..."
 ```
 
+## Planning State Update (last step before handing off)
+
+After implementation is complete and build passes, update planning state:
+
+**Planning checkpoint** (`new_phase = code review ⏳`, `progress_line = - implementation complete — ready for /review-code`, `escalation = standard`):
+```
+Read ~/.claude/skills/workflows/planning-checkpoint/SKILL.md
+```
+
 ## Next Step
 
 After implementation, use `/review-code` for mandatory code review.

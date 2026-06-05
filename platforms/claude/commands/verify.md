@@ -142,6 +142,22 @@ If any check fails:
 
 Do NOT run tests before linters and clangd pass. This ensures clean code before verification.
 
+## Planning State Update (on full pass only)
+
+When **all checks pass**, update planning state:
+
+- In `planning/<goal>/milestone-XX/status.md`, append `| verified ✅` to the Notes column for the active issue.
+- In `planning/progress.md` Active entry, append or replace: `- verification ✅ (linters + tests + itest)`.
+- Update `**Last Updated:**` to today's date.
+
+Then push planning to backup:
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+Follow the steps in that fragment. Surface the §8.2 warning block on failure; do not fail the skill.
+
+**Do not update planning state if any check fails** — the failure is visible to the user; a stale "verified ✅" in planning would be worse than no entry.
+
 ## Next Step
 
 After all checks pass, user handles commit (Phase 7), then use `/complete` to mark work done.
