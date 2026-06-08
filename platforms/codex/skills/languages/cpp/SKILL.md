@@ -67,6 +67,8 @@ When discarding such a return is genuinely intentional, cast to `void` and expla
 
 Callbacks and trampolines registered with external frameworks are exempt when the framework, rather than project code, consumes the return value.
 
+`[[nodiscard]]` does not propagate from a virtual base declaration to overrides. Annotate every site explicitly when callers must act on the result: the base declaration, every override, and every test fake or mock that implements the interface.
+
 #### Exception Boundaries
 
 Do not allow exceptions to escape destructors, C callbacks, C ABI boundaries, thread entry points, or cleanup paths. Catch at those boundaries and convert the failure to the appropriate status/result/logging behavior with diagnostic context.
@@ -110,6 +112,36 @@ LOGE("open(%s) failed: %s", path, strerror(err));
 ```
 
 Log enough context, such as function name, path, and relevant arguments, to diagnose the failure without reading the source.
+
+### C++20 Patterns
+
+#### Cooperative Cancellation
+
+Prefer `std::stop_token`, `std::stop_source`, and `std::jthread` over raw `std::atomic<bool>` cancellation flags when a thread must be stopped from the outside.
+
+```cpp
+std::jthread worker([](std::stop_token token) {
+    while (!token.stop_requested()) {
+        // Work until cancellation is requested.
+    }
+});
+```
+
+Keep `std::atomic<bool>` cancellation flags only at C or external-framework boundaries where a `std::stop_token` cannot be passed through the callback contract.
+
+#### Buffer Views
+
+Prefer `std::span<T>` over raw pointer plus size pairs at API boundaries. Spans carry length, work with range-based loops and STL algorithms, and prevent caller-side length mismatches.
+
+```cpp
+void process(std::span<const std::byte> payload);
+```
+
+Use `std::span<const T>` for read-only views and `std::span<T>` for mutable views.
+
+#### Type-Safe Formatting
+
+Prefer `std::format` for strings built from runtime values when the project toolchain supports it. Fall back to `snprintf` only when writing into a fixed-size C buffer owned by an external API.
 
 ### Performance
 - Pass large objects by const reference unless ownership transfer is intended

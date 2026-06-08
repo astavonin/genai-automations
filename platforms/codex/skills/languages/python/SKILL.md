@@ -22,6 +22,7 @@ Follow:
 ### Type Hints
 - Add type hints to public and non-trivial function signatures
 - Use `typing` constructs for complex types
+- Prefer comprehensive type hints for new code, including generics and protocols where they clarify contracts
 - Run project type checking such as `mypy` or `pyright` when configured
 
 ### Documentation
@@ -30,6 +31,7 @@ Follow:
 
 ### Pythonic Patterns
 - Prefer context managers for resource handling
+- Use dataclasses, `NamedTuple`, or project-approved structured models for structured data
 - Use comprehensions when they stay readable
 - Use generators for large or streaming data
 - Prefer standard library solutions before new dependencies

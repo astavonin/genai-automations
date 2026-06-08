@@ -1,9 +1,11 @@
 ---
 name: testing
-description: Testing strategies and best practices covering unit and integration tests. Use when writing tests or reviewing test coverage to apply AAA structure, proper isolation, and appropriate test granularity.
+description: Testing strategies and best practices covering unit and integration tests. Use when writing tests or reviewing test coverage to apply AAA structure, behavior-focused names, proper isolation, concrete assertions, and appropriate test granularity.
 ---
 
 # Testing Skill
+
+Testing should prove behavior, not just execute lines. A test is useful only when it would fail for a plausible wrong implementation.
 
 ## Unit Tests
 
@@ -12,11 +14,14 @@ description: Testing strategies and best practices covering unit and integration
 - Keep tests independent and order-insensitive
 - Cover edge cases and error paths, not just happy paths
 - Cover all public API behavior that can affect correctness
+- Prefer table-driven tests where they make edge cases clearer, especially in Go
 
 ## Hard Requirements For Unit Tests
 
 - Keep unit tests fast
-- Avoid network calls, real databases, external processes, and arbitrary sleeps
+- Each unit test should complete in 3 seconds or less
+- Avoid network calls, disk I/O, real databases, external processes, and arbitrary sleeps
+- Do not use `sleep` or time-based waits to observe async behavior; use bounded polling, explicit events, fake clocks, or readiness signals
 - If a test needs real components, treat it as an integration test and separate it accordingly
 
 ## Failure Scenario Coverage
@@ -35,6 +40,7 @@ A happy-path-only test suite is a correctness gap regardless of line coverage pe
 - Error-path assertions must check the specific error type, code, or message, not just that some error occurred.
 - Test names must match what the assertions actually verify.
 - Each assertion should fail if the implementation returns a wrong-but-non-null value, accepts invalid input, or returns the wrong error.
+- Do not rely on call counts without verifying the arguments, outputs, state change, or externally visible behavior that matters.
 
 ## Behavioral Correctness
 
@@ -51,14 +57,45 @@ Each behavioral-correctness test must:
 
 ## Integration Tests
 
-- Use integration tests when real components interact
-- Prefer deterministic setup and readiness checks
-- Keep state isolated and clean up after the test
-- Treat flaky tests as bugs to fix, not tests to ignore
+Use integration tests when two or more real components interact, such as a database, HTTP server, broker, filesystem boundary, or process boundary.
+
+Requirements:
+- Prefer real dependencies at infrastructure boundaries, such as testcontainers, test databases, in-process HTTP servers, or project-native fakes.
+- Do not call real production or external service URLs.
+- Keep state isolated and clean up after the test.
+- Use deterministic readiness checks with polling plus timeout, health checks, or explicit signals; never bare `sleep`.
+- Treat flaky tests as bugs to fix, not tests to ignore or skip.
+- Tag integration tests so they run separately from unit tests.
+
+Tagging examples:
+- Go: `//go:build integration` in `*_integration_test.go`
+- Python: `@pytest.mark.integration`
+- C++: separate CMake target or an `Integration` suite prefix
+
+Isolation strategies:
+- SQL database: transaction rollback in teardown, isolated schema, or testcontainer per suite
+- HTTP: in-process test server or WireMock-style local server
+- Cache/broker: in-process fake when behavior is sufficient, otherwise a containerized real service
+
+## Test Doubles
+
+| Type | Use when |
+|---|---|
+| Fake | Replacing infrastructure with a simplified in-process implementation, such as an in-memory database or cache |
+| Stub | Returning canned values to control indirect inputs |
+| Spy | Recording side effects while preserving simple behavior |
+| Mock | Verifying an exact interaction protocol that is itself the contract under test |
+
+Prefer fakes over mocks for infrastructure dependencies. Over-mocking hides real integration failures and makes refactors noisy.
 
 ## Coverage Guidance
 
-- Aim for high coverage on critical business logic
+| Scope | Target |
+|---|---|
+| Critical business logic | 80%+ line and branch coverage where practical |
+| Public API surface | 100% of behaviorally meaningful paths |
+| Integration boundaries | Primary flows plus at least one error path per boundary |
+
 - Prefer meaningful behavioral coverage over superficial line coverage
 - Ensure public API behavior is covered where practical
 
@@ -68,4 +105,5 @@ Each behavioral-correctness test must:
 2. Add integration tests at real component boundaries
 3. Cover public API paths, failure modes, and behavioral invariants
 4. Keep assertions concrete, falsifiable, and aligned with test names
-5. Keep tests readable, deterministic, and focused on behavior
+5. Keep unit tests fast and isolated; keep integration tests tagged and deterministic
+6. Keep tests readable and focused on behavior

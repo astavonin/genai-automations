@@ -19,6 +19,7 @@ Follow:
 - Use clear package names: lowercase and without underscores
 - Keep names concise in small scopes and descriptive at boundaries
 - Prefer small, focused interfaces
+- Document exported types and functions with godoc-style comments
 
 ### Error Handling
 - Check errors explicitly
@@ -31,6 +32,7 @@ Follow:
 - Use channels and goroutines deliberately
 - Be explicit about goroutine lifetime and cancellation
 - Use `context.Context` for cancellation and request scope when applicable
+- Avoid starting goroutines without a clear owner, cancellation path, and shutdown behavior
 
 ### Code Organization
 - Keep packages cohesive

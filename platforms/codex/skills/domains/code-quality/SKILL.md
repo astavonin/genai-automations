@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Code quality principles covering comments, linter suppressions, and formatting. Use when writing or reviewing code to enforce self-documenting style, justified suppressions, and project-standard formatting.
+description: Code quality principles covering comments, linter suppressions, formatting, and review hygiene. Use when writing or reviewing code to enforce self-documenting style, justified suppressions, and project-standard formatting.
 ---
 
 # Code Quality Skill
@@ -13,10 +13,10 @@ Use this skill when writing or reviewing code in the narrowed Codex scope.
 - Prefer code that needs minimal comments
 - Re-evaluate code structure before adding explanatory comments
 - Use comments to explain why, not what
+- Use clear, descriptive names instead of explanatory comments
 - Keep functions focused
 - Keep functions and methods at or below 80 lines where practical
 - Do not create or leave a modified function or method over 100 lines
-- Choose clear names over explanatory comments
 
 ### Function Size
 
@@ -24,26 +24,40 @@ Treat 80 physical lines as the target maximum for functions and methods. When a 
 
 Treat 100 physical lines as a hard ceiling for new or modified functions and methods. If an existing function already exceeds 100 lines and must be touched, split it or reduce it as part of the change; do not make it longer.
 
-### Comments
+### Comment Policy
+
+Use a two-tier comment policy:
+
+1. Inline comments explain WHY only. Add one only for hidden constraints, subtle invariants, specific external API quirks, workarounds, or behavior that would surprise a careful reader. Keep inline comments to one short line when possible.
+2. Public API documentation explains contracts. Main interfaces, public or exported types, enums, non-trivial type aliases, central data structures, and non-obvious constants should have short comments that clarify purpose, invariants, ownership, lifetime, valid states, or usage constraints.
 
 Use comments for:
-- all main interfaces, types, and data structures, using short notes that clarify purpose, invariants, ownership, lifetime, valid states, or usage constraints
 - non-obvious design intent
 - complex algorithms where the approach is not immediately clear
-- TODOs with enough context to act on them later
 - test scenario setup where the behavior being exercised is otherwise hard to follow
-- public API documentation when required by the language or project
+- TODOs only when they are actionable and include enough context, such as an issue reference or concrete follow-up
 
-Avoid comments that restate the code or exist only to satisfy a comment quota.
+Do not use comments for:
+- restating what the code already says
+- usage examples that should live in tests or docs
+- complexity notes that should be solved by refactoring
+- responsibility lists that code structure should already show
+- placeholder text added only to satisfy a comment quota
+- multi-line prose blocks or `@param`/`@return` boilerplate unless the project consistently uses that documentation format
+- commented-out code
+
+Never reference review findings, gap numbers, fix rounds, or review history in comments, docstrings, or test names. Labels like `Fix for finding H3`, `Assertion gap fix`, or `Added per review` are review-process metadata; source code and tests must describe behavior and contracts.
 
 ## Linter Suppressions
 
-Always explain why a suppression is necessary. Prefer fixing the code instead when the warning points to a real design issue.
+Always explain why a suppression is necessary. Prefer fixing the code instead when the warning points to a real design issue, the fix is as easy as the suppression, or the same rule is being suppressed repeatedly.
 
 Examples:
 - C++: `// NOLINTNEXTLINE(rule-name): reason`
 - Python: `# noqa: rule-name - reason` or `# type: ignore[error-code]  # reason`
 - Go: `//nolint:rule-name // reason`
+
+Accept suppressions only for narrow, justified cases such as hardware or low-level constraints, external protocol constants, required API-boundary compatibility, third-party library limitations, or legacy debt with a follow-up reference.
 
 ## Formatting
 
@@ -57,7 +71,7 @@ Apply the project's formatter to every modified file.
 
 - Prefer concrete findings over style-only commentary.
 - Raise style feedback only when it affects readability, maintainability, or project consistency.
-- Treat unexplained suppressions, stale comments, and missing formatting as quality defects.
+- Treat unexplained suppressions, stale comments, review-process labels in source, commented-out code, and missing formatting as quality defects.
 
 ## Reference Checklist
 

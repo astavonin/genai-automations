@@ -18,9 +18,11 @@ Use comments for:
 - all main interfaces, types, and data structures, using short notes that clarify purpose, invariants, ownership, lifetime, valid states, or usage constraints
 - non-obvious design intent
 - complex algorithms where the approach is not immediately clear
-- TODOs with enough context to be actionable
+- TODOs only when they are actionable and include enough context, such as an issue reference or concrete follow-up
 - tests where the scenario would otherwise be hard to follow
 - public API doc comments when the language or project expects them
+
+Inline comments should explain WHY only: hidden constraints, subtle invariants, specific external API quirks, workarounds, or behavior that would surprise a careful reader. Keep them short.
 
 ## Interface And Type Comments
 
@@ -58,6 +60,10 @@ Do not use comments for:
 - responsibility lists that code structure should already show
 - placeholder comments that add no information beyond the declaration name
 - obvious restatements of what the code already says
+- review findings, gap numbers, fix rounds, or review history
+- commented-out code
+
+Do not use labels like `Fix for finding H3`, `Assertion gap fix`, or `Added per review` in comments, docstrings, or test names. Source files describe behavior and contracts; review-process metadata belongs in review notes or PR descriptions.
 
 ## Summary
 

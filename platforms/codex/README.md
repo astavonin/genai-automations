@@ -9,8 +9,11 @@ This tracked backup currently includes:
 - architecture review
 - language guidance for C++, Python, and Go
 - shared coding guidance for testing and code quality
+- code-review support through language, testing, and code-quality checklists
 
 It does not attempt to restore the full Claude-side surface area.
+
+The `skills/reviewer/` skill is intentionally scoped to architecture and design review. Code review uses the relevant language skill plus `skills/domains/testing/` and `skills/domains/code-quality/`; it should not route through the design-only reviewer skill.
 
 ## Structure
 

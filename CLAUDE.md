@@ -2,6 +2,15 @@
 
 Config backup repo for Claude/Codex platforms. No Python packages live here.
 
+## Workflow Roles
+
+This repo backs a combined Claude + Codex workflow.
+
+- **Claude** is the primary workflow orchestrator for research, investigation, planning, design, and checkpoint coordination. The Claude config also retains implementation, review, verification, and utility commands, including wrappers that delegate implementation and review to Codex through `codex-flow`.
+- **Codex** is the narrower implementation and review partner. The tracked Codex config focuses on architecture/design documentation, implementation support for C++, Python, and Go, testing/code-quality guidance, and architecture/design review. Code review is integrated from the Claude side through Codex review-request workflows.
+
+The practical operating split is: use Claude for research/investigation and workflow planning; use Codex for repository edits, implementation follow-through, and independent review when delegated through `codex-flow`.
+
 ## Repository Structure
 
 ### `platforms/`

@@ -18,9 +18,11 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] Comments explain intent, trade-offs, or non-obvious behavior.
 - [ ] Comments do not restate the code line-by-line.
 - [ ] Comments are not added only to satisfy a comment quota.
-- [ ] TODO comments include enough context to be actionable.
+- [ ] TODO comments are actionable and include enough context, such as an issue reference or concrete follow-up.
 - [ ] Test comments are used only when the scenario would otherwise be hard to follow.
 - [ ] Stale comments are removed or updated with the code change.
+- [ ] Comments, docstrings, and test names do not reference review findings, gap numbers, fix rounds, or review history.
+- [ ] No commented-out code is introduced or left behind.
 
 ## 3. Linter Suppressions
 
@@ -56,6 +58,12 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] Assertions check concrete values or observable behavior, not only non-null values, existence, or call counts.
 - [ ] Error-path assertions check the specific error type, code, or message.
 - [ ] Test names match the scenario and outcome that the assertions actually verify.
+- [ ] Unit tests are fast and isolated: no network calls, disk I/O, real databases, external processes, or arbitrary sleeps.
+- [ ] Async or readiness tests use bounded polling, events, fake clocks, or health checks instead of bare `sleep`.
+- [ ] Integration tests that use real components are tagged to run separately from unit tests.
+- [ ] Integration tests do not call production or external service URLs.
+- [ ] Flaky tests are fixed or removed; they are not skipped or ignored.
+- [ ] Infrastructure dependencies use fakes or local/containerized real services instead of brittle internal mocks where practical.
 - [ ] Tests remain readable and focused on behavior.
 - [ ] Test setup avoids unnecessary complexity.
 
