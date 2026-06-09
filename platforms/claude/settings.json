@@ -84,7 +84,8 @@
       "Bash(avdmanager:*)",
       "Bash(emulator:*)",
       "Bash(sdkmanager:*)",
-      "Read(/tmp/**)"
+      "Read(/tmp/**)",
+      "Read(**/planning/**)"
     ],
     "defaultMode": "default",
     "additionalDirectories": [
