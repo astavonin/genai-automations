@@ -11,6 +11,8 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] No new or modified function or method exceeds 100 lines.
 - [ ] Complex control flow or indirection is justified.
 - [ ] New abstractions reduce complexity instead of hiding it.
+- [ ] New helpers or abstractions do not duplicate functionality already available in project common/utility modules or language ecosystem libraries.
+- [ ] Newly extracted helpers replace inline equivalents within the same package instead of coexisting with duplicate logic.
 
 ## 2. Comments
 
@@ -49,12 +51,28 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] Shared error-detail strings are propagated by reference through chained calls instead of allocating per call in hot paths.
 - [ ] System-call failures capture `errno` immediately and log enough context to diagnose the failure.
 
-## 6. Tests
+## 6. Error Handling Level
+
+- [ ] Each catch, error return, status check, or result conversion is necessary instead of preventable by an earlier validation check or a better API call.
+- [ ] Errors are handled at an abstraction boundary with enough context for meaningful recovery or reporting.
+- [ ] Lower layers preserve error type, code, message, or chain when they cannot recover meaningfully.
+- [ ] Handling does not discard context that a caller needs to decide recovery, retry, user feedback, or diagnostics.
+
+## 7. Dead Symbol Pass
+
+For every field, member, parameter, named constant, or non-local variable introduced or modified by the diff:
+- [ ] The symbol has at least one production read-site outside construction or initialization.
+- [ ] Test fixtures that only construct the type are not counted as read-sites.
+- [ ] Written-but-never-read symbols are removed or have an explicit compatibility or future-contract reason.
+- [ ] API parameters that are immediately discarded are flagged when the contract implies they should influence behavior.
+
+## 8. Tests
 
 - [ ] Tests cover the intended behavior change.
 - [ ] Tests cover all public API paths affected by the change.
 - [ ] Tests include each distinct failure mode for public functions or methods that can fail.
 - [ ] Tests cover important error paths or edge cases when relevant.
+- [ ] For every allowlist, blocklist, or range check, tests cover each distinct unsafe input category with a negative test.
 - [ ] Assertions check concrete values or observable behavior, not only non-null values, existence, or call counts.
 - [ ] Error-path assertions check the specific error type, code, or message.
 - [ ] Test names match the scenario and outcome that the assertions actually verify.
@@ -67,7 +85,7 @@ Use this checklist for the narrowed Codex scope: code changes, tests, and review
 - [ ] Tests remain readable and focused on behavior.
 - [ ] Test setup avoids unnecessary complexity.
 
-## 7. Review Output Expectations
+## 9. Review Output Expectations
 
 - [ ] Findings focus on real risks, regressions, or maintainability issues.
 - [ ] Any finding that identifies incorrect runtime behavior includes a `Required test:` line describing the input or precondition that triggers the bug and the outcome the test asserts.

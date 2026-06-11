@@ -122,6 +122,8 @@ After completing the 8-attribute quality scan, run the **Test Quality Pass** —
 
 After the Test Quality Pass, run the **Cross-Site Consistency Pass** — a mandatory enumeration pass defined in the review checklist. For every function/method signature, build command, interface definition, or configuration value modified by the diff: enumerate every site that references that contract (all call sites, overrides, mocks, CI jobs, Makefile targets, config consumers) and verify they are consistent. This pass applies to ALL review types — code changes, CI/CD configs, and infrastructure. Flag mismatches per the severity rules in the checklist. Cite every mismatch with all affected file locations — never aggregate into a summary.
 
+After the Cross-Site Consistency Pass, run the **Dead Symbol Pass** — a mandatory enumeration pass defined in the review checklist. For every field, member, constant, or parameter introduced or modified by the diff: verify at least one read-site exists in production code outside the file that defines it. Construction or initialization sites do not count as read-sites. Written-but-never-read symbols are dead code regardless of how many assignment sites exist. Cite each dead symbol with its definition site and a grep showing zero production read-sites.
+
 ### DevOps Review (Infrastructure/CI/CD)
 Evaluate infrastructure and pipeline configurations:
 - Are security best practices followed?

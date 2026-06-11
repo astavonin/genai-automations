@@ -58,13 +58,16 @@ Use this checklist when conducting design and architecture reviews in the narrow
 - [ ] The design is understandable and not over-engineered.
 - [ ] Terminology is consistent across the document.
 - [ ] The design aligns with existing repository or system patterns unless divergence is justified.
+- [ ] No equivalent helper or abstraction already exists in the repository or expected ecosystem libraries; the design explains any necessary custom abstraction.
 
 #### Testability
 - [ ] Validation or verification approach is described.
 - [ ] Important scenarios, edge cases, or failure modes are identified.
+- [ ] Validation guards identify all distinct unsafe input categories, not just one representative example.
 - [ ] The design includes a concrete test plan when implementation is expected.
 - [ ] The test plan covers all public API paths affected by the change.
 - [ ] The test plan includes each distinct failure mode for public functions or methods that can fail.
+- [ ] The test plan includes negative tests for each distinct unsafe input category behind an allowlist, blocklist, or range check.
 - [ ] Behavioral correctness scenarios are called out explicitly: wrong output, data corruption, silent invalid-input acceptance, liveness violations, and security or correctness invariant bypasses.
 - [ ] When a coverage target can be extracted from repository policy, CI, or the surrounding context, the expected minimum is stated and is `>= 80%` unless a stricter project rule exists.
 - [ ] The design explains what can be tested locally or in containerized environments.
@@ -77,6 +80,7 @@ Use this checklist when conducting design and architecture reviews in the narrow
 
 #### Safety
 - [ ] Failure modes and edge cases are called out explicitly.
+- [ ] Error handling level is justified: preventable failures are avoided up front, and recovery or reporting happens at the first layer with enough context.
 - [ ] Destructive or state-changing behavior is bounded clearly.
 - [ ] Recovery or fallback behavior is described when relevant.
 - [ ] C++ APIs identify caller-handled failure returns and require `[[nodiscard]]` on non-void results the caller must act on.

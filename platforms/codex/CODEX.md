@@ -1,6 +1,8 @@
 # Scope
 
-Codex is used for architecture/design work and for implementation work in selected languages.
+Codex is the primary implementation agent for approved specifications and design inputs in selected languages. Treat the specification, design document, ticket, or `codex-flow` implementation context as the execution contract.
+
+Codex also supports architecture/design work when explicitly requested.
 
 Active implementation focus:
 - C++
@@ -47,13 +49,26 @@ When implementing code:
 - use `skills/languages/go/` for Go
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
+- for every error path, ask whether the failure can be prevented by an earlier check or different API, and whether the current layer has enough context to handle it meaningfully; propagate errors through layers that cannot recover or report with useful context
 - for C++, treat recoverable I/O, network, and external API failures as explicit typed return outcomes; mark caller-handled non-void results `[[nodiscard]]`; keep diagnostics separate from error semantics; catch exceptions at C/ABI/thread/cleanup boundaries
 - document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
 - keep functions and methods at or below 80 lines where practical; never create or leave a modified function over 100 lines
-- cover public API paths, distinct failure modes, edge cases, and behavioral correctness scenarios with concrete tests
+- before writing a non-trivial helper or abstraction, search the project and language ecosystem for an existing equivalent; when extracting a helper, migrate inline equivalents within the same package
+- cover public API paths, distinct failure modes, edge cases, behavioral correctness scenarios, and every distinct unsafe input category behind validation guards with concrete tests
 - when a review finding identifies incorrect runtime behavior, include a `Required test:` line describing what input or precondition triggers the bug and what outcome the test asserts
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
+
+## Specification-Driven Implementation
+
+When a specification, design document, ticket, or implementation context is provided:
+- treat explicit requirements and constraints as binding unless they conflict with repository facts or safety constraints
+- map each requirement to the code path, test, or verification step that satisfies it
+- keep implementation scope aligned with the specification; do not add unrelated behavior or broad refactors
+- preserve existing project patterns unless the specification explicitly requires a different approach
+- ask for clarification only when a missing or contradictory requirement blocks a safe implementation; otherwise make the smallest defensible assumption and report it
+- if implementation reality requires deviating from the specification, stop and call out the discrepancy before finalizing
+- before finalizing, verify that every requirement and constraint is implemented, tested where practical, or explicitly reported as not covered
 
 ## Review Routing
 
@@ -76,7 +91,8 @@ Before finalizing implementation work, actively verify:
 2. tests exercise concrete behavior and would fail for the intended bug, not merely check existence or call counts
 3. the implementation matches the approved design or stated scope
 4. no obvious security issue is introduced, including unsafe input handling or secret exposure
-5. formatting, linting, and available tests have been run or the reason they could not be run is reported
+5. every field, member, parameter, or named constant added by the change has a production read-site beyond construction or initialization, unless an explicit compatibility or future-contract reason is documented
+6. formatting, linting, and available tests have been run or the reason they could not be run is reported
 
 ## Comment And Review Hygiene
 
@@ -106,5 +122,8 @@ Every linter or static-analysis suppression must include a concrete reason. Pref
 - For workflow docs, ensure request fields, templates, and examples stay aligned.
 - For code changes, apply the project's formatter and use the project's test and lint tooling when available.
 - Do not accept happy-path-only tests for code paths that can fail; missing failure-scenario coverage is a correctness gap.
+- Do not accept validation tests that cover only one unsafe representative when a guard has multiple distinct unsafe input categories.
 - Do not rely on vacuous assertions such as non-null checks, existence checks, or call counts without verifying concrete behavior.
+- Do not introduce helpers before checking project and ecosystem equivalents; when extracting a helper, remove same-package inline duplicates.
+- Do not leave written-but-never-read fields, members, parameters, or constants without an explicit compatibility or future-contract reason.
 - Do not leave comments, docstrings, or test names that refer to review findings, gap numbers, fix rounds, or review history.

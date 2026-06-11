@@ -354,6 +354,8 @@ main() {
             'agents/**'
             'commands/'
             'commands/**'
+            'templates/'
+            'templates/**'
             'skills/'
             'skills/**'
         )

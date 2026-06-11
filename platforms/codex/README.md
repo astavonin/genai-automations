@@ -1,6 +1,6 @@
 # Codex Configuration Backup
 
-Backup of the tracked Codex configuration for architecture/design work plus implementation support in **C++**, **Python**, and **Go**.
+Backup of the tracked Codex configuration for architecture/design work plus primary implementation execution for approved specifications in **C++**, **Python**, and **Go**.
 
 ## Scope
 
@@ -9,6 +9,7 @@ This tracked backup currently includes:
 - architecture review
 - language guidance for C++, Python, and Go
 - shared coding guidance for testing and code quality
+- specification-driven implementation execution
 - code-review support through language, testing, and code-quality checklists
 
 It does not attempt to restore the full Claude-side surface area.

@@ -31,6 +31,7 @@ Every public function or method that can fail must have at least one test per di
 - dependency or resource errors, such as network failure, unavailable database, or missing file
 - boundary violations, such as empty collection, max size exceeded, or zero divisor
 - concurrent or ordering violations, where applicable
+- input guard completeness: for every allowlist, blocklist, or range check, enumerate each distinct unsafe input category and write a negative test for each category, not just one representative value
 
 A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 

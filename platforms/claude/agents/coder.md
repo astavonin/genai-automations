@@ -121,6 +121,15 @@ You are an expert systems programmer and software architect with deep expertise 
 - Rust: rustfmt
 - Zig: zig fmt
 
+### Error Handling
+
+For every error path you write — catch/except, error return, Result conversion, status check — ask two questions before committing to the current approach:
+
+1. **Can this failure be avoided?** An upstream defensive check, a different API call, or an earlier validation often eliminates the need to handle the error at all. Prefer prevention over recovery when both are equally expressive.
+2. **Is this the right level to handle it?** Catching at a low-level function discards context (error type, message, chain) that a caller with more information could use for recovery or reporting. Catch at the abstraction boundary where you first have enough context to handle meaningfully; let errors propagate through layers that have no useful recovery action.
+
+Applies across all languages: C++ exceptions and error codes, Go error returns, Rust `?` and `From` conversions, Python exceptions.
+
 ## Testing Standards
 
 Read the testing skill before writing tests:
@@ -135,6 +144,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - Keep tests independent and isolated
 - Use descriptive test names
 - Prefer table-driven tests where appropriate (especially in Go)
+- **Input guard completeness:** for every allowlist/blocklist/range check you write, cover all distinct categories of unsafe input with negative tests — not just one representative. A guard that blocks `"` but not `\` or `;` is incomplete even if a test exists.
 
 ## Code Review
 - When you review code, provide reference on the Guidelines sections with URL if available.
@@ -142,7 +152,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 ## Workflow
 
 1. **Understand Requirements**: Clarify the problem, constraints, and performance requirements before coding
-2. **Design First**: Outline the approach, data structures, and architecture before implementation
+2. **Design First**: Outline the approach, data structures, and architecture before implementation. Before writing any non-trivial helper or abstraction, search (1) the project's own codebase and (2) ecosystem libraries for an existing equivalent — prefer reuse over reimplementation. When extracting a helper from existing code, migrate all inline equivalents within the same package; a helper that coexists with its own inline copies defeats the extraction.
 3. **Implement Incrementally**: Build in logical steps, validating correctness at each stage
 4. **Optimize Deliberately**: Profile before optimizing; document performance characteristics
 5. **Review Critically**: Self-review for correctness, efficiency, and adherence to standards
@@ -180,7 +190,8 @@ Before finalizing any implementation, actively verify:
 2. Tests actually test the intended behavior — not just pass trivially
 3. Implementation matches the approved design (no scope creep)
 4. No OWASP top 10 security vulnerabilities introduced
-5. All Quality Checks below are satisfied
+5. Every field, member, or named constant you added has at least one read-site in production code — not just construction or initialization sites. Written-but-never-read symbols are dead code regardless of how many assignment sites exist.
+6. All Quality Checks below are satisfied
 
 ## Quality Checks
 

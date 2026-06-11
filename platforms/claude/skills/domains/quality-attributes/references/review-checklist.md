@@ -49,12 +49,14 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Edge cases identified
 - [ ] Resource management approach clear
 - [ ] Thread safety considered (if applicable)
+- [ ] Error handling level justified — for each error path, can the failure be prevented by an earlier check or a different API call? If not, is catching at this abstraction level correct, or does the error contain context a higher layer needs? Applies to all languages: C++ exceptions/error codes, Go error returns, Rust Result conversions, Python exceptions.
 
 #### Security
 - [ ] Input validation planned
 - [ ] No injection vulnerabilities
 - [ ] Secrets handling secure
 - [ ] Authentication/authorization appropriate
+- [ ] Validation guards identify all distinct unsafe input categories — not just the most obvious one; the full set of dangerous inputs should be documented at design time
 
 #### Observability
 - [ ] Logging strategy defined
@@ -67,6 +69,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Not over-engineered
 - [ ] Aligns with existing architecture
 - [ ] Trade-offs clearly understood
+- [ ] No equivalent helper or abstraction already exists in the project or ecosystem — search before proposing something new
 
 ### Documentation
 - [ ] Design rationale clear
@@ -135,6 +138,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Resource cleanup (RAII, defer, etc.)
 - [ ] Thread safety correct (if applicable)
 - [ ] No undefined behavior
+- [ ] Error handling level correct — for each catch/except/error-return/Result conversion site: (1) could this failure be prevented by an earlier check or a different API? (2) does catching here discard context (error type, message, chain) that a higher layer needs for recovery or reporting? Flag handling that answers yes to either as a design concern. Applies across all languages.
 
 **Rust — Borrow Checker Effectiveness (applies to all Rust reviews):**
 - [ ] **No expensive resource recreated per call** — check hot paths (loops, per-frame, per-request) for patterns where a stream, connection, buffer, or file handle is created and immediately dropped. This is the primary symptom of a missing scoped guard. Flag as `High` if the recreation defeats a streaming/pooling architecture.
@@ -156,6 +160,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Secrets not hardcoded
 - [ ] Authentication/authorization correct
 - [ ] Dependencies from trusted sources
+- [ ] Input guard completeness — for every allowlist/blocklist/range check, enumerate all distinct categories of unsafe input (not just the tested ones); verify each category has a corresponding negative test. A guard that blocks `"` but not `\` or `;` is incomplete even if a test exists.
 
 #### Observability
 - [ ] Key operations logged
@@ -200,6 +205,25 @@ This is a dedicated enumeration pass. Whenever a change touches a shared contrac
 
 **Reporting:** Cite every mismatch with all affected file locations. Do not summarize as "flags are inconsistent" — name each site and the specific difference.
 
+### Dead Symbol Pass (mandatory — runs after Cross-Site Consistency Pass)
+
+For every field, member, constant, or parameter **introduced or modified** by the diff, verify at least one read-site exists outside the file that defines it (test fixtures that only construct the type do not count as read-sites).
+
+**Step 1 — Identify candidates:** List every struct/dataclass field, class member, named constant, and non-local variable written or initialized by the diff.
+
+**Step 2 — For each candidate, search read-sites:**
+- Does any production code read this symbol (not just write or initialize it)?
+- If the only references are construction sites (`Scenario(requires_host_ip=True)`) with no corresponding consumer, the symbol is written-but-never-read.
+- A symbol set in every constructor and read in zero execution paths is dead regardless of how many assignment sites exist.
+
+**Step 3 — Flag dead symbols:**
+- Written-but-never-read symbol with no planned future consumer: **Major** — delete or document the intent explicitly.
+- Parameter that is always immediately discarded (`del param` / `_ = param`): flag only if the API contract implies the caller should be able to influence behavior via that parameter.
+
+This pass is language-agnostic: applies to C++ struct members, Go struct fields, Rust struct fields, Python dataclass fields, and named constants in any language.
+
+**Reporting:** Cite each dead symbol with its definition site and a grep showing zero production read-sites.
+
 ### Code Standards
 - [ ] Follows project coding style
 - [ ] No magic numbers (use named constants)
@@ -207,7 +231,8 @@ This is a dedicated enumeration pass. Whenever a change touches a shared contrac
 - [ ] Functions/methods are focused and small
 - [ ] No commented-out code
 - [ ] No TODO comments without issue references
-- [ ] **Library reuse:** No reimplementation of functionality already available in the project's common/utility modules or in ecosystem libraries (STL, Boost, OpenSSL, stdlib equivalents per language) — prefer existing, battle-tested code over custom implementations
+- [ ] **Library reuse — search before writing:** Before introducing a new helper, verify no equivalent exists in (1) the project's own common/utility modules and (2) ecosystem libraries (STL, Boost, OpenSSL, stdlib equivalents per language). Both directions must be checked — the project-internal search is as important as the ecosystem search.
+- [ ] **Helper adoption — search after promoting:** When a new helper or abstraction is introduced or extracted in this diff, verify there are no surviving inline equivalents within the same package. A helper that coexists with inline copies of itself defeats the extraction.
 - [ ] **Common library promotion:** If any new class/function is domain-neutral, self-contained, and would benefit ≥2 other subprojects, note it as a promotion candidate — only when genuinely warranted, never as a template placeholder
 
 ### Testing
