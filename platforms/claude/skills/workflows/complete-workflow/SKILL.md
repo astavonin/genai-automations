@@ -87,7 +87,7 @@ Investigate existing codebase patterns, architecture, integration points.
 
 **Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 7 sections required. Sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
-After writing, ask the user if they want to `open <path>` the design file.
+After writing: print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs accepted — conversational output only, not written to any file), then ask the user if they want to `open <path>` the design file.
 
 ### Phase 3: Design Review (CHECKPOINT)
 **Command:** `/review-design`

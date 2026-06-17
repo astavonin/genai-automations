@@ -97,7 +97,9 @@ The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` fo
 - Trade-offs and alternatives
 - Open questions
 
-**After writing:** Ask the user if they want to `open <path>` the design file.
+**After writing:**
+1. Print a short summary in the conversation — 3–6 bullet points covering: chosen approach, key architectural decisions with rationale, significant trade-offs accepted. This is conversational output only; do not write it to any file.
+2. Ask the user if they want to `open <path>` the design file.
 
 **Planning checkpoint** (`new_phase = design 📝`, `progress_line = - design complete — design.md written, awaiting review`, `escalation = standard`; if the issue is not yet in the Active section, add a minimal entry first):
 ```

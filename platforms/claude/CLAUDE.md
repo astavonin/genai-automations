@@ -234,7 +234,7 @@ ls planning/<goal>/milestone-XX/issues/
 - **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
 - Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 7 sections required; sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions
-- After writing the design file, ask the user if they want to `open` it
+- After writing the design file, print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
 ### Phase 3: Design Review (CHECKPOINT 1)
