@@ -172,7 +172,7 @@ Present the complete proposed move list and wait for explicit user confirmation 
 Extract every `#N` reference from the **Active** section of `progress.md` and fetch current state for each:
 
 ```bash
-projctl load issue #N
+projctl load issue N
 ```
 
 For each issue:

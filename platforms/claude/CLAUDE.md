@@ -132,6 +132,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ## Critical Rules
 
+- **Always use `/ticket` for any issue creation or weight mutation** — never run `projctl create`, `projctl update issue N --weight <value>` (or any weight-field mutation), or write a `tickets.yaml` outside the `/ticket` command workflow. This applies regardless of context: during `/design`, `/start`, `/research`, or any other command. If a user affirms a deferred creation with "ok" or "go ahead" without typing `/ticket`, do not create — respond: "Please invoke `/ticket` to create this issue — estimation and dry-run gates only apply within that command."
 - **After every compaction (auto or manual), run `/refresh` as the first action before responding to the user**
 - **Always propose commit message and wait for explicit approval before committing**
 - **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
@@ -215,8 +216,8 @@ ls planning/<goal>/milestone-XX/issues/
 ```
 
 **Step 2b: Load live ticket and MR states**
-- For every issue in the Active section of `progress.md`: `projctl load issue #N`
-- For every MR marked open/in-review in `progress.md` or `status.md`: `projctl load mr !N`
+- For every issue in the Active section of `progress.md`: `projctl load issue N`
+- For every MR marked open/in-review in `progress.md` or `status.md`: `projctl load mr N`
 - Flag stale entries (merged, closed, label changed) and propose planning file updates; wait for confirmation before writing.
 
 **Step 3: Reverify Knowledge**
@@ -286,7 +287,7 @@ ls planning/<goal>/milestone-XX/issues/
 
 ### Phase 8: Completion
 **Step 0: Refresh live ticket and MR states**
-- Load live state for every active issue and open MR: `projctl load issue #N` / `projctl load mr !N`
+- Load live state for every active issue and open MR: `projctl load issue N` / `projctl load mr N`
 - Incorporate any state changes into the planning update below
 
 **Step 1: Update Planning Files**

@@ -113,7 +113,7 @@ Do not invent new phase labels. If a transition is not listed here, leave the Ph
 1. Read `planning/progress.md`
 2. Read `planning/<goal>/milestone-XX/status.md`
 3. Check `planning/<goal>/milestone-XX/issues/`
-4. Load live state for every active issue and open MR: `projctl load issue #N` / `projctl load mr !N`
+4. Load live state for every active issue and open MR: `projctl load issue N` / `projctl load mr N`
 
 ### Research & Design
 1. Create `issues/<NNN-name>/` directory

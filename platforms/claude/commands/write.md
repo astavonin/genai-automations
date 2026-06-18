@@ -15,9 +15,9 @@ Use the **writer (opus)** agent to research a topic and produce a structured Mar
 
 The user provides a topic or request, e.g.:
 ```
-/write how the Yocto CI cache strategy works
-/write the Anki sync pull handler design
-/write overview of projctl architecture
+/write how the CI caching strategy works
+/write the sync pull handler design
+/write overview of the scheduler architecture
 ```
 
 Optional context the user may provide:

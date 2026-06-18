@@ -26,8 +26,8 @@ Before running this command:
 
 1. **Refresh tracked ticket and MR statuses:**
    - Read `planning/progress.md` and the active `status.md`
-   - For every issue marked active/in-progress, run `projctl load issue #N`
-   - For every MR marked open/in-review, run `projctl load mr !N`
+   - For every issue marked active/in-progress, run `projctl load issue N`
+   - For every MR marked open/in-review, run `projctl load mr N`
    - Flag any that are now merged, closed, or have changed labels
    - Incorporate the live states into the planning update proposed in step 2
 

@@ -58,8 +58,8 @@ Load context from planning files:
 - `planning/<goal>/milestone-XX/issues/` - Per-issue artifact folders
 
 **Step 2b: Load live ticket and MR states**
-- For every active issue: `projctl load issue #N`
-- For every open/in-review MR: `projctl load mr !N`
+- For every active issue: `projctl load issue N`
+- For every open/in-review MR: `projctl load mr N`
 - Flag stale entries and propose updates; wait for confirmation before writing.
 
 **Step 3: Reverify Knowledge**
@@ -165,7 +165,7 @@ Run all checks in this order:
 
 **Step 0: Refresh ticket and MR statuses**
 - Load live state for every active issue and open MR tracked in `progress.md` and `status.md`
-- Use `projctl load issue #N` and `projctl load mr !N`
+- Use `projctl load issue N` and `projctl load mr N`
 - Incorporate any state changes (merged, closed, label changes) into the planning update below
 
 **Step 1: Update Progress Tracking**

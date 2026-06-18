@@ -32,7 +32,109 @@ projctl load epic <epic_id>         # verify epic exists and get its title/descr
 projctl load milestone <milestone_id>  # verify milestone exists
 ```
 
-### 3. Generate YAML
+Then proceed to step 3 — required for every issue, even when epic ID and issue content are fully supplied.
+
+### 3. Estimate Weights
+
+**State all issue estimates upfront — before writing any part of any YAML.** Do not estimate issue 1, write its YAML, then estimate issue 2. All estimates for the batch must appear in the conversation first; then the full YAML is written.
+
+For each issue, state the estimate in the conversation using this exact format:
+
+```
+Weight estimate — "<issue title>":
+  design: Xh  — [specific files/systems to read; specific unknowns to resolve]
+  coding:  Yh  — [what gets implemented — at least one concrete noun]
+  review:  Zh  — [how it will be tested + review overhead]
+  total:   Th  → weight: N
+```
+
+After stating the estimate, **also record it as a YAML comment** immediately above the `weight:` field:
+
+```yaml
+    # weight estimate: design Xh + coding Yh + review Zh = Th → N
+    weight: N
+```
+
+This comment is mandatory. It anchors the estimate to the artifact so it survives session boundaries, compaction, and fresh-session re-use. Step 4 must not be started until every issue's weight field has this comment in place.
+
+This applies to every path that results in an issue being added or weight being changed:
+- New YAML files being created now
+- Existing `tickets.yaml` files the user wants to amend or re-run in any session
+- User-supplied YAML blobs — estimate independently before any `projctl create` call, with or without `--dry-run`; the user cannot waive this by skipping dry-run
+- Follow-up additions after a milestone-only or epic-only first pass
+- Weight corrections via `projctl update issue N --weight`
+
+**Never reason backwards.** Do not pick a weight first and fill in hours to match it. Always estimate design, coding, and review independently, then map the raw total to weight using this table:
+
+| Raw total | Weight |
+|-----------|--------|
+| 1–8h | 8 (minimum floor) |
+| 9–16h | 16 |
+| 17–24h | 24 |
+| 25–32h | 32 |
+| 33h+ | **No weight — apply 40h rule: stop, split or propose epic** |
+
+The `weight:` in YAML must equal the **weight column value**, not the raw total. **`weight: 40` is never a valid output** — the 40h rule means stop and restructure, not assign a weight.
+
+**User-provided weight is not a bypass.** If the user specifies a weight (or supplies a YAML with weights filled in), still state your own independent estimate first. If your estimate differs, flag the discrepancy and let the user decide which value to use.
+
+**Correcting weight on an existing issue** (`projctl update`) is not exempt. State the revised estimate in conversation first. Then: (a) run `projctl update issue N --weight <value>`, and (b) if a `tickets.yaml` for this issue still exists in `planning/`, also update the `# weight estimate:` comment above its `weight:` field to match. If no YAML exists, note the revised breakdown in `planning/progress.md` next to the affected issue reference.
+
+**Phase guidance (LLM-assisted development):**
+
+| Phase | Typical share | What drives the cost |
+|-------|--------------|---------------------|
+| Design | 50% | Reading existing code, resolving unknowns, writing the approach — cannot be skipped |
+| Coding | 20% | LLM generates most code from the design; human reviews and adjusts |
+| Review | 30% | Code review, CI, addressing findings, testing |
+
+**Reference scale:**
+
+| Weight | Meaning | Concrete signals |
+|--------|---------|-----------------|
+| 8 | 1 day | Single file or script, known pattern, no unknowns. Minimum — every ticket has MR/review overhead |
+| 16 | 2 days | 2–4 files, at least one unknown to resolve before coding, unit tests required |
+| 24 | 3 days | Cross-component, non-trivial design question, integration or hardware testing required |
+| 32 | 4 days | Research/architecture ticket — design IS the deliverable; research + doc + review cycle |
+| 40 | **Forbidden** | NEVER write `weight: 40` — see 40h rule |
+
+**Bump rule:** If the ticket targets embedded, device, or CI-on-hardware contexts, add 8h before rounding. When in doubt whether hardware testing applies, apply the bump — it is easier to reduce later than to explain an underestimate.
+
+**40h rule — NEVER create a 40h issue.** If the raw total is 33h or above (see rounding table), stop and do one of:
+1. **Split** into 2–4 smaller issues (each ≤ 24h), each with its own acceptance criteria
+2. **Propose a new epic** if the scope warrants separate tracking, then create issues under it
+
+Always present the split/epic proposal to the user and get confirmation before writing YAML.
+
+**Example estimates:**
+
+```
+Weight estimate — "Shell deploy script":
+  design: 1h  — trivial, no existing system to read
+  coding:  1h  — single script, known pattern
+  review:  2h  — integration test + MR review
+  total:   4h  → weight: 8  (minimum floor)
+
+Weight estimate — "Preferences API endpoint":
+  design: 7h  — read existing API patterns, resolve auth middleware interaction
+  coding:  3h  — new route + validation + DB call
+  review:  6h  — unit tests + integration test + review cycle
+  total:  16h  → weight: 16
+
+Weight estimate — "Persist network configuration across reboots":
+  design: 6h  — read network_init.sh + init system docs + evaluate 3 candidate approaches
+  coding:  3h  — write init script + modify provisioning path
+  review:  5h  — code review + CI
+  total:  14h  + 8h device bump (reboot required to verify) = 22h  → weight: 24
+```
+
+### 4. Generate YAML
+
+**Precondition:** Every issue to be added has (a) a stated estimate block in the conversation and (b) a `# weight estimate:` comment already written into the YAML above its `weight:` field. Do not start this step otherwise.
+
+**Post-write check:** After writing the YAML, scan every `weight:` field in the file. Each must be immediately preceded by a `# weight estimate:` comment. If any are missing, the YAML is invalid — fix before showing to the user.
+
+**User-supplied YAML:** Estimation takes precedence over saving to disk. Do not save the user's YAML to disk before estimation. Estimate all issues first, insert the `# weight estimate:` comments into the content, then save the file.
 
 Save the YAML to `planning/<goal>/milestone-XX-<name>/tickets.yaml`.
 
@@ -60,7 +162,8 @@ epic:
 issues:
   - id: "task-1"          # optional YAML-local ID for dependency tracking
     title: "Issue Title"
-    weight: 8               # REQUIRED — hours; minimum 8 (one day); see weight estimation rules below
+    # weight estimate: design Xh + coding Yh + review Zh = Th → N  (copy from step 3)
+    weight: 8               # REQUIRED — replace 8 with the value from your step 3 estimate; keep the comment above
     description: |
       # Description
       What needs to be done and why.
@@ -82,7 +185,7 @@ issues:
 | `123` | GitLab IID (integer) — existing issue |
 | `"#123"` | GitLab IID (string with `#` prefix) |
 
-### 4. Description Templates
+### 5. Description Templates
 
 **Issue description (required sections):**
 
@@ -126,48 +229,6 @@ Add any references, related issues, or notes.
 - Titles are concise, under 70 characters
 - Avoid implementation details in descriptions — those belong in MR descriptions
 
-### 5. Weight Estimation Rules
-
-`weight` = hours of work. **Minimum is 8 (one full day).** Never use a round placeholder — always reason through the estimate.
-
-**Assume LLM-assisted development.** Design is the dominant cost because it is the primary input driving LLM-assisted coding — the better the design doc, the faster the implementation. Within any impl ticket, time splits roughly as:
-
-| Phase | Share | Rationale |
-|-------|-------|-----------|
-| Design (inline, per-ticket) | 50% | Reading existing code, resolving edge cases, writing the approach — the LLM cannot skip this |
-| Coding | 20% | LLM generates most code from the design; human reviews and adjusts |
-| Review + fixes | 30% | Code review, CI, addressing findings |
-
-**Reference scale:**
-
-| Weight | Meaning | Typical task shape |
-|--------|---------|-------------------|
-| 8 | 1 day | Trivial: script, config, no real design work. Minimum floor — even simple tickets have branch/CI/MR/review overhead |
-| 16 | 2 days | Simple impl: inline design is straightforward, bounded scope, clear acceptance criteria |
-| 24 | 3 days | Standard impl: non-trivial inline design, multiple components, meaningful test coverage |
-| 32 | 4 days | Architecture/high-level design ticket (separate research issue): research + design doc + review cycle |
-| 40 | 1 week | **Stop — see rule below** |
-
-**40h rule — NEVER create a 40h issue.** If your estimate reaches 40h, stop and do one of:
-1. **Split the issue** into 2–4 smaller issues (each ≤ 24h), each with its own acceptance criteria
-2. **Propose a new epic** if the scope is large enough to warrant separate tracking, then create issues under it
-
-Always present the split/epic proposal to the user and get confirmation before writing YAML.
-
-**Estimation checklist — for each issue, ask:**
-1. How complex is the inline design? (reading existing code, resolving unknowns, documenting the approach)
-2. How many distinct components/files need to change?
-3. How much test coverage is expected (unit + integration)?
-4. Are there external dependencies (APIs, schema migrations, config changes)?
-5. Does it require review cycles or coordination?
-
-**Example reasoning:**
-> "Shell script with two subcommands, integration test: design is trivial (~1h), coding ~1h, tests ~2h, review ~1h → ~5h → round up to 8 (minimum floor)."
-
-> "C++ subprocess runner with timeout, SIGTERM passthrough, stderr capture, 15 Catch2 test cases: inline design ~12h (reading fork/execve patterns, edge cases), coding ~5h, review ~7h → 24h."
-
-> "Architecture design ticket (research + design doc + review): research ~8h, writing doc ~8h, review cycle ~8h → 32h (not split — this IS the design phase)."
-
 ### 6. Show YAML for Verification
 
 Display the file:
@@ -197,17 +258,31 @@ Show the created issue/epic/milestone URLs. Ask if the user wants to `open <url>
 
 ## Critical Rules
 
-1. **Ask before generating** — clarify scope if the user's intent is ambiguous
-2. **Load existing tickets first** — always verify referenced epics/milestones exist
-3. **Required sections** — every issue description must have `# Description` and `# Acceptance Criteria`
-4. **YAML file first** — always write `planning/<goal>/milestone-XX-<name>/tickets.yaml` before running any projctl command
-5. **Dry run before create** — always run `--dry-run` and show output; wait for confirmation
-6. **Never guess labels** — use only labels known from config or explicitly provided by the user
-7. **User confirmation required** — do NOT run `projctl create` without explicit approval after dry-run review
+1. **Always use /ticket for issue creation** — never write tickets.yaml or run `projctl create` or `projctl update` (for weight) outside this command's workflow; applies to natural-language requests ("create an issue for X"), side effects during /design or /start, and weight corrections on existing issues
+2. **Ask before generating** — clarify scope if the user's intent is ambiguous
+3. **Load existing tickets first** — always verify referenced epics/milestones exist
+4. **Estimate before generating** — state ALL issue estimates as a batch in the conversation before writing any YAML or running `projctl create`/`projctl update issue N --weight`; applies to: new YAML, existing YAML amendments, user-supplied YAML (estimate before saving to disk), follow-up issues, and weight corrections
+5. **YAML comment mandatory** — every `weight:` field in any written or edited YAML must be immediately preceded by `# weight estimate: design Xh + coding Yh + review Zh = Th → N`; verify after writing; if any are missing, fix before showing to user; when no YAML exists (weight correction via `projctl update`), record the breakdown in `planning/progress.md` instead
+6. **weight: 40 is forbidden** — if raw total reaches 33h+, stop and split or propose epic; never write `weight: 40`
+7. **Required sections** — every issue description must have `# Description` and `# Acceptance Criteria`
+8. **YAML file first** — always write `planning/<goal>/milestone-XX-<name>/tickets.yaml` before running any projctl command; for user-supplied YAML, insert `# weight estimate:` comments before saving to disk
+9. **Dry run before create** — always run `--dry-run` and show output; wait for confirmation
+10. **Never guess labels** — use only labels known from config or explicitly provided by the user
+11. **User confirmation required** — do NOT run `projctl create` without explicit approval after dry-run review
 
 ## Examples
 
+Each example shows the required output: all estimates first (batch upfront), then full YAML with `# weight estimate:` comments.
+
 ### Add issues to existing epic
+
+```
+Weight estimate — "Research caching strategies":
+  design: 5h  — read existing cache layer (cache.go, store.go), evaluate 3 strategies
+  coding:  0h  — research only, no implementation
+  review:  3h  — design doc review cycle
+  total:   8h  → weight: 8
+```
 
 ```yaml
 epic:
@@ -215,7 +290,8 @@ epic:
 
 issues:
   - title: "Research caching strategies"
-    weight: 2
+    # weight estimate: design 5h + coding 0h + review 3h = 8h → 8
+    weight: 8
     description: |
       # Description
       Investigate caching options for the API response layer.
@@ -228,6 +304,20 @@ issues:
 
 ### New epic with issues under existing milestone
 
+```
+Weight estimate — "Preferences API endpoint":
+  design: 7h  — read api/routes.go and middleware/auth.go; resolve session token interaction
+  coding:  3h  — new route handler + validation + DB call
+  review:  6h  — unit tests (happy path + validation errors) + integration test + review cycle
+  total:  16h  → weight: 16
+
+Weight estimate — "Preferences settings page":
+  design: 5h  — read existing page components; resolve state management approach for form
+  coding:  4h  — new page component + form + API client call
+  review:  7h  — unit tests + E2E (submit flow) + review cycle
+  total:  16h  → weight: 16
+```
+
 ```yaml
 epic:
   title: "User Preferences"
@@ -236,7 +326,8 @@ epic:
 issues:
   - id: "prefs-api"
     title: "Preferences API endpoint"
-    weight: 3
+    # weight estimate: design 7h + coding 3h + review 6h = 16h → 16
+    weight: 16
     description: |
       # Description
       Implement REST endpoint for reading and writing user preferences.
@@ -248,7 +339,8 @@ issues:
 
   - id: "prefs-ui"
     title: "Preferences settings page"
-    weight: 2
+    # weight estimate: design 5h + coding 4h + review 7h = 16h → 16
+    weight: 16
     description: |
       # Description
       Build the UI page for managing user preferences.
@@ -260,7 +352,46 @@ issues:
     dependencies: ["prefs-api"]
 ```
 
+### Hardware-dependent ticket (device bump)
+
+```
+Weight estimate — "Persist network configuration across reboots":
+  design: 6h  — read network_init.sh + SysV init docs; evaluate 3 candidate approaches
+  coding:  3h  — write init script + modify provisioning path in dev.sh
+  review:  5h  — code review + CI
+  total:  14h  + 8h device bump (reboot required to verify) = 22h  → weight: 24
+```
+
+```yaml
+epic:
+  id: 42
+
+issues:
+  - title: "Persist network configuration across reboots"
+    # weight estimate: design 6h + coding 3h + review 5h = 14h + 8h device bump = 22h → 24
+    weight: 24
+    description: |
+      # Description
+      network_init.sh configures the interface for the current session only;
+      settings do not survive reboot, breaking CI scenarios that reboot the device.
+
+      # Acceptance Criteria
+      - Network configuration written once survives a hard reboot
+      - Interface obtains an address automatically on boot without intervention
+      - CI pipeline passes after device reboot
+    labels: ["type::bug"]
+    assignee: "username"
+```
+
 ### Milestone with epic and issues
+
+```
+Weight estimate — "Email notification sender":
+  design: 7h  — read notifier/sender.go and retry/policy.go; resolve backoff strategy
+  coding:  3h  — sender implementation + retry wrapper
+  review:  6h  — unit tests (send + retry paths) + integration test + review cycle
+  total:  16h  → weight: 16
+```
 
 ```yaml
 milestone:
@@ -273,7 +404,8 @@ epic:
 
 issues:
   - title: "Email notification sender"
-    weight: 3
+    # weight estimate: design 7h + coding 3h + review 6h = 16h → 16
+    weight: 16
     description: |
       # Description
       Implement email delivery for triggered notifications.

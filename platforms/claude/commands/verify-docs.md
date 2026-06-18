@@ -46,13 +46,13 @@ Use **architecture-research-planner agent** to read all modified files together 
 - **Review-process tracking artifacts** — inline `RESOLVED` markers (`**H1 RESOLVED — ...**`, `**L2 RESOLVED**`, `(M3 RESOLVED)`, `— M4 RESOLVED.`, `H6 RESOLVED block`, etc.) anywhere in design or user-facing docs. These are always blockers: resolution is tracked in the review report and review-request doc, not in design content. The architecture-research-planner must strip them when applying fixes.
 
 **Terminology consistency:**
-- Component names used consistently across all files (e.g., "Openpilot Reverter" vs bare "Reverter" in a context where the Yocto Reverter also exists — flag ambiguous unqualified uses)
-- Update mode names consistent (`software-only OTA`, `Yocto-only OTA`, `full firmware OTA`)
-- Field names consistent in exact casing across all docs (`rollback_cause`, `priv_OTA_State`, `DoReboot`, etc.)
+- Component names used consistently across all files (e.g., "Update Manager" vs bare "Manager" in a context where a "Build Manager" also exists — flag ambiguous unqualified uses)
+- Mode/state names consistent across all docs (e.g., `partial-update`, `full-update`, `rollback`)
+- Field names consistent in exact casing across all docs (e.g., `error_code`, `retry_count`, `is_complete`, etc.)
 
 **Cross-reference integrity:**
 - `§N.M` section references that point to renamed or moved sections
-- `verifier-analysis.md §X` / `ota-daemon-design.md §Y` / `docs/OTA.md §Z.W` cross-refs that no longer exist
+- `component-analysis.md §X` / `service-design.md §Y` / `docs/architecture.md §Z.W` cross-refs that no longer exist
 - Finding IDs cited in resolution blocks that don't match the review report (e.g., "resolves C3" when the review labels a different finding as C3)
 
 **Resolved-item consistency:**

@@ -64,8 +64,8 @@ projctl load mr https://gitlab.com/group/project/-/merge_requests/134
    - After loading the primary ticket, inspect the Dependencies section
    - For every blocking/blocked-by issue or MR found, run `projctl load` on each:
      ```bash
-     projctl load issue #N   # for blocking/blocked-by issues
-     projctl load mr !N      # for associated MRs
+     projctl load issue N   # for blocking/blocked-by issues
+     projctl load mr N      # for associated MRs
      ```
    - Include the live state of each dependency in the displayed output
    - Flag any dependency that is unexpectedly closed, merged, or overdue
