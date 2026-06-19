@@ -55,6 +55,10 @@ What problem does this solve? Why now?
 *Derive from the project's `CLAUDE.md`, `README.md`, or existing planning docs. Do not invent steps — only include procedures that are known for this project's device.*
 
 ```bash
+# Build test package (MANDATORY when verification requires a special artifact — OTA image,
+# firmware bundle, test APK, etc.; omit with a one-line note if a standard build suffices)
+<command>
+
 # Deploy to device
 <command>
 

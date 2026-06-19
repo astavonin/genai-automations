@@ -37,9 +37,12 @@ Before Q&A, determine whether the feature's final goal involves execution on a p
 
 - Read the analysis doc and ticket description for signals: deployment targets, hardware references, CI-on-device, boot/init behavior, sensor or network interface access, OTA, embedded runtimes.
 - If on-device execution is the final goal (or a mandatory part of verification), check whether the project documents how to reach the device — look in the project's `CLAUDE.md`, `README.md`, and any existing planning docs.
+- Also determine whether verification requires a special test package (OTA image, firmware bundle, test APK, signed archive, etc.) that must be built before deploying. Look for packaging scripts, build targets, or CI jobs in the project that produce such artifacts.
 
 Record the outcome as one of:
 - **On-device: YES** — feature targets device, project has documented procedures → On-Device Verification section is **MANDATORY** in the design doc
+  - If a special test package is required: **Build test package step is MANDATORY** within that section
+  - If a standard build suffices: omit the build-package step with a one-line note
 - **On-device: YES, procedures unknown** — feature targets device, but no device procedures found in project docs → flag as an open question; do not invent steps
 - **On-device: NO** — feature is software-only → omit the section with a one-line note
 
@@ -94,7 +97,7 @@ Pass to the agent:
 - The DESIGN-TEMPLATE.md structure
 - The goal, milestone, feature context
 - The on-device determination from step 1 — explicitly state one of:
-  - "On-device verification is MANDATORY — include the On-Device Verification block in Section 3 using procedures from [source file]"
+  - "On-device verification is MANDATORY — include the On-Device Verification block in Section 3 using procedures from [source file]; build-test-package step is MANDATORY / not required (standard build suffices)"
   - "On-device scope detected but device procedures are unknown — add an open question in Section 7"
   - "No on-device scope — omit On-Device Verification with a one-line note"
 - For post-review fixes: the review report and the enumerated findings to address
