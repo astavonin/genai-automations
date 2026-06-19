@@ -50,6 +50,24 @@ What problem does this solve? Why now?
 <command>
 ```
 
+**On-Device Verification:** *(MANDATORY when the feature's final goal is on-device execution and the project has documented device procedures; omit with a one-line note otherwise)*
+
+*Derive from the project's `CLAUDE.md`, `README.md`, or existing planning docs. Do not invent steps — only include procedures that are known for this project's device.*
+
+```bash
+# Deploy to device
+<command>
+
+# Verify on device
+<command>
+```
+
+Expected outcome on device:
+- ...
+
+Failure indicators (what to check if verification does not pass):
+- ...
+
 **Context Files:**
 - `path/to/file`
 
