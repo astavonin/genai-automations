@@ -19,6 +19,7 @@ Read ~/.claude/skills/workflows/planning/SKILL.md
 Before running this command:
 - ✅ Code review approved
 - ✅ All verification checks passed
+- ✅ On-device verification: either passed locally, or explicitly deferred with a CI-coverage statement (from /verify Step 7c)
 - ✅ User confirms issue is complete
 - ✅ User handled git commits (Phase 7)
 
@@ -29,6 +30,7 @@ Before running this command:
    - For every issue marked active/in-progress, run `projctl load issue N`
    - For every MR marked open/in-review, run `projctl load mr N`
    - Flag any that are now merged, closed, or have changed labels
+   - Check whether /verify Step 7c left an on-device verification pending for the active issue (look for "On-device verification pending" in the /verify output or a corresponding note in the issue folder). If found, surface it explicitly: "On-device verification is still pending for this issue — run `<entry-point>` on a device or confirm CI covers it before closing." Require explicit user acknowledgement before proceeding to step 2.
    - Incorporate the live states into the planning update proposed in step 2
 
 2. **Propose update to progress.md:**

@@ -86,6 +86,7 @@ Additional cross-cutting checks applied by all agents:
 - **Minimality:** Public API surface is no larger than required — flag multiple methods that share the same underlying resource, preconditions, and side effects where a single call with a discriminated return type would eliminate the risk of a caller silently skipping an action type
 - **Design adherence:** Matches approved design
 - **Standards compliance:** Coding standards and static analysis per language guidelines
+- **On-Device Verification entry point:** Read `analysis.md` under `## On-Device Scope`. If on-device scope is YES, verify the entry-point script or Makefile target exists on disk regardless of whether the design doc contains an On-Device Verification section. If the design doc section is absent but on-device scope is YES, flag that absence as a Critical finding for design adherence. If the `**Entry point:**` field contains a template placeholder (e.g., `<script-or-make-target>` copied verbatim from the template), flag as High immediately — do not attempt a disk existence check on a placeholder value. If the entry-point was listed as a deliverable, verify it is implemented and covers the documented build/deploy/verify steps, and that it reflects the expected outcomes and failure indicators from the design doc. Flag as High if the entry-point is missing or incomplete; flag as Critical if the design doc section is absent despite confirmed on-device scope.
 
 ## Behavioral Bug Test Requirement
 

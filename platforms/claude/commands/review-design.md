@@ -72,6 +72,11 @@ This is a **design review**, not a code review. Reviewers must stay at the archi
 - Design decisions that commit to a performance-hostile approach without documenting the trade-off
 - Security or safety gaps at the architecture level (e.g. "auth is never checked on inbound messages")
 - Concepts named but never defined (e.g. a field appears in a diagram but has no explanation)
+- On-Device Verification section absent when the feature's on-device scope is YES (as recorded in `analysis.md ## On-Device Scope`) — flag as Critical
+- On-Device Verification section present but entry point missing, unnamed, or set to a template placeholder (e.g. `<script-or-make-target>` copied verbatim from the template) — flag as High; without a real entry point neither humans nor CI can invoke the tests
+- On-Device Verification section present but steps are not derived from project documentation (invented steps, no source cited) — flag as High
+- On-Device Verification section present but entry point is neither confirmed to exist in the repo nor listed as a deliverable of this feature — flag as High
+- On-Device Verification section present but expected outcome or failure indicators are undefined — flag as High
 
 **Do NOT flag (implementation-level — out of scope for design review):**
 - Specific language constructs (`[[nodiscard]]`, `mutable`, `noexcept`, `static_assert`, etc.)
@@ -94,6 +99,7 @@ Each of the 3 agents evaluates these design-level attributes:
 - **Safety/Security:** No structural gap that guarantees a safety or security violation regardless of implementation
 - **Extendability:** Component boundaries allow future change without redesign
 - **Minimality:** Flag public interfaces where multiple methods share the same read target, preconditions, and side effects but could be expressed as a single call with a discriminated return type. Separate methods over a shared resource risk silently skipping an action type on a given call site; a unified call enforces exhaustive handling at the type level.
+- **On-Device Verification (always — check `analysis.md ## On-Device Scope`; if on-device scope is YES and the section is absent from the design doc, flag as Critical; if the section is present, verify: entry point is named (`**Entry point:**` field populated and not a template placeholder such as `<script-or-make-target>`), steps are derived from project documentation not invented, entry point either already exists in the repo or is explicitly listed as a deliverable of this feature, expected outcome and failure indicators are defined).**
 
 ## Output Format
 

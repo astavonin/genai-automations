@@ -50,9 +50,11 @@ What problem does this solve? Why now?
 <command>
 ```
 
-**On-Device Verification:** *(MANDATORY when the feature's final goal is on-device execution and the project has documented device procedures; omit with a one-line note otherwise)*
+**On-Device Verification:** *(MANDATORY when the feature's final goal is on-device execution and the project has documented device procedures; omit with a one-line note containing the explicit tag `on-device scope: NO` otherwise — e.g., "On-Device Verification: N/A — feature is software-only (on-device scope: NO)." A note without this tag is treated as ambiguous by the reviewer.)*
 
 *Derive from the project's `CLAUDE.md`, `README.md`, or existing planning docs. Do not invent steps — only include procedures that are known for this project's device.*
+
+**Entry point:** `<script-or-make-target>` — the single command humans and CI invoke (e.g. `make verify-device`, `scripts/verify-device.sh`, `./dev.sh test-device`). Must already exist in the repo or be listed as a deliverable of this feature.
 
 ```bash
 # Build test package (MANDATORY when verification requires a special artifact — OTA image,
@@ -71,6 +73,8 @@ Expected outcome on device:
 
 Failure indicators (what to check if verification does not pass):
 - ...
+
+**CI integration:** *(how CI triggers on-device verification when no local device is available — e.g., `DEVICE_IP` env var, a runner label/tag, a dedicated CI job name, or a webhook trigger. Omit with a one-line note if CI device testing is not configured for this project.)*
 
 **Context Files:**
 - `path/to/file`

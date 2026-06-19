@@ -45,9 +45,16 @@ test "$REVIEW" -nt "$DESIGN" || test "$REVIEW" -ef "$DESIGN"
 # d) status marker is exactly APPROVED
 DESIGN_STATE=$(head -20 "$REVIEW" | grep -m 1 '^\*\*Status:\*\*' | sed 's/^\*\*Status:\*\* //')
 [ "$DESIGN_STATE" = "APPROVED" ]
+# e) no unresolved on-device open questions in design doc Section 7
+# If analysis.md '## On-Device Scope' is YES or YES-UNKNOWN, verify that Section 7
+# of design.md contains no open (unchecked) items mentioning on-device scope:
+ANALYSIS="planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md"
+if grep -q '## On-Device Scope' "$ANALYSIS" 2>/dev/null && grep -A1 '## On-Device Scope' "$ANALYSIS" | grep -qiE '^(YES|YES-UNKNOWN)'; then
+    ! grep -iE 'on-device verification|device procedures' "$DESIGN" | grep -q '^\- \[ \]'
+fi
 ```
 
-All four sub-conditions must pass. If any fail, precondition 1 fails.
+All five sub-conditions must pass. If any fail, precondition 1 fails. For sub-condition (e), a matching unchecked item causes the gate to log `precondition-1-failed:unresolved-ondevice-open-question` and surface a warning directing the user to resolve the on-device scope open question before implementing.
 
 **Precondition 2 — no open code-review cycle:**
 
@@ -88,7 +95,7 @@ fi
   ```
   <ISO-8601 timestamp> /implement implement-begin SKIPPED <failing-precondition>
   ```
-  Where `<failing-precondition>` is one of: `precondition-1-failed:design-missing`, `precondition-1-failed:review-missing`, `precondition-1-failed:mtime-order`, `precondition-1-failed:status-not-APPROVED`, `precondition-2-failed:CHANGES_REQUESTED`, `precondition-2-failed:REJECTED`.
+  Where `<failing-precondition>` is one of: `precondition-1-failed:design-missing`, `precondition-1-failed:review-missing`, `precondition-1-failed:mtime-order`, `precondition-1-failed:status-not-APPROVED`, `precondition-1-failed:unresolved-ondevice-open-question`, `precondition-2-failed:CHANGES_REQUESTED`, `precondition-2-failed:REJECTED`.
 - Surface warning:
   ```
   ⚠️  workflow-safety: compaction skipped at /implement
@@ -110,6 +117,14 @@ fi
 
 1. Select appropriate agent based on task type
 2. Write code following approved design
+2a. **Check for on-device entry point deliverable:** First read `analysis.md ## On-Device Scope`. If scope is YES or YES-UNKNOWN, verify the design doc contains an `**Entry point:**` line — if it does not, abort with a workflow-safety warning: "On-device scope is YES but design doc is missing the On-Device Verification section; resolve before implementing." If the section is present, check whether the named script or Makefile target exists on disk:
+   ```bash
+   # Example (non-exhaustive — adapt to the entry point form named in the design doc):
+   test -f scripts/verify-device.sh \
+     || grep -q 'verify-device' Makefile \
+     || grep -qE 'test-device|verify-device' dev.sh
+   ```
+   If it does not exist on disk, creating that entry point is a **mandatory deliverable** of this implementation. Pass the On-Device Verification excerpt from the design doc to the coder agent with explicit instruction to implement the entry point covering the documented build/deploy/verify steps. Do not skip or defer this — omitting it will be caught as High in `/review-code`.
 3. Include comprehensive unit tests (mandatory):
    - Cover all public API paths
    - Cover edge cases: empty input, null/None, boundary values, error paths

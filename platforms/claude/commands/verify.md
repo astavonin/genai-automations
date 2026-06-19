@@ -110,6 +110,26 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    - Check existing functionality still works
    - Verify no breaking changes
 
+7. **On-device verification:**
+
+   **Step 7-pre — Determine scope from analysis.md:**
+   Read `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` and check the `## On-Device Scope` recorded there (values: `YES`, `YES, procedures unknown`, or `NO`).
+   - If scope is `NO`: skip Steps 7a–7c entirely with a one-line note.
+   - If scope is `YES` or `YES, procedures unknown`: continue to Step 7a — do NOT skip even if the design doc's On-Device Verification section is absent. A missing section when scope is `YES` is a gap that must be surfaced, not silently skipped.
+   - If `analysis.md` does not exist or contains no `## On-Device Scope` entry: treat scope as unknown and continue to Step 7a.
+
+   **Step 7a — Locate entry point:**
+   Check the active issue's design doc for an `**Entry point:**` line. If the design doc has an On-Device Verification section but no `**Entry point:**` line, or if the On-Device Verification section is absent entirely when scope is `YES`, surface an error: "On-device scope is YES but the design doc is missing the On-Device Verification section or Entry point — cannot determine entry point. Resolve before proceeding." Do not attempt to find an entry point from project files; this is a gate failure that should have been caught at `/review-design`.
+
+   **Step 7b — Run verification:**
+   If an entry point is found and a device is reachable, invoke it:
+   ```bash
+   <entry-point>   # e.g. make verify-device, scripts/verify-device.sh, ./dev.sh test-device
+   ```
+
+   **Step 7c — Device unavailable locally:**
+   If no device is connected, flag explicitly: "On-device verification pending — run `<entry-point>` before merge. CI must cover it via the CI trigger defined in the design doc's On-Device Verification block (e.g., `DEVICE_IP` env var, runner label, or equivalent)." Treat verification as incomplete — do not update planning state and do not proceed to `/complete` until CI evidence of a passing device run is produced and recorded in the issue folder (e.g., a CI log link in a `device-verification.md` file). This is a blocker, not an advisory.
+
 ## Requirements
 
 - ✅ Linters discovered and available (MANDATORY - ask user if missing)
@@ -120,6 +140,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - ✅ Zero static analysis errors
 - ✅ No breaking changes (or properly documented)
 - ✅ Build passes
+- ✅ On-device verification passed, or explicitly deferred with a CI-coverage statement if no device is available locally
 
 ## Failure Handling
 
@@ -128,8 +149,9 @@ If any check fails:
 2. **Clangd findings:** Fix missing implementations or logic bugs before running tests
 3. **Test failures:** Debug and fix the failing tests
 4. **Static analysis issues:** Address security or code quality concerns
-5. Re-run verification from step 1 (linters)
-6. Do NOT proceed to completion until all checks pass
+5. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
+6. Re-run verification from step 1 (linters)
+7. Do NOT proceed to completion until all checks pass
 
 ## Execution Order is Critical
 
