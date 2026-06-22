@@ -1,33 +1,48 @@
 ---
 name: review-iterate
-description: Iterate on CHANGES REQUESTED findings with per-finding scoped fix verification, then run one final full re-review and stop
+description: Run initial review, iterate on findings with per-finding scoped fix verification, then run one final full re-review and stop
 ---
 
 # Review Iterate Command
 
-Address all open findings from a prior review one by one with scoped verification per finding, then run a single final full re-review. After the final re-review, report and stop — do not start a new loop automatically.
+Run the initial review to find all defects, fix them one by one with scoped per-finding verification, then run a single final full re-review. After the final re-review, report and stop — do not start a new loop automatically.
 
 ## Purpose
 
-Separates two concerns that re-running `/review-code` conflates:
+Separates three concerns that ad-hoc re-running `/review-code` conflates:
 
-1. **Fix-verify loop** — for each prior finding, verify the fix in isolation; the scope is that finding and the changed lines only, not the full codebase
-2. **Final sweep** — one complete re-review after all findings are addressed, to catch regressions introduced by the fixes
+1. **Initial review** — one full consensus review to establish the complete defect baseline
+2. **Fix-verify loop** — for each finding, verify the fix in isolation; scope is that finding and the changed lines only, not the full codebase
+3. **Final sweep** — one complete re-review after all findings are addressed, to catch regressions introduced by the fixes
 
 ## Agents
 
 - **coder** (sonnet) — apply fixes when agent-driven
-- **reviewer** (opus) — per-finding scoped verification (single agent, not consensus) + final re-review (full protocol)
+- **reviewer** (opus) — initial review (full protocol) + per-finding scoped verification (single agent) + final re-review (full protocol)
 
 ## Prerequisite
 
-A review file must exist with status `CHANGES REQUESTED` or `REJECTED`:
-- Code review: `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`
-- Design review: `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`
+Determine review type from context:
+- Code review: implementation exists on branch, or `code-review.md` already exists with `CHANGES REQUESTED`
+- Design review: design doc exists, or `design-review.md` already exists with `CHANGES REQUESTED`
 
-If both exist with open status, ask the user which to iterate on. If neither exists or both are `APPROVED`, report and stop.
+If a review file already exists with `CHANGES REQUESTED` or `REJECTED`, skip Step 0 and start from Step 1 (re-entering the loop on an in-progress review). If the review file is `APPROVED`, report and stop — nothing to do.
+
+If both review files exist with open status, ask the user which to iterate on.
 
 ## Actions
+
+### Step 0: Initial review
+
+Declare: "I'll use reviewer agent for the initial review..."
+
+Run the **complete review protocol** for the appropriate type:
+- Code review: follow `/review-code` exactly — full 3+1 consensus + Codex, all mandatory passes, writes `code-review.md`
+- Design review: follow `/review-design` exactly — full 3+1 consensus + Codex, writes `design-review.md`
+
+If the result is `APPROVED`: update planning state per the invoked command, report `Initial review: APPROVED — no findings`, and stop. No fix loop needed.
+
+If the result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 1.
 
 ### Step 1: Load open findings
 
