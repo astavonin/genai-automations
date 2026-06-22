@@ -48,7 +48,9 @@ Invoke **coder agent** with:
 - The full list of findings selected above
 - The full design doc if one exists (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`)
 - The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`)
-- Instruction: fix all listed findings in one pass; flag explicitly any finding that cannot be addressed
+- Instruction: fix all listed findings in one pass; for any finding whose `fix:` field contains a `Required test:` line, implementing that test is mandatory as part of the fix; flag explicitly any finding that cannot be addressed
+
+**If the coder agent flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 
 **After the coder agent completes, verify the build.** Read the project's build command from its `CLAUDE.md`, `README.md`, or `dev.sh`, then run it.
 
@@ -73,7 +75,7 @@ Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-code` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `code-review.md`.
 
-If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: report to the user and stop:
+If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: push planning to backup (to preserve the review file), then report to the user and stop:
 ```
 Final clean review: CHANGES REQUESTED — N finding(s).
 The fix loop converged but the clean pass found new issues. Review the findings and invoke /review-code-fix-loop again to address them.

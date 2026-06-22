@@ -10,7 +10,7 @@ Run the full design review cycle autonomously: initial review → fix all findin
 ## Agents
 
 - **reviewer** (opus) — all review passes (full 3+1 consensus protocol each time)
-- **architecture-research-planner** (opus) — fix all findings between review passes (design doc edits must always go through this agent — never use Write/Edit tools directly on design docs)
+- **architecture-research-planner** (opus) — all substantive design doc edits (content, structure, sections) must go through this agent; the only exception is the one-line `**Status:**` header update, which uses the Edit tool directly (same as `/review-design` Step 6)
 
 ## Prerequisite
 
@@ -35,7 +35,7 @@ Declare: "I'll use reviewer agent for the initial design review..."
 
 Follow `/review-design` with the deviations listed above. Writes `design-review.md`.
 
-If result is `APPROVED`: update design doc status header (`**Status:** Draft → **Status:** Approved`), then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
+If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
 
 If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Do not update the design doc status header. Reset iteration counter to 0.
 
@@ -50,6 +50,8 @@ Invoke **architecture-research-planner agent** with:
 - The analysis doc (`analysis.md`) if it exists — for original decision context
 - The full list of findings selected above
 - Instruction: apply all fixes to `design.md` in one pass; stay at the architectural level; validate any Mermaid diagrams that are added or modified; do not insert RESOLVED markers or finding IDs into the design doc; flag explicitly any finding that cannot be addressed
+
+**If the architecture-research-planner flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 
 **After the agent completes, run `/verify-docs`** on the modified design doc:
 - If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles; if blockers persist after 2 cycles, surface a blocker: "Consistency blockers remain after 2 fix attempts — manual intervention needed." Pause and wait for user.
@@ -73,13 +75,13 @@ Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-design` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `design-review.md`.
 
-If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: report to the user and stop:
+If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: push planning to backup (to preserve the review file), then report to the user and stop:
 ```
 Final clean review: CHANGES REQUESTED — N finding(s).
 The fix loop converged but the clean pass found new issues. Review the findings and invoke /review-design-fix-loop again to address them.
 ```
 
-If `APPROVED`: update design doc status header: `**Status:** Draft → **Status:** Approved`.
+If `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc.
 
 ### Step 5: Report and stop
 
