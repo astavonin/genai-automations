@@ -40,10 +40,13 @@ projctl load milestone https://gitlab.com/group/project/-/milestones/123
 
 ### Load Merge Request
 ```bash
-projctl load mr 134
-projctl load mr "!134"      # prefixed form also accepted
+projctl load mr 134                # MR metadata only
+projctl load mr 134 --comments     # MR metadata + all comments and review notes
+projctl load mr "!134"             # prefixed form also accepted
 projctl load mr https://gitlab.com/group/project/-/merge_requests/134
 ```
+
+When the user asks to "load comments", "show review notes", "what do people think", or any phrasing that refers to MR discussion, always add `--comments`. Without it, comments are not included in the output.
 
 ## Actions
 
@@ -161,6 +164,10 @@ github:
 - If ticket not found: show clear error message
 - If tool not available: suggest installation
 - If config missing: show configuration requirements
+
+## Discovery Rule
+
+If projctl output appears to be missing something the user asked for (e.g. comments, a field, a subcommand), run `projctl load --help` or `projctl load <type> <id> --help` **before** trying any non-projctl alternative (`gh api`, `glab`, raw HTTP). The feature almost certainly exists as a flag. Never bypass projctl without first checking its help output.
 
 ## Platform Support
 
