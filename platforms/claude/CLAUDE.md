@@ -108,7 +108,8 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/load` - Load ticket information (issue/epic/milestone) via projctl
 - `/ticket` - Create milestones, epics, and/or issues as YAML for `projctl create`
 - `/review-mr` - Review an MR and generate YAML findings for `projctl comment`
-- `/review-iterate` - Full review cycle: initial review → per-finding fix-verify loop → final full re-review; reports result and stops
+- `/review-code-fix-loop` - Full code review cycle: initial review → fix all findings → re-review until APPROVED → final clean review + report; stops after report
+- `/review-design-fix-loop` - Full design review cycle: initial review → fix all findings → re-review until APPROVED → final clean review + report; stops after report
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
 - `/verify-docs` - Verify design doc integrity and consistency after Q&A resolution or review finding fixes — run before re-review (architecture-research-planner agent)
 - `/write` - Research a topic and produce a structured Markdown draft (writer agent)
