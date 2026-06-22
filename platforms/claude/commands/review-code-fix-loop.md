@@ -16,58 +16,64 @@ Run the full code review cycle autonomously: initial review → fix all findings
 
 Implementation exists on the branch. No existing review file required — this command produces `code-review.md` itself.
 
+## Protocol Deviations
+
+When running any review pass in this command (Steps 1, 3, 4), deviate from the `/review-code` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+
+- **Skip** the planning-update step (Step 5 of this command handles it once at the end)
+- **Skip** the push-planning step (Step 5 handles it)
+- **Skip** the "ask user to open file" step (this command runs autonomously)
+- **Skip** the "block until approved" step (the loop continues without user input)
+- **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `code-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
+
 ## Actions
 
 ### Step 1: Initial review
 
 Declare: "I'll use reviewer agent for the initial code review..."
 
-Follow `/review-code` exactly — full 3+1 consensus + Codex, all mandatory passes (Test Quality, Cross-Site Consistency, Dead Symbol). Writes `code-review.md`.
+Follow `/review-code` with the deviations listed above. Writes `code-review.md`.
 
-If result is `APPROVED`: proceed directly to Step 5 (report and stop). Step 1's output is already a clean report — no final re-review needed.
+If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
 
-If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2.
+If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Reset iteration counter to 0.
 
 ### Step 2: Fix all findings
 
 Declare: "I'll use coder agent to fix all findings from the current review..."
 
-**Which findings to fix:** Fix all Critical and High findings. For Medium and Low: fix those with a concrete `fix:` field in the review; skip advisory-only Medium/Low findings (no actionable code change possible). Do not ask the user — apply this rule consistently.
+**Which findings to fix:** Fix all Critical and High findings. For Medium and Low: fix those with a concrete `fix:` field in the review; skip advisory-only entries. Apply this rule without asking the user.
 
 Invoke **coder agent** with:
 - The full list of findings selected above
 - The full design doc if one exists (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`)
-- The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`) so the agent understands the standards being applied
-- Instruction: fix all listed findings in one pass; do not leave any selected finding unaddressed without flagging it explicitly
+- The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`)
+- Instruction: fix all listed findings in one pass; flag explicitly any finding that cannot be addressed
 
-**After the coder agent completes, verify the build:**
-```
-Read the project's build command from its CLAUDE.md, README.md, or dev.sh
-Run the build command
-```
-If the build fails: invoke coder agent again scoped to the build failure before proceeding to Step 3. Do not re-review with a broken build.
+**After the coder agent completes, verify the build.** Read the project's build command from its `CLAUDE.md`, `README.md`, or `dev.sh`, then run it.
+
+- If the build passes: proceed to Step 3.
+- If the build fails: invoke coder agent again scoped to the build failure only. Cap at 3 consecutive build-fix attempts; if the build still fails after 3 attempts, surface a blocker: "Build failed after 3 fix attempts — manual intervention needed." Pause and wait for user.
 
 ### Step 3: Re-review
 
-Declare: "I'll use reviewer agent for re-review pass N..." (track N starting from 1)
+Increment iteration counter. Declare: "I'll use reviewer agent for re-review pass [N]..."
 
-Follow `/review-code` exactly — same full protocol as Step 1. **Pass the current `code-review.md` as prior review context** so agents can verify prior findings are addressed. Overwrites `code-review.md`.
+Follow `/review-code` with the deviations listed above. **Pass the current `code-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `code-review.md`.
 
 If result is `APPROVED`: proceed to Step 4.
 
-If result is `CHANGES REQUESTED` or `REJECTED`: return to Step 2 with the new finding list.
+If result is `CHANGES REQUESTED` or `REJECTED`: return to Step 2.
 
-**Stall detection:** If the same root-cause area (same file + same component, not same finding ID — IDs reset each pass) appears in 3 consecutive re-review passes without being resolved, surface a blocker to the user and pause: "Finding in [area] has not been resolved after 3 passes — manual intervention needed." Do not continue the loop automatically.
+**Stall detection:** If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
 
 ### Step 4: Final clean review
 
 Declare: "I'll use reviewer agent for the final clean review..."
 
-Run the full `/review-code` protocol one final time. **Critical:** instruct all reviewer agents and Codex to treat this as a fresh review — do NOT read or reference the existing `code-review.md` from prior passes. This pass must be conducted as if no prior review exists, producing a report uncontaminated by prior-finding language.
+Follow `/review-code` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `code-review.md`.
 
-Overwrites `code-review.md` with the final clean report.
-
-If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: report the findings to the user and stop. Do not automatically re-enter the fix loop — output:
+If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: report to the user and stop:
 ```
 Final clean review: CHANGES REQUESTED — N finding(s).
 The fix loop converged but the clean pass found new issues. Review the findings and invoke /review-code-fix-loop again to address them.
@@ -75,7 +81,7 @@ The fix loop converged but the clean pass found new issues. Review the findings 
 
 ### Step 5: Report and stop
 
-Verify the status marker is present in `code-review.md`:
+Verify the status marker:
 ```bash
 head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md | grep -m 1 '^\*\*Status:\*\*'
 ```
@@ -94,8 +100,8 @@ Read ~/.claude/skills/workflows/push-planning/SKILL.md
 Output:
 ```
 Code review loop complete: APPROVED
-Iterations: N  (0 if approved on first pass)
+Iterations: N  (fix+re-review cycles; 0 if approved on first pass)
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md
 ```
 
-Stop. Do not proceed to `/verify` automatically — the user drives the next step.
+Stop. Do not proceed to `/verify` automatically.
