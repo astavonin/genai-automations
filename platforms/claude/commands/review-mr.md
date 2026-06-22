@@ -41,10 +41,10 @@ the MR number explicitly.
 ### Step 2: Load MR Context
 
 ```bash
-projctl load mr <mr_number>
+projctl load mr <mr_number> --comments
 ```
 
-Extract: MR title, source branch, target branch, description, list of changed files.
+Extract: MR title, source branch, target branch, description, list of changed files, and all existing comments (human and automated). Pass existing comments to reviewer agents as context so they avoid duplicating already-raised points and can see what discussion has already happened on the MR.
 
 If load fails (MR does not exist, permissions error, network issue):
 - Report the specific error to the user
