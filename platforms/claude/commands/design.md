@@ -73,7 +73,7 @@ Before spawning the agent, run a clarifying dialog in the main conversation.
 >
 > Which direction?
 
-**Non-blocking:** unanswered questions become open questions in the design doc, not blockers.
+**Assumption vs. open question:** If the user answers "skip" or "your call", pick a reasonable default and log it as an assumption in `analysis.md` — this is NOT an open question and does not block the design. Reserve open questions for things that cannot be resolved with a reasonable assumption (e.g., requires external information or a stakeholder decision not yet made). The design is INCOMPLETE until all open questions are resolved.
 
 ### Step 3: Write clarifications to analysis doc
 
@@ -87,7 +87,7 @@ Options considered: <option A>, <option B>, <option C>.
 **Decision:** <chosen option> — <one-line reason>.
 
 **Q: <question topic>**
-**Decision:** open question — proceeding with assumption: <X>.
+**Decision:** assumption — <X> (user deferred; proceeding with this default).
 ```
 
 ### Step 4: Spawn architecture-research-planner
@@ -106,6 +106,32 @@ Pass to the agent:
 
 The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 7 sections required; sections 6–7 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note.
 
+**Section 7 format rules (mandatory):**
+- The section heading must be exactly `## 7. Open Questions`.
+- Use ONLY unchecked `- [ ] <question>` checkboxes for genuine open questions — those requiring external information or a stakeholder decision not yet made.
+- Items recorded in `analysis.md ## Clarifications` as `**Decision:** assumption — ...` are resolved defaults, NOT open questions. Do not copy them into `## 7. Open Questions`.
+- If there are no open questions, write exactly: `*(None — omit this section or list specific open questions as \`- [ ] <question>\` items)*` and do not include any `- [ ]` checkbox.
+
+### Step 5: Resolve open questions (blocking gate)
+
+After the agent writes the design doc, read Section 7 (Open Questions) of `design.md`.
+
+Apply the detection criteria from `~/.claude/skills/workflows/design-open-questions-gate/SKILL.md` Steps 2–3 to determine whether Section 7 is clean. That fragment is the authoritative definition — do not restate or re-derive the criteria here.
+
+**If the gate criteria report no unresolved items:** the design is complete — proceed to the Output section.
+
+**If the gate criteria report unresolved items:** the design is INCOMPLETE. Do not proceed to `/review-design`. Instead:
+
+Increment the pass counter (starts at 0).
+
+1. For each open question in turn: present it (same dialog format as Step 2 — state the context, offer concrete options), wait for the user's answer (including "accepted as known-unknown"), then immediately append that answer to `analysis.md` under `## Clarifications` (same format as Step 3) before moving to the next question.
+2. After all open questions are answered, re-declare: "I'll use architecture-research-planner agent to update the design document with resolved questions..."
+3. Re-invoke the architecture-research-planner agent with the updated `analysis.md` (including new clarifications) and the instruction to update `design.md`: remove from `## 7. Open Questions` ALL items — both those answered with a decision AND those accepted as known-unknown. Accepted-as-known-unknown questions are tracked in `analysis.md ## Clarifications` only; they must not remain in `design.md` Section 7. Incorporate answered decisions into the relevant design sections. After this pass, `## 7. Open Questions` must contain only the template's "none" note or be absent. Follow the Section 7 format rules above. Overwrite `design.md`.
+4. Run `/verify-docs` on the modified `design.md`. If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface: "Doc consistency blockers remain — manual intervention needed." Pause and wait for user.
+5. Return to the top of Step 5 and check Section 7 again using the gate criteria. Repeat until the gate passes.
+
+**Iteration cap:** If the pass counter reaches 5 without the gate passing, stop and surface: "Design open questions unresolved after 5 passes — manual intervention needed." Pause and wait for user.
+
 ## Output
 
 **File:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
@@ -120,7 +146,7 @@ The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` fo
 - Trade-offs and alternatives
 - Open questions
 
-**After writing:**
+**After writing (only after Step 5 gate passes — all open questions resolved):**
 1. Print a short summary in the conversation — 3–6 bullet points covering: chosen approach, key architectural decisions with rationale, significant trade-offs accepted. This is conversational output only; do not write it to any file.
 2. Ask the user if they want to `open <path>` the design file.
 

@@ -37,7 +37,17 @@
       "WebFetch(domain:gitautoreview.com)",
       "WebFetch(domain:www.arxiv.org)",
       "WebFetch(domain:openreview.net)",
-      "WebFetch(domain:www.researchgate.net)"
+      "WebFetch(domain:www.researchgate.net)",
+      "Bash(cp /home/astavonin/.claude/commands/review-design.md /home/astavonin/projects/genai-automations/platforms/claude/commands/review-design.md)",
+      "Bash(cp /home/astavonin/.claude/commands/review-design-fix-loop.md /home/astavonin/projects/genai-automations/platforms/claude/commands/review-design-fix-loop.md)",
+      "Bash(cp /home/astavonin/.claude/skills/workflows/design-open-questions-gate/SKILL.md /home/astavonin/projects/genai-automations/platforms/claude/skills/workflows/design-open-questions-gate/SKILL.md)",
+      "Bash(cp /home/astavonin/.claude/commands/design.md /home/astavonin/projects/genai-automations/platforms/claude/commands/design.md)",
+      "Bash(cp /home/astavonin/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md /home/astavonin/projects/genai-automations/platforms/claude/skills/workflows/planning/DESIGN-TEMPLATE.md)",
+      "mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram",
+      "Bash(cp /home/astavonin/.claude/commands/review-code-fix-loop.md /home/astavonin/projects/genai-automations/platforms/claude/commands/review-code-fix-loop.md)",
+      "Bash(cp /home/astavonin/.claude/commands/review-code.md /home/astavonin/projects/genai-automations/platforms/claude/commands/review-code.md)",
+      "Bash(cp /home/astavonin/.claude/commands/review-iterate.md /home/astavonin/projects/genai-automations/platforms/claude/commands/review-iterate.md)",
+      "Bash(cp /home/astavonin/.claude/skills/workflows/review-output-format/SKILL.md /home/astavonin/projects/genai-automations/platforms/claude/skills/workflows/review-output-format/SKILL.md)"
     ]
   }
 }

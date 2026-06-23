@@ -119,6 +119,4 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 
 ## 7. Open Questions
 
-- [ ] ...
-
-*(Omit section with a one-line note if none)*
+*(None — omit this section or list specific open questions as `- [ ] <question>` items)*
