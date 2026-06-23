@@ -126,6 +126,6 @@ IDs are prefixed by severity: `C` = Critical, `H` = High, `M` = Medium, `L` = Lo
 
 ## Assessment Criteria
 
-- ✅ **Approve:** Zero Critical and zero High findings
-- ⚠️ **Request Changes:** One or more High findings — fix and re-review
+- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings
+- ⚠️ **Request Changes:** One or more High or Medium findings — fix and re-review
 - ❌ **Reject:** One or more Critical findings — redesign needed

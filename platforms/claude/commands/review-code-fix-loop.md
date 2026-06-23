@@ -42,7 +42,7 @@ If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Reset iterati
 
 Declare: "I'll use coder agent to fix all findings from the current review..."
 
-**Which findings to fix:** Fix all Critical and High findings. For Medium and Low: fix those with a concrete `fix:` field in the review; skip advisory-only entries. Apply this rule without asking the user.
+**Which findings to fix:** Fix all Critical, High, and Medium findings. For Low: fix those with a concrete `fix:` field in the review; skip advisory-only entries. Apply this rule without asking the user.
 
 Invoke **coder agent** with:
 - The full list of findings selected above

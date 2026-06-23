@@ -46,7 +46,7 @@ If the result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 1.
 
 ### Step 1: Load open findings
 
-Read the review file. Extract every finding with severity Critical or High (mandatory to address) and any Medium/Low the user opts to include.
+Read the review file. Extract every finding with severity Critical, High, or Medium (mandatory to address) and any Low findings the user opts to include.
 
 Display the full list: ID, severity, one-line description.
 

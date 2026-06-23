@@ -25,6 +25,14 @@ Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
 
 ## Actions
 
+### Step 0: Pre-flight — check for open questions (blocking gate)
+
+```
+Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
+```
+
+Only proceed when the gate passes.
+
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 2. Run the **Consensus Review Protocol** (Steps 0, A–G; skip Step F and Step H — both are code-only) against the design document
 
@@ -142,8 +150,8 @@ IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Numbe
 
 ## Assessment
 
-- ✅ **Approve:** Zero Critical and zero High findings → proceed to implementation
-- ⚠️ **Request Changes:** One or more High findings → fix and re-review
+- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings → proceed to implementation
+- ⚠️ **Request Changes:** One or more High or Medium findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → return to Phase 2
 
 ## After Resolving CHANGES REQUESTED Findings

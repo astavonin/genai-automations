@@ -96,8 +96,8 @@ Read ~/.claude/skills/workflows/behavioral-bug-test/SKILL.md
 
 ## Assessment
 
-- ✅ **Approve:** Zero Critical and zero High findings → proceed to `/verify`
-- ⚠️ **Request Changes:** One or more High findings → fix and re-review
+- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings → proceed to `/verify`
+- ⚠️ **Request Changes:** One or more High or Medium findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → redesign needed
 
 ## After Resolving CHANGES REQUESTED Findings
