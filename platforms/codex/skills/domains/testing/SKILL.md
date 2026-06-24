@@ -31,7 +31,9 @@ Every public function or method that can fail must have at least one test per di
 - dependency or resource errors, such as network failure, unavailable database, or missing file
 - boundary violations, such as empty collection, max size exceeded, or zero divisor
 - concurrent or ordering violations, where applicable
-- input guard completeness: for every allowlist, blocklist, or range check, enumerate each distinct unsafe input category and write a negative test for each category, not just one representative value
+- input guard completeness: cover each independently rejected class defined by a different validation rule, guard branch, invariant, or policy reason; do not multiply tests for values that exercise the same behavior
+
+For a range check, test below-minimum and above-maximum rejection plus valid boundary values. Add null, wrong-type, malformed, normalization, or policy-violation cases only when the language and boundary can represent them and they reach distinct validation behavior.
 
 A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 
@@ -56,6 +58,15 @@ Each behavioral-correctness test must:
 - set up the exact precondition that would trigger the bug
 - assert the correct outcome explicitly, such as status code, byte count, returned value, error type, or state transition
 
+## Regression, Lifecycle, And Compatibility Coverage
+
+- Add a deterministic regression test for each fixed behavioral bug when practical.
+- Isolate environment variables, current directory, process-global state, ports, files, random seeds, and time.
+- Test explicit and omitted cleanup, repeated shutdown, cancellation, timeout, worker failure, backpressure, queue saturation, resource exhaustion, and partial I/O where applicable.
+- Test promised compatibility with persisted data, wire formats, configuration, clients, and public interfaces from supported earlier versions.
+- Test supported build configurations, toolchain versions, features, and targets when behavior can differ.
+- Use sanitizers, dynamic analysis, model checking, fault injection, fuzzing, or equivalent specialized checks when the risk and language warrant them.
+
 ## Integration Tests
 
 Use integration tests when two or more real components interact, such as a database, HTTP server, broker, filesystem boundary, or process boundary.
@@ -68,10 +79,11 @@ Requirements:
 - Treat flaky tests as bugs to fix, not tests to ignore or skip.
 - Tag integration tests so they run separately from unit tests.
 
-Tagging examples:
+Separation examples:
 - Go: `//go:build integration` in `*_integration_test.go`
 - Python: `@pytest.mark.integration`
 - C++: separate CMake target or an `Integration` suite prefix
+- Rust: put integration harnesses in `tests/` and run them separately with `cargo test --test '*'`; run doctests with `cargo test --doc`
 
 Isolation strategies:
 - SQL database: transaction rollback in teardown, isolated schema, or testcontainer per suite

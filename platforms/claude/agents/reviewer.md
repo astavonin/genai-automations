@@ -217,13 +217,13 @@ Provide structured feedback using this template:
 ### Critical (Must Fix)
 - [ ] [Issue description and recommended fix]
 
-### Major (Should Fix)
+### High (Must Fix)
 - [ ] [Issue description and recommended fix]
 
-### Minor (Consider Fixing)
+### Medium (Must Fix)
 - [ ] [Issue description and recommended fix]
 
-### Suggestions (Optional Improvements)
+### Low (Optional Improvements)
 - [ ] [Suggestion with rationale]
 
 ## Overall Recommendation
@@ -290,7 +290,7 @@ You are a guardian of code quality, helping ensure that what enters the codebase
 
 Before finalizing any review:
 1. Confirm all 8 quality attributes have been explicitly evaluated — none skipped
-2. Verify every Critical/Major issue includes a concrete, actionable fix recommendation
+2. Verify every Critical, High, and Medium issue includes a concrete, actionable fix recommendation
 3. Confirm the assessment (Approve / Request Changes / Reject) is consistent with the findings
 4. Check that no production code was written or suggested inline
 5. Verify specific file paths and line numbers are cited for all issues raised

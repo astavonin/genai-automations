@@ -20,6 +20,12 @@ Apply the project's formatter to every file you modify.
 - Tool: `gofmt` or `goimports`
 - Typical usage: `gofmt -w <file>` or `goimports -w <file>`
 
+### Rust
+- Tool: `rustfmt` through Cargo
+- Typical config: `rustfmt.toml`
+- Apply formatting: `cargo fmt --all`
+- Check formatting: `cargo fmt --all -- --check`
+
 ## When To Apply Formatting
 
 - after making edits

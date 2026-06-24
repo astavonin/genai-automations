@@ -2,6 +2,17 @@
 
 Use this checklist when conducting design and architecture reviews in the narrowed Codex scope.
 
+## Contents
+
+1. Context
+2. Problem and scope
+3. Interface and contract completeness
+4. Introduced-field consistency
+5. Invariants and enforcement
+6. Quality attributes
+7. Human readability
+8. Review output and severity
+
 ## Design Review Checklist
 
 ### 1. Context
@@ -48,26 +59,31 @@ Use this checklist when conducting design and architecture reviews in the narrow
 #### Supportability
 - [ ] Troubleshooting expectations are described where relevant.
 - [ ] Error reporting or operator feedback is described where relevant.
+- [ ] Fallible or blocking cleanup has an explicit observable shutdown path and defined fallback behavior.
+- [ ] Background work, retries, timeouts, degraded operation, and final failure are diagnosable.
 
 #### Extendability
 - [ ] The design can evolve without unnecessary rework.
 - [ ] Extension points or future boundaries are identified only when justified.
 - [ ] The abstraction level is appropriate for likely change.
+- [ ] Source, binary, wire, storage, configuration, CLI, feature, toolchain, and platform compatibility commitments are explicit where relevant.
+- [ ] Breaking changes define deprecation, migration, or rollout behavior.
 
 #### Maintainability
 - [ ] The design is understandable and not over-engineered.
 - [ ] Terminology is consistent across the document.
 - [ ] The design aligns with existing repository or system patterns unless divergence is justified.
 - [ ] No equivalent helper or abstraction already exists in the repository or expected ecosystem libraries; the design explains any necessary custom abstraction.
+- [ ] New dependencies and build-time extensions have ownership, maintenance, security, license, reproducibility, toolchain, and target implications addressed.
 
 #### Testability
 - [ ] Validation or verification approach is described.
 - [ ] Important scenarios, edge cases, or failure modes are identified.
-- [ ] Validation guards identify all distinct unsafe input categories, not just one representative example.
+- [ ] Validation guards identify independently rejected classes defined by different rules, branches, invariants, or policy reasons without inventing categories the boundary cannot represent.
 - [ ] The design includes a concrete test plan when implementation is expected.
 - [ ] The test plan covers all public API paths affected by the change.
 - [ ] The test plan includes each distinct failure mode for public functions or methods that can fail.
-- [ ] The test plan includes negative tests for each distinct unsafe input category behind an allowlist, blocklist, or range check.
+- [ ] The test plan includes negative tests for each distinct validation behavior behind an allowlist, blocklist, or range check and valid boundary tests where applicable.
 - [ ] Behavioral correctness scenarios are called out explicitly: wrong output, data corruption, silent invalid-input acceptance, liveness violations, and security or correctness invariant bypasses.
 - [ ] When a coverage target can be extracted from repository policy, CI, or the surrounding context, the expected minimum is stated and is `>= 80%` unless a stricter project rule exists.
 - [ ] The design explains what can be tested locally or in containerized environments.
@@ -83,8 +99,10 @@ Use this checklist when conducting design and architecture reviews in the narrow
 - [ ] Error handling level is justified: preventable failures are avoided up front, and recovery or reporting happens at the first layer with enough context.
 - [ ] Destructive or state-changing behavior is bounded clearly.
 - [ ] Recovery or fallback behavior is described when relevant.
-- [ ] C++ APIs identify caller-handled failure returns and require `[[nodiscard]]` on non-void results the caller must act on.
-- [ ] C++ designs separate typed error semantics from diagnostic text and define where exceptions are converted at C/ABI/thread/cleanup boundaries.
+- [ ] Fallible cleanup, partial success, timeout, cancellation, retry, and background failure have explicit semantics.
+- [ ] Tasks, threads, workers, queues, buffers, retries, and in-flight operations are bounded and define backpressure, failure propagation, and shutdown order.
+- [ ] Language and runtime constraints are stated as design contracts for failure channels, lifecycle, concurrency, cancellation, unsafe or foreign boundaries, and cleanup.
+- [ ] The design leaves exact language constructs to implementation unless a construct is itself required to enforce or expose the contract.
 
 #### Security
 - [ ] Trust boundaries, input validation, or path constraints are defined when relevant.
@@ -112,7 +130,7 @@ Use this checklist when conducting design and architecture reviews in the narrow
 
 | Level | Meaning |
 |---|---|
-| `critical` | The design is unsafe, inconsistent, or cannot meet a required constraint as written. |
-| `major` | A significant gap exists in interface definition, enforcement, or quality attributes. |
-| `minor` | The design is basically workable but needs clarification or tightening. |
-| `suggestion` | Optional improvement that is not required for correctness. |
+| `Critical` | The design is unsafe, internally contradictory, or cannot meet a required constraint as written. |
+| `High` | A significant correctness, security, interface, enforcement, or quality-attribute gap must be resolved before approval. |
+| `Medium` | The design is workable but has a material clarity, supportability, testability, or consistency gap that must be resolved before approval. |
+| `Low` | Non-blocking improvement that does not affect correctness or approval. |

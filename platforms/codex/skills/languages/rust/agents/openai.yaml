@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rust"
+  short_description: "Safe, maintainable Rust engineering guidance"
+  default_prompt: "Use $rust to implement and review safe, maintainable, supportable Rust code."

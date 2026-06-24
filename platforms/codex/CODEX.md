@@ -8,6 +8,7 @@ Active implementation focus:
 - C++
 - Python
 - Go
+- Rust
 
 Keep the scope narrow to these languages unless explicitly expanded.
 
@@ -47,15 +48,9 @@ When implementing code:
 - use `skills/languages/cpp/` for C++
 - use `skills/languages/python/` for Python
 - use `skills/languages/go/` for Go
+- use `skills/languages/rust/` for Rust
 - use `skills/domains/testing/` when writing or reviewing tests
-- use `skills/domains/code-quality/` for comments, suppressions, and formatting expectations
-- for every error path, ask whether the failure can be prevented by an earlier check or different API, and whether the current layer has enough context to handle it meaningfully; propagate errors through layers that cannot recover or report with useful context
-- for C++, treat recoverable I/O, network, and external API failures as explicit typed return outcomes; mark caller-handled non-void results `[[nodiscard]]`; keep diagnostics separate from error semantics; catch exceptions at C/ABI/thread/cleanup boundaries
-- document all main interfaces, types, and data structures with short explanatory comments that clarify role, invariants, or constraints; do not add placeholder comments
-- keep functions and methods at or below 80 lines where practical; never create or leave a modified function over 100 lines
-- before writing a non-trivial helper or abstraction, search the project and language ecosystem for an existing equivalent; when extracting a helper, migrate inline equivalents within the same package
-- cover public API paths, distinct failure modes, edge cases, behavioral correctness scenarios, and every distinct unsafe input category behind validation guards with concrete tests
-- when a review finding identifies incorrect runtime behavior, include a `Required test:` line describing what input or precondition triggers the bug and what outcome the test asserts
+- use `skills/domains/code-quality/` for shared structure, failure, lifecycle, concurrency, observability, dependency, I/O, compatibility, comment, suppression, and formatting expectations
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
 
@@ -94,14 +89,6 @@ Before finalizing implementation work, actively verify:
 5. every field, member, parameter, or named constant added by the change has a production read-site beyond construction or initialization, unless an explicit compatibility or future-contract reason is documented
 6. formatting, linting, and available tests have been run or the reason they could not be run is reported
 
-## Comment And Review Hygiene
-
-Comments explain why, not what. Inline comments are for hidden constraints, subtle invariants, external API quirks, and surprising behavior. Public-facing interfaces, types, enums, and central data structures should have short comments that clarify role, contract, ownership, lifetime, valid states, or constraints.
-
-Never mention review process artifacts in code, comments, docstrings, or test names. Labels such as `Fix for finding H3`, `Assertion gap fix`, `Added per review`, or issue-specific review rounds belong in review notes or PR descriptions, not source files.
-
-Every linter or static-analysis suppression must include a concrete reason. Prefer fixing the code when the warning identifies a real design issue.
-
 # Active Skills
 
 - `skills/architecture-research-planner/`
@@ -114,16 +101,11 @@ Every linter or static-analysis suppression must include a concrete reason. Pref
 - `skills/languages/cpp/`
 - `skills/languages/python/`
 - `skills/languages/go/`
+- `skills/languages/rust/`
 
 # Critical Rules
 
 - Do not let prompt wording stand in for runtime enforcement when a hard invariant is required.
 - Separate confirmed facts from proposed behavior.
 - For workflow docs, ensure request fields, templates, and examples stay aligned.
-- For code changes, apply the project's formatter and use the project's test and lint tooling when available.
-- Do not accept happy-path-only tests for code paths that can fail; missing failure-scenario coverage is a correctness gap.
-- Do not accept validation tests that cover only one unsafe representative when a guard has multiple distinct unsafe input categories.
-- Do not rely on vacuous assertions such as non-null checks, existence checks, or call counts without verifying concrete behavior.
-- Do not introduce helpers before checking project and ecosystem equivalents; when extracting a helper, remove same-package inline duplicates.
-- Do not leave written-but-never-read fields, members, parameters, or constants without an explicit compatibility or future-contract reason.
-- Do not leave comments, docstrings, or test names that refer to review findings, gap numbers, fix rounds, or review history.
+- Apply the relevant language and domain skills as the canonical implementation contract; do not replace them with duplicated summaries in this file.

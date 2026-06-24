@@ -32,6 +32,10 @@ Keep these comments short: one or two sentences is usually enough. Explain what 
 
 Do not add comments only to check a box. If a type is minor, local, and already clear from its name and construction site, leave it uncommented.
 
+### Rust Public API Documentation
+
+Use `//!` for crate or module documentation and `///` for public items. Add `# Errors`, `# Panics`, and `# Safety` sections when those contracts exist. Runnable examples belong in Rust API documentation when they help callers and should be verified as doctests; this is not the prohibited pattern of leaving informal usage snippets in ordinary comments.
+
 ## Test Comments
 
 For tests, comments should explain the scenario being exercised, not narrate each line.

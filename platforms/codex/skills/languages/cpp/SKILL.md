@@ -1,160 +1,94 @@
 ---
 name: cpp
-description: C++ coding standards based on the C++ Core Guidelines. Use when writing, reviewing, or modifying C++ code to apply RAII, const correctness, memory safety, and modern C++ patterns.
+description: C++ implementation and review guidance for safe, modern, maintainable, and supportable code. Use when writing, modifying, debugging, or reviewing C++ source, public APIs, ownership, concurrency, ABI boundaries, build configurations, and tests.
 ---
 
 # C++ Programming Skill
 
-## Standards
+Treat this file as the C++-specific contract. Apply the shared `code-quality` and `testing` skills for structure, lifecycle, concurrency, observability, dependencies, I/O, compatibility, and test coverage.
 
-Strictly follow the C++ Core Guidelines:
-- https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+## Language And Build Contract
 
-## Key Principles
+- Inspect build files, presets, dependency manifests, generated-code policy, configured C++ standard, supported compilers and standard libraries, warning policy, sanitizers, targets, and project-native commands before editing.
+- Use only language and library features supported by the project's declared standard and toolchain matrix. Do not raise the minimum standard or compiler requirement incidentally.
+- Preserve project ABI, exception, RTTI, allocation, visibility, and static-versus-shared linkage policy.
+- Keep compiler extensions and feature-test fallbacks narrow, explicit, and covered by supported configurations.
 
-### Modern C++
-- Use RAII for resource management
-- Prefer smart pointers over raw pointers
-- Use STL containers and algorithms
-- Prefer `auto` where it improves readability
-- Use `constexpr` for compile-time evaluation
-- Prefer `{}` over `()` for variable initialization of user-defined types and smart pointers; `()` can be parsed as a function declaration. Exception: use `()` for standard library containers such as `std::string` and `std::vector` when the constructor is a fill or range constructor, because `{}` routes through `initializer_list` and can change semantics.
-- Prefer static polymorphism over dynamic where practical
+## Modern C++ And Ownership
 
-### Safety
-- Avoid undefined behavior
-- Use proper const correctness
-- Initialize all variables
-- Avoid C-style casts; use `static_cast`, `dynamic_cast`, and related casts explicitly
-- Prefer range-based loops when they improve clarity
+- Use RAII for every acquired resource.
+- Prefer values and standard containers; use smart pointers only when heap allocation or shared ownership is required.
+- Use `std::unique_ptr` for single ownership and `std::shared_ptr` only for genuine shared lifetime. Use `std::weak_ptr` to break ownership cycles.
+- Keep raw pointers and references non-owning unless an external API requires otherwise; document exceptional ownership transfer.
+- Prefer the Rule of Zero; when special members are necessary, define or delete copy and move behavior consistently.
+- Prefer standard library containers, algorithms, views, and utilities over custom equivalents.
+- Prefer `auto` where it improves readability without hiding important type or ownership information.
+- Use `constexpr` when compile-time evaluation improves correctness or removes runtime work without obscuring intent. Use `consteval` only when the supported standard and immediate-function semantics require it.
+- Prefer static polymorphism when it materially simplifies ownership or performance; do not introduce templates merely to avoid a justified virtual interface.
+- Initialize every object and avoid C-style casts. Use the narrowest explicit C++ cast that expresses the conversion.
+- Apply const correctness to values, pointees, methods, and views; do not use `const` where it falsely implies deep immutability.
+- Use `nullptr`, scoped `enum class`, and `override`; use `final` only when extension is intentionally prohibited.
+- Avoid undefined behavior, dangling views, invalidated iterators, object slicing, strict-aliasing violations, and signed-overflow assumptions.
+- Mark functions `noexcept` only when the contract is guaranteed, and preserve non-throwing move and destruction where containers and cleanup depend on it.
+- Prefer `{}` for ordinary user-defined and smart-pointer initialization. Use `()` for standard-library fill or range constructors when braces would select `initializer_list` and change semantics.
 
-### Code Organization
-- Use header guards or `#pragma once`
-- Minimize header dependencies
-- Forward declare where it meaningfully reduces coupling
-- Keep headers narrow and readable
+## Headers, Modules, And Interfaces
 
-### Error Handling
+- Keep headers narrow, self-contained, and protected with `#pragma once` or header guards.
+- Minimize includes and use forward declarations only when they genuinely reduce coupling without making ownership or completeness rules fragile.
+- Keep implementation details out of exported headers; use internal translation units or PImpl when ABI stability or compile-time isolation justifies it.
+- Keep templates and inline definitions focused because they increase compile cost and expose implementation to consumers.
+- Prefer returned values over output parameters when the result naturally forms one object.
+- Use references for required output parameters; use pointers only when `nullptr` is a meaningful optional state.
 
-#### Choose The Right Error Channel
+## Error Channels
+
+Choose the channel from caller needs:
 
 | Situation | Mechanism |
 |---|---|
-| Operation may produce no result and no detail is needed | `std::optional<T>` |
-| Binary pass/fail where the caller must branch | `[[nodiscard]] bool` |
-| Multiple distinct failure modes the caller must dispatch on | `[[nodiscard]]` status enum |
-| Value plus typed error reason in one return, when C++23 is available | `std::expected<T, E>` |
-| Programmer error or violated invariant that cannot be recovered locally | Exception |
+| No result is expected and no reason is required | `std::optional<T>` |
+| Binary pass/fail requires caller action | `[[nodiscard]] bool` |
+| Caller branches over distinct failures | `[[nodiscard]]` status enum |
+| Value plus typed failure, when available | `std::expected<T, E>` |
+| Violated programmer invariant or project-defined exceptional failure | Exception or assertion according to project policy |
 
-Treat I/O failures, network failures, and external API failures as expected outcomes, not exceptional control flow. Use exceptions only when they match the project's established style and represent truly exceptional or unrecoverable conditions.
+- Treat normal I/O, network, parsing, validation, and external API failures as explicit outcomes rather than exceptional control flow.
+- Use the project-native `Result`, `StatusOr`, status enum, or expected-like type when `std::expected` is unavailable; do not invent a one-off result wrapper.
+- Keep diagnostics separate from typed error semantics and never parse error strings for control flow.
+- Apply `[[nodiscard]]` at every declaration and override whose result callers must act on, including test fakes and mocks.
+- Make intentional discard explicit and justified, for example `(void)flush();  // best-effort cleanup`.
+- Capture `errno` or equivalent OS error state immediately after the failing call before logging or helper calls can overwrite it.
+- Include safe operation, resource, and argument context in the propagated error or boundary diagnostic.
 
-If `std::expected<T, E>` is unavailable, use an existing project-native `Result`, `StatusOr`, or status-enum pattern. Do not introduce a new result wrapper for one feature unless it removes clear duplication and matches project conventions.
+## Exceptions, Cleanup, And Boundaries
 
-Use typed errors, status enums, or error codes for programmatic decisions. Human-readable strings are diagnostic detail; callers must not parse message text to decide control flow.
+- Do not allow exceptions to escape destructors, C callbacks, C ABI boundaries, thread entry points, or cleanup paths.
+- Keep destructors non-throwing, bounded, and non-blocking where practical.
+- Provide explicit result-bearing `close`, `flush`, or `shutdown` methods when cleanup can fail or wait for completion; let the destructor perform best-effort fallback cleanup.
+- Define destruction and shutdown order for dependent members, threads, callbacks, and external handles.
+- Catch exceptions at the first boundary that can translate them into the required status, diagnostic, or termination policy without losing context.
 
-#### Caller-Handled Results
+## Concurrency And Views
 
-Apply `[[nodiscard]]` to every non-void function whose return value the caller must act on:
-- Error-indicating `bool` returns
-- Status or result enums
-- Factory and query functions where the return value is the purpose of the call
+- Prefer `std::jthread`, `std::stop_token`, and `std::stop_source` for owned cooperative cancellation when the supported standard and toolchain provide them.
+- Keep raw atomic cancellation flags for C or external callback boundaries where stop tokens cannot pass through the contract.
+- Join or otherwise observe every owned thread; never allow a joinable `std::thread` to reach destruction.
+- State memory order explicitly for non-trivial atomics and justify anything weaker than sequential consistency.
+- Prefer `std::span<const T>` and `std::span<T>` over raw pointer-size pairs for bounded read-only and mutable views when supported; otherwise use the project-standard bounded-view abstraction.
+- Prefer `std::string_view` only when the referenced character storage clearly outlives the view.
 
-When discarding such a return is genuinely intentional, cast to `void` and explain the reason:
+## Formatting, Layout, And ABI
 
-```cpp
-(void)flush();  // best-effort cleanup; result cannot affect shutdown
-```
+- Prefer type-safe formatting such as `std::format` when supported; use fixed-buffer C formatting only at required external boundaries.
+- Do not expose object layout, compiler-specific types, standard-library ABI details, or inline implementation unintentionally across stable binary boundaries.
+- Review changes to exported classes, virtual functions, base classes, data members, alignment, packing, calling convention, exception policy, and symbol visibility for ABI impact.
+- Use fixed-width integer types and explicit byte order for wire and persisted formats; never serialize object memory directly unless a controlled ABI contract proves it valid.
 
-Callbacks and trampolines registered with external frameworks are exempt when the framework, rather than project code, consumes the return value.
+## Verification
 
-`[[nodiscard]]` does not propagate from a virtual base declaration to overrides. Annotate every site explicitly when callers must act on the result: the base declaration, every override, and every test fake or mock that implements the interface.
-
-#### Exception Boundaries
-
-Do not allow exceptions to escape destructors, C callbacks, C ABI boundaries, thread entry points, or cleanup paths. Catch at those boundaries and convert the failure to the appropriate status/result/logging behavior with diagnostic context.
-
-#### Output Parameters
-
-Use references for required output parameters. A pointer implies that `nullptr` is valid and meaningful.
-
-```cpp
-// Avoid: pointer implies nullable.
-bool checked_setopt(CURL* curl, CURLoption option, long value, std::string* detail);
-
-// Prefer: reference communicates that detail is required.
-bool checked_setopt(CURL* curl, CURLoption option, long value, std::string& detail);
-```
-
-Use a pointer only when the output argument is actually optional.
-
-#### Error Detail Propagation
-
-When chained operations share one error-detail string, pass a `std::string&` through the calls and let the first failure populate it:
-
-```cpp
-std::string detail;
-if (!checked_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L, detail) ||
-    !checked_setopt(curl, CURLOPT_CAINFO, ca_path, detail)) {
-    LOGE("TLS setup failed: %s", detail.c_str());
-    return error_result(detail);
-}
-```
-
-Avoid allocating a new detail string per call in hot paths.
-
-#### `errno` And System Calls
-
-Capture `errno` immediately after the failing call; logging and helper calls may overwrite it.
-
-```cpp
-const int err = errno;
-LOGE("open(%s) failed: %s", path, strerror(err));
-```
-
-Log enough context, such as function name, path, and relevant arguments, to diagnose the failure without reading the source.
-
-### C++20 Patterns
-
-#### Cooperative Cancellation
-
-Prefer `std::stop_token`, `std::stop_source`, and `std::jthread` over raw `std::atomic<bool>` cancellation flags when a thread must be stopped from the outside.
-
-```cpp
-std::jthread worker([](std::stop_token token) {
-    while (!token.stop_requested()) {
-        // Work until cancellation is requested.
-    }
-});
-```
-
-Keep `std::atomic<bool>` cancellation flags only at C or external-framework boundaries where a `std::stop_token` cannot be passed through the callback contract.
-
-#### Buffer Views
-
-Prefer `std::span<T>` over raw pointer plus size pairs at API boundaries. Spans carry length, work with range-based loops and STL algorithms, and prevent caller-side length mismatches.
-
-```cpp
-void process(std::span<const std::byte> payload);
-```
-
-Use `std::span<const T>` for read-only views and `std::span<T>` for mutable views.
-
-#### Type-Safe Formatting
-
-Prefer `std::format` for strings built from runtime values when the project toolchain supports it. Fall back to `snprintf` only when writing into a fixed-size C buffer owned by an external API.
-
-### Performance
-- Pass large objects by const reference unless ownership transfer is intended
-- Use move semantics where appropriate
-- Avoid unnecessary copies
-- Profile before optimizing
-
-## Workflow
-
-- Format with the project's C++ formatter, typically `clang-format`
-- Run available static analysis, typically `clang-tidy`
-- Use `testing` and `code-quality` skills alongside this skill when writing or reviewing code
-
-## References
-
-- C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+- Run the project-native formatter, build, static analysis, and test commands first.
+- Apply `clang-format` and run configured `clang-tidy`, compiler warnings, or `cppcheck` checks.
+- Build every supported compiler, standard version, target, feature, and debug or release configuration affected by the change.
+- Run unit and integration tests plus applicable AddressSanitizer, UndefinedBehaviorSanitizer, ThreadSanitizer, MemorySanitizer, or platform-equivalent analysis.
+- Verify exported ABI or API compatibility with project tooling when the change affects a supported boundary.

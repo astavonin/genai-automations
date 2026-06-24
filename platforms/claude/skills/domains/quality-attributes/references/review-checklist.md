@@ -56,7 +56,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] No injection vulnerabilities
 - [ ] Secrets handling secure
 - [ ] Authentication/authorization appropriate
-- [ ] Validation guards identify all distinct unsafe input categories — not just the most obvious one; the full set of dangerous inputs should be documented at design time
+- [ ] Validation guards identify independently rejected classes defined by different rules, branches, invariants, or policy reasons without inventing categories the boundary cannot represent
 
 #### Observability
 - [ ] Logging strategy defined
@@ -217,7 +217,7 @@ For every field, member, constant, or parameter **introduced or modified** by th
 - A symbol set in every constructor and read in zero execution paths is dead regardless of how many assignment sites exist.
 
 **Step 3 — Flag dead symbols:**
-- Written-but-never-read symbol with no planned future consumer: **Major** — delete or document the intent explicitly.
+- Written-but-never-read symbol with no planned future consumer: **High** — delete or document the intent explicitly.
 - Parameter that is always immediately discarded (`del param` / `_ = param`): flag only if the API contract implies the caller should be able to influence behavior via that parameter.
 
 This pass is language-agnostic: applies to C++ struct members, Go struct fields, Rust struct fields, Python dataclass fields, and named constants in any language.
@@ -266,7 +266,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 | Rating | Criteria |
 |--------|----------|
-| ✅ **Approve** | All critical items pass, minor issues are acceptable |
+| ✅ **Approve** | Zero Critical, High, or Medium findings; Low findings are acceptable |
 | ⚠️ **Request Changes** | Issues found that must be fixed before approval |
 | ❌ **Reject** | Fundamental problems requiring redesign |
 
@@ -274,10 +274,10 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 | Level | Description | Action Required |
 |-------|-------------|-----------------|
-| **Critical** | Security vulnerability, data loss risk, system instability | Must fix before approval |
-| **Major** | Significant maintainability/performance/safety issue | Should fix before approval |
-| **Minor** | Style issue, minor improvement opportunity | Consider fixing |
-| **Suggestion** | Optional enhancement | Optional |
+| **Critical** | Security vulnerability, data loss risk, system instability | Reject until resolved |
+| **High** | Significant correctness, security, maintainability, performance, or safety issue | Must fix before approval |
+| **Medium** | Material test, maintainability, clarity, or consistency issue | Must fix before approval |
+| **Low** | Optional enhancement or minor polish | Non-blocking |
 
 ## Tips for Effective Reviews
 
