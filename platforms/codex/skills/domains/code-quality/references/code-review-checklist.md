@@ -201,6 +201,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Tests cover the intended behavior and affected public API paths.
 - [ ] Each distinct failure mode and independently rejected validation behavior has a concrete negative test as defined by the testing skill.
 - [ ] Assertions verify exact values, state changes, error types, or observable behavior rather than existence or call count alone.
+- [ ] Interaction expectations (EXPECT_CALL or equivalent) are scoped to calls whose invocation is itself the behavioral contract under test; prefer state-based assertions on return values and output parameters over call-count or argument constraints on interactions irrelevant to the behavior being verified.
 - [ ] Test names match the scenario and asserted outcome.
 - [ ] Unit tests are fast and isolated; integration tests are separated and do not call production services.
 - [ ] Async and readiness tests use deterministic synchronization.

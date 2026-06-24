@@ -174,6 +174,7 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 
 **Step 1 — Per-test scan:** List every test function touched by the diff. For each one, verify:
 - [ ] **Assertion specificity:** Assertions check concrete values or behavior — not vacuous checks (`assert result is not None`, `assert called_once()` without argument verification). The test must fail if the implementation returns a wrong-but-non-null value.
+- [ ] **Interaction mock scope:** Interaction expectations (EXPECT_CALL or equivalent) are scoped only to calls whose invocation is itself the behavioral contract under test. Prefer state-based assertions on return values and output parameters. Setting expectations on every mock method regardless of relevance is brittle and obscures test intent.
 - [ ] **Name/assertion alignment:** The test name describes the same scenario and outcome the assertions actually verify. A mismatch (name says "rollback sets rollbackDetected", body never asserts `error_code == "rollbackDetected"`) is a correctness bug.
 - [ ] **Falsifiability:** Mentally delete the production logic being tested — would the test catch the breakage? If not, the test does not verify what it claims.
 - [ ] **No bare sleeps for async behavior:** `time.sleep(N)` or `std::this_thread::sleep_for` used to wait for async side-effects is a race. Replace with polling or a signal/event.

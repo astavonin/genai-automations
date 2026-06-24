@@ -1,6 +1,6 @@
 ---
 name: cpp
-description: C++ coding standards based on the C++ Core Guidelines. Use when writing, reviewing, or modifying C++ code to apply RAII, const correctness, memory safety, and modern C++ patterns.
+description: C++ implementation and review guidance for safe, modern, maintainable, and supportable code. Use when writing, modifying, debugging, or reviewing C++ source, public APIs, ownership, concurrency, ABI boundaries, build configurations, and tests.
 allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
 compatibility: claude-code
 metadata:
@@ -11,10 +11,14 @@ metadata:
 
 # C++ Programming Skill
 
-## Standards
+Treat this file as the C++-specific contract. Apply the shared `code-quality` and `testing` skills for structure, lifecycle, concurrency, observability, dependencies, I/O, compatibility, and test coverage.
 
-**Strictly follow The C++ Core Guidelines:**
-- https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+## Language And Build Contract
+
+- Inspect build files, presets, dependency manifests, generated-code policy, configured C++ standard, supported compilers and standard libraries, warning policy, sanitizers, targets, and project-native commands before editing.
+- Use only language and library features supported by the project's declared standard and toolchain matrix. Do not raise the minimum standard or compiler requirement incidentally.
+- Preserve project ABI, exception, RTTI, allocation, visibility, and static-versus-shared linkage policy.
+- Keep compiler extensions and feature-test fallbacks narrow, explicit, and covered by supported configurations.
 
 ## Key Principles
 
@@ -23,7 +27,7 @@ metadata:
 - Prefer smart pointers over raw pointers
 - Use STL containers and algorithms
 - Prefer `auto` for type deduction where it improves readability
-- Use `constexpr` for compile-time evaluation
+- Use `constexpr` when compile-time evaluation improves correctness or removes runtime work without obscuring intent. Use `consteval` only when the supported standard and immediate-function semantics require it.
 - Prefer static polymorphism over dynamic
 
 ### Safety
@@ -176,14 +180,17 @@ Use `std::format` for any string built from runtime values. Fall back to `snprin
 - Avoid unnecessary copies
 - Profile before optimizing
 
-## Formatting
+## ABI, Layout, And Formatting
 
-Apply clang-format using project configuration.
+- Apply `clang-format` using the project configuration to every modified file.
+- Do not expose object layout, compiler-specific types, standard-library ABI details, or inline implementation unintentionally across stable binary boundaries.
+- Review changes to exported classes, virtual functions, base classes, data members, alignment, packing, calling convention, exception policy, and symbol visibility for ABI impact.
+- Use fixed-width integer types and explicit byte order for wire and persisted formats; never serialize object memory directly unless a controlled ABI contract proves it valid.
+- Prefer type-safe formatting such as `std::format` when supported; use fixed-buffer C formatting only at required external boundaries.
 
-## Static Analysis
+## Verification
 
-Run clang-tidy for code quality checks.
-
-## References
-
-- C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
+- Run the project-native formatter, build, static analysis, and test commands first.
+- Apply `clang-format` and run configured `clang-tidy`, compiler warnings, or `cppcheck` checks.
+- Build every supported compiler, standard version, target, feature, and debug or release configuration affected by the change.
+- Run unit and integration tests plus applicable AddressSanitizer, UndefinedBehaviorSanitizer, ThreadSanitizer, MemorySanitizer, or platform-equivalent analysis.
