@@ -33,6 +33,7 @@ Two-way sync utility for platform configurations between this repo and `~/.claud
 ```bash
 ./sync-configs.sh sync          # Backup all configs (home → repo)
 ./sync-configs.sh install       # Restore configs (repo → home)
+./sync-configs.sh install --force  # Restore without confirmation prompts (overwrites home configs)
 ./sync-configs.sh sync --dry-run
 ```
 
