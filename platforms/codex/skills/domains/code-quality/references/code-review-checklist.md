@@ -17,9 +17,10 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 11. Python checks
 12. Go checks
 13. Rust checks
-14. Dead symbol pass
-15. Tests
-16. Review output and severity
+14. Shell checks
+15. Dead symbol pass
+16. Tests
+17. Review output and severity
 
 ## 1. Readability And Structure
 
@@ -171,7 +172,22 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 - [ ] Cargo features, MSRV, targets, doctests, public API, `no_std` or `alloc`, build scripts, proc macros, and dependency policy are verified where affected.
 - [ ] Miri or configured equivalent checks changed unsafe abstractions, with unsupported paths reported.
 
-## 14. Dead Symbol Pass
+## 14. Shell Checks
+
+- [ ] The declared POSIX sh, Bash, or Zsh dialect matches the shebang, syntax, invocation sites, target systems, and minimum interpreter version.
+- [ ] Standalone scripts, sourced libraries, and executable entry points have distinct contracts; sourced code does not unexpectedly change caller options, traps, working directory, or process state.
+- [ ] Strict options are deliberate and audited; expected failures, pipelines, substitutions, subshells, traps, and cleanup do not rely on incorrect `errexit` assumptions.
+- [ ] Expansions preserve argument boundaries; intentional splitting or globbing is narrow, reviewed, and covered by tests.
+- [ ] Commands use argument arrays or distinct words rather than reparsed strings; untrusted data cannot reach `eval`, `sh -c`, `source`, or executable text.
+- [ ] Positional arguments and options handle empty values, whitespace, glob characters, leading hyphens, missing arguments, and unknown options correctly.
+- [ ] Filename processing avoids parsed `ls` output and unsafe whitespace delimiters; option termination, null delimiters, globs, or `find -exec` are used according to target support.
+- [ ] Temporary resources, permissions, traps, atomic writes, interrupted cleanup, repeated cleanup, and destructive path validation are safe.
+- [ ] Every background process has recorded ownership, bounded concurrency, signal and timeout behavior, observed status, and shutdown cleanup.
+- [ ] Stdout, stderr, and exit statuses form a stable command-line contract; diagnostics and tracing cannot expose secrets.
+- [ ] External utilities, flags, locale assumptions, and GNU, BSD, BusyBox, or platform differences match the supported environment matrix.
+- [ ] Syntax checks, ShellCheck, formatting, shell tests, and behavior under every promised interpreter pass.
+
+## 15. Dead Symbol Pass
 
 For each field, member, parameter, named constant, or non-local variable introduced or modified:
 
@@ -180,7 +196,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Written-but-never-read symbols are removed or have an explicit compatibility reason.
 - [ ] Discarded API parameters are flagged when the contract implies they should affect behavior.
 
-## 15. Tests
+## 16. Tests
 
 - [ ] Tests cover the intended behavior and affected public API paths.
 - [ ] Each distinct failure mode and independently rejected validation behavior has a concrete negative test as defined by the testing skill.
@@ -192,7 +208,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Regression tests reproduce fixed behavioral bugs when practical.
 - [ ] Flaky tests are fixed or removed rather than ignored.
 
-## 16. Review Output Expectations
+## 17. Review Output Expectations
 
 - [ ] Findings focus on concrete correctness, reliability, supportability, security, or maintainability risks.
 - [ ] Runtime-behavior findings include a `Required test:` line with the trigger and asserted outcome.

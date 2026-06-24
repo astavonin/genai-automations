@@ -9,6 +9,7 @@ Active implementation focus:
 - Python
 - Go
 - Rust
+- Shell
 
 Keep the scope narrow to these languages unless explicitly expanded.
 
@@ -49,6 +50,7 @@ When implementing code:
 - use `skills/languages/python/` for Python
 - use `skills/languages/go/` for Go
 - use `skills/languages/rust/` for Rust
+- use `skills/languages/shell/` for POSIX sh, Bash, and Zsh
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for shared structure, failure, lifecycle, concurrency, observability, dependency, I/O, compatibility, comment, suppression, and formatting expectations
 
@@ -102,6 +104,7 @@ Before finalizing implementation work, actively verify:
 - `skills/languages/python/`
 - `skills/languages/go/`
 - `skills/languages/rust/`
+- `skills/languages/shell/`
 
 # Critical Rules
 

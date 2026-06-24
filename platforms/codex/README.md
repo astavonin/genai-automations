@@ -1,13 +1,13 @@
 # Codex Configuration Backup
 
-Backup of the tracked Codex configuration for architecture/design work plus primary implementation execution for approved specifications in **C++**, **Python**, **Go**, and **Rust**.
+Backup of the tracked Codex configuration for architecture/design work plus primary implementation execution for approved specifications in **C++**, **Python**, **Go**, **Rust**, and **Shell**.
 
 ## Scope
 
 This tracked backup currently includes:
 - design docs and architecture research
 - architecture review
-- language guidance for C++, Python, Go, and Rust
+- language guidance for C++, Python, Go, Rust, and Shell
 - shared coding guidance for testing and code quality
 - specification-driven implementation execution
 - code-review support through language, testing, and code-quality checklists
@@ -37,7 +37,8 @@ platforms/codex/
     │   ├── cpp/
     │   ├── go/
     │   ├── python/
-    │   └── rust/
+    │   ├── rust/
+    │   └── shell/
     └── workflows/
         └── architecture-review/
 ```

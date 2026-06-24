@@ -26,6 +26,12 @@ Apply the project's formatter to every file you modify.
 - Apply formatting: `cargo fmt --all`
 - Check formatting: `cargo fmt --all -- --check`
 
+### Shell
+- Tool: `shfmt` or the project's configured shell formatter
+- Typical config: `.editorconfig` or project-native formatter flags
+- Apply formatting: `shfmt -w <file>`
+- Check formatting: `shfmt -d <file>`
+
 ## When To Apply Formatting
 
 - after making edits

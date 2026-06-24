@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shell"
+  short_description: "Safe, portable shell scripting guidance"
+  default_prompt: "Use $shell to implement and review safe, portable, supportable shell scripts."
