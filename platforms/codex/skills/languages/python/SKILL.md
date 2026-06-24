@@ -51,6 +51,8 @@ Treat this file as the Python-specific contract. Apply the shared `code-quality`
 
 - Await every owned task or transfer it to a documented supervisor; retain references so task failures are observable.
 - Prefer structured concurrency such as the project's task-group mechanism when supported.
+- `asyncio.TaskGroup` (Python 3.11–3.14) has no `cancel()`, task-enumeration, or task-readiness API; use AnyIO task groups or `asyncio.Event`-based signaling when cancellation or enumeration is required, until Python 3.15.
+- Do not `yield` inside an async function that is subject to a `TaskGroup` or cancel scope (including `asyncio.timeout()`); a timeout that expires after a generator yields but before it is resumed delivers `CancelledError` to the outer task where it cannot be caught. Use queue-based async iterators instead.
 - Propagate cancellation and deadlines through async call chains and preserve invariants at every cancellation point.
 - Keep blocking I/O and CPU-heavy work off the event-loop thread using project-approved executors or worker processes.
 - Do not hold synchronous locks across `await` or mix threading and async synchronization without a documented boundary.
@@ -60,11 +62,16 @@ Treat this file as the Python-specific contract. Apply the shared `code-quality`
 
 - Use explicit imports and avoid wildcard imports outside deliberate package re-export surfaces.
 - Keep package boundaries cohesive and avoid circular imports, import-time service locators, and mutable module-level singletons.
+- Replace mutable module-level singletons with constructor injection or a container (`python-dependency-injector` or equivalent); explicit dependency wiring makes components substitutable in tests without patching module globals.
 - Preserve public module paths, call signatures, exception contracts, serialization shapes, CLI behavior, and supported Python versions according to project compatibility policy.
 - Deprecate public APIs before removal and provide a migration path when compatibility is promised.
 - Keep `pyproject.toml`, dependency metadata, extras, entry points, package data, and lockfiles intentional and internally consistent.
 - Put imports under `TYPE_CHECKING` only when they are needed solely for static analysis and runtime annotation evaluation cannot require them.
 - Pass argument sequences to subprocess APIs and avoid `shell=True`; when a shell is required, validate inputs and document the trust boundary.
+
+## Testing
+
+- Prefer `yield` fixtures over `request.addfinalizer` for teardown; teardown runs in LIFO order. Choose the narrowest scope (`function` default, `class`, `module`, `package`, `session`) that matches the resource's lifetime.
 
 ## Verification
 

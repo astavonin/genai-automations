@@ -151,6 +151,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] **Variable initialization uses `{}` for user-defined types and smart pointers** — `TypeName var(...)` can be parsed as a function declaration (most vexing parse); use `TypeName var{...}` instead. Exception: standard library containers (`std::string`, `std::vector`, etc.) with fill/range constructors must use `()` because `{}` routes through `initializer_list` and changes semantics.
 - [ ] **`[[nodiscard]]` on every non-void function whose return value the caller must act on** — applies to: error-indicating `bool` returns, status/result enums, factory/query functions where the only purpose is the return value. Ignoring these silently skips error handling. Trampolines and callbacks registered with external frameworks are exempt (the framework consumes the return).
 - [ ] **`[[nodiscard]]` on virtual functions: annotate every site** — the attribute does not propagate from base to overrides. Check the base declaration, every `override` in derived classes, and every test fake or mock implementing the interface.
+- [ ] **Python async generators:** `yield` is not used inside an async function subject to a `TaskGroup` or cancel scope (`asyncio.timeout()`, AnyIO cancel scopes); a timeout expiring after a `yield` delivers `CancelledError` to the outer task where it cannot be caught.
 - [ ] **C++ typed error semantics** — recoverable I/O, network, and external API failures use project-native `std::expected`, `Result`, `StatusOr`, or status-enum patterns. Programmatic control flow does not parse diagnostic strings.
 - [ ] **C++ exception boundaries** — exceptions are caught and converted at destructors, C callbacks, C ABI boundaries, thread entry points, and cleanup paths.
 
@@ -238,6 +239,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 ### Testing
 - [ ] Unit tests comprehensive
+- [ ] pytest fixtures use `yield` over `request.addfinalizer` for teardown (teardown runs LIFO); fixture scope matches the resource's actual lifetime.
 - [ ] All tests pass locally
 - [ ] Integration tests pass (if applicable)
 - [ ] Test names are descriptive and match what the assertions actually verify
@@ -253,7 +255,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 ### Static Analysis
 - [ ] clang-tidy passes (C++)
-- [ ] pylint/mypy passes (Python)
+- [ ] Ruff and mypy/pyright pass (Python); Ruff alone does not detect type errors
 - [ ] clippy passes (Rust)
 - [ ] No linter warnings
 

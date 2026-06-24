@@ -135,8 +135,10 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 - [ ] Context managers own scoped resources; `__del__` does not perform required fallible or blocking cleanup.
 - [ ] Exceptions are specific, preserve chaining, and are caught only at a recovery, translation, or reporting boundary.
 - [ ] Cancellation and termination exceptions are not swallowed or converted into success.
+- [ ] `yield` is not used inside an async function subject to a `TaskGroup` or cancel scope (including `asyncio.timeout()`); a timeout expiring after a `yield` delivers `CancelledError` to the outer task where it cannot be caught.
 - [ ] Owned async tasks are awaited or supervised; blocking work stays off the event loop and synchronous locks do not cross `await`.
-- [ ] Imports avoid wildcard use, circular coupling, unexpected side effects, and mutable module-global service state.
+- [ ] Imports avoid wildcard use, circular coupling, unexpected side effects, and mutable module-global service state; mutable module-level singletons are replaced with constructor injection or a DI container.
+- [ ] pytest fixtures use `yield` over `request.addfinalizer` for teardown (teardown runs LIFO); fixture scope is the narrowest that matches the resource's actual lifetime.
 - [ ] Subprocess invocation avoids shell interpolation or documents and validates the trust boundary.
 - [ ] Filesystem APIs preserve native paths, text and bytes boundaries are explicit, and external timestamps are timezone-aware.
 - [ ] Package metadata, extras, entry points, public module paths, supported Python versions, formatting, linting, typing, packaging, and tests are verified where affected.
