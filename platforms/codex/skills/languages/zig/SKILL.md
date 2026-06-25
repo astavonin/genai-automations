@@ -1,12 +1,6 @@
 ---
 name: zig
 description: Zig implementation and review guidance for safe, modern, maintainable, and supportable code. Use when writing, modifying, debugging, or reviewing Zig source, allocators, error handling, comptime patterns, build system, and tests.
-allowed-tools: Glob, Grep, Read, WebFetch, WebSearch
-compatibility: claude-code
-metadata:
-  version: 1.0.0
-  category: languages
-  tags: [zig, programming]
 ---
 
 # Zig Programming Skill

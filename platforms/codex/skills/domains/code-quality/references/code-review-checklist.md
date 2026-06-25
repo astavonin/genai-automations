@@ -18,9 +18,10 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 12. Go checks
 13. Rust checks
 14. Shell checks
-15. Dead symbol pass
-16. Tests
-17. Review output and severity
+15. Zig checks
+16. Dead symbol pass
+17. Tests
+18. Review output and severity
 
 ## 1. Readability And Structure
 
@@ -189,7 +190,23 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 - [ ] External utilities, flags, locale assumptions, and GNU, BSD, BusyBox, or platform differences match the supported environment matrix.
 - [ ] Syntax checks, ShellCheck, formatting, shell tests, and behavior under every promised interpreter pass.
 
-## 15. Dead Symbol Pass
+## 15. Zig Checks
+
+- [ ] Every allocating function accepts an explicit `std.mem.Allocator` parameter; no implicit global allocator is used.
+- [ ] Container types use `Unmanaged` variants (e.g. `ArrayListUnmanaged`, `HashMapUnmanaged`); managed variants of `std.ArrayList`, `std.ArrayHashMap`, and `std.HashMap` that store the allocator internally are deprecated in Zig 0.14.0.
+- [ ] Allocator selection matches build mode and workload: `DebugAllocator` for Debug/ReleaseSafe, `SmpAllocator` for ReleaseFast multithreaded, `ArenaAllocator` for batch-lifetime allocations.
+- [ ] Error unions are not discarded (`_ = fallible()` is a compile error); every result is handled via `try`, `catch`, or an explicit branch.
+- [ ] `switch` on an error value covers all members of the named error set exhaustively; no unhandled members.
+- [ ] `@setRuntimeSafety(false)` blocks are justified, scoped to verified hot paths, and documented; safe build modes (Debug, ReleaseSafe) still contain undetectable undefined behavior.
+- [ ] Generic functions use `comptime` type parameters and return types; `@typeInfo` dispatch uses exhaustive `switch`; `@compileError` rejects unsupported types explicitly.
+- [ ] `build.zig` wires a `test` step via `b.addTest` → `b.addRunArtifact` → `test_step.dependOn`; `zig build test` runs all test suites.
+- [ ] `build.zig` uses `b.standardTargetOptions` and `b.standardOptimizeOption`; target and optimize values are not hardcoded.
+- [ ] `build.zig.zon` dependency entries include both `url` and `hash`; `zig fetch --save` was used for new dependencies rather than manual hash editing.
+- [ ] Test functions return `!void`; heap-allocating tests use `std.testing.allocator`; OOM paths are covered via `std.testing.checkAllAllocationFailures` where applicable.
+- [ ] `async`/`await` is not used (regressed in Zig 0.11 with the self-hosted compiler; remains unavailable in 0.12, 0.13, and 0.14).
+- [ ] `zig fmt` and `zig build test` pass without errors on all supported targets.
+
+## 16. Dead Symbol Pass
 
 For each field, member, parameter, named constant, or non-local variable introduced or modified:
 
@@ -198,7 +215,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Written-but-never-read symbols are removed or have an explicit compatibility reason.
 - [ ] Discarded API parameters are flagged when the contract implies they should affect behavior.
 
-## 16. Tests
+## 17. Tests
 
 - [ ] Tests cover the intended behavior and affected public API paths.
 - [ ] Each distinct failure mode and independently rejected validation behavior has a concrete negative test as defined by the testing skill.
@@ -211,7 +228,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Regression tests reproduce fixed behavioral bugs when practical.
 - [ ] Flaky tests are fixed or removed rather than ignored.
 
-## 17. Review Output Expectations
+## 18. Review Output Expectations
 
 - [ ] Findings focus on concrete correctness, reliability, supportability, security, or maintainability risks.
 - [ ] Runtime-behavior findings include a `Required test:` line with the trigger and asserted outcome.
