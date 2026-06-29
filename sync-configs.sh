@@ -52,11 +52,11 @@ Two-way sync for GenAI platform configurations
 
 MODES:
   sync         Backup configurations from home directory to repository (default)
-               ~/.claude → platforms/claude/ (includes memory/)
+               ~/.claude → platforms/claude/
                ~/.codex → platforms/codex/
 
   install      Restore configurations from repository to home directory
-               platforms/claude/ → ~/.claude (includes memory/)
+               platforms/claude/ → ~/.claude
                platforms/codex/ → ~/.codex
 
 OPTIONS:
@@ -112,45 +112,6 @@ confirm_install() {
             return 1
             ;;
     esac
-}
-
-# Function to sync Claude project auto-memory
-# Claude Code stores per-project memory under ~/.claude/projects/<project-id>/memory/
-sync_project_memory() {
-    local project_id="-home-astavonin-projects-genai-automations"
-    local src dst action
-
-    if [[ "$MODE" == "sync" ]]; then
-        src="$HOME/.claude/projects/$project_id/memory"
-        dst="$SCRIPT_DIR/platforms/claude/memory"
-        action="Backing up"
-    else
-        src="$SCRIPT_DIR/platforms/claude/memory"
-        dst="$HOME/.claude/projects/$project_id/memory"
-        action="Installing"
-    fi
-
-    print_status "$BLUE" "==> ${action} Claude project auto-memory..."
-
-    if [[ ! -d "$src" ]]; then
-        print_status "$YELLOW" "Warning: Source directory not found: $src"
-        return 1
-    fi
-
-    if [[ "$MODE" == "install" ]] && [[ "$DRY_RUN" == false ]]; then
-        mkdir -p "$dst"
-    fi
-
-    local rsync_cmd=(rsync -av --delete)
-    [[ "$DRY_RUN" == true ]] && rsync_cmd+=(--dry-run)
-    rsync_cmd+=("$src/" "$dst/")
-
-    if "${rsync_cmd[@]}"; then
-        print_status "$GREEN" "✓ Project auto-memory ${(L)action} complete"
-    else
-        print_status "$RED" "✗ Project auto-memory ${(L)action} failed"
-        return 1
-    fi
 }
 
 # Function to sync a platform configuration
@@ -336,9 +297,6 @@ main() {
             exit_code=1
         fi
 
-        if ! sync_project_memory; then
-            exit_code=1
-        fi
         echo ""
     fi
 
