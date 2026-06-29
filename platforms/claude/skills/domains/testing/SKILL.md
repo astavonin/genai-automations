@@ -63,6 +63,13 @@ Every public function or method that can fail MUST have at least one test per di
 
 A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 
+### Composition Testing (mandatory when a dependency gains a new failure mode)
+When a component you call gains a new failure mode — such as a new null or empty return, error value, exception, rejected async result, or enum variant — the test file owning the *caller* must add a test that:
+1. Simulates the dependency returning or raising the new failure through a fake, stub, configured return value, or equivalent project-native test hook
+2. Asserts both: (a) no irreversible caller-side state was committed (persisted configuration, disk state, durable records, or committed phases remain unchanged), and (b) no crash-loop, replay-loop, or error-exit entry point was created
+
+This requirement applies even when the originating function has no direct unit test of its own (e.g. FSM actions invoked indirectly). Startup, resume, replay, and recovery paths count as callers. The component's test file cannot see how the caller handles the failure — that test belongs in the caller's test file.
+
 ### Assertion Correctness (mandatory)
 - Assert **concrete expected values**, not just non-null or existence (`assert result is not None` is not a correctness check)
 - Error-path assertions MUST check the specific error type, code, or message — not just that "some error occurred"

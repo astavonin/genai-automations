@@ -56,6 +56,8 @@ Use this checklist with the relevant language skill. Apply common sections to ev
 - [ ] Destructors, finalizers, and drop hooks are bounded, best-effort, and cannot throw or panic.
 - [ ] Cleanup state transitions and shutdown order are explicit and safe when cleanup is omitted or repeated.
 - [ ] Worker, task, thread, and background-operation results are observed or transferred to a documented supervisor.
+- [ ] **Irreversible-before-check:** For every code path where a persistent side effect (persisted config or disk write, state transition, resource allocation, DB record, externally visible side effect) precedes a conditional check (factory call, validation gate, permission check): verify the side effect is reversible on failure or the check is provably infallible before the commit. A commit-then-reject ordering that cannot be unwound is a crash-loop, replay-loop, or resource-leak pre-condition; flag it as Critical.
+- [ ] **Behavioral extension tracing:** For every function, method, command, or dependency operation that gains a new failure outcome without a signature change (null or empty return, error value, exception, rejected async result, status code, enum variant): actively trace every live, startup, resume, replay, and recovery call site in the codebase — do not limit the search to the changed file — and verify the caller handles the new case. This is a dedicated caller-trace step that triggers on behavioral extensions to unchanged signatures, not only on declaration changes.
 
 ## 4. Concurrency And Reliability
 
@@ -218,7 +220,7 @@ For each field, member, parameter, named constant, or non-local variable introdu
 ## 17. Tests
 
 - [ ] Tests cover the intended behavior and affected public API paths.
-- [ ] Each distinct failure mode and independently rejected validation behavior has a concrete negative test as defined by the testing skill.
+- [ ] Each distinct failure mode and independently rejected validation behavior has a concrete negative test as defined by the testing skill. For every new failure mode introduced by the diff, regardless of whether the originating function has its own tests, verify a test exists at the *caller* level that exercises the full downstream consequence of that failure. Startup, resume, replay, and recovery paths count as callers. The test must assert no irreversible caller-side state was committed and no crash-loop, replay-loop, or error-exit entry point was created.
 - [ ] Assertions verify exact values, state changes, error types, or observable behavior rather than existence or call count alone.
 - [ ] Interaction expectations (EXPECT_CALL or equivalent) are scoped to calls whose invocation is itself the behavioral contract under test; prefer state-based assertions on return values and output parameters over call-count or argument constraints on interactions irrelevant to the behavior being verified.
 - [ ] Test names match the scenario and asserted outcome.

@@ -75,6 +75,11 @@ Use the right review path for the artifact under review:
 - **Architecture/design review:** use `skills/reviewer/`, `skills/workflows/architecture-review/`, `skills/domains/architecture/`, and `skills/domains/quality-attributes/`.
 - **Workflow or command design review:** use the architecture/design review path and run the required field/path/invariant consistency pass from the design-doc workflow.
 
+For every code review, run these mandatory failure passes:
+1. **Irreversible-before-check pass:** enumerate changed paths where persistent state, durable records, externally visible side effects, or resource acquisition happen before a fallible check. Flag commit-then-reject paths without rollback as correctness defects.
+2. **Failure-outcome caller trace:** for every new or changed failure outcome from a function, method, command, or dependency operation, trace all live, startup, resume, replay, and recovery callers. Verify each caller either checks before committing state, rolls back on failure, or reaches a terminal safe state.
+3. **Caller-level consequence tests:** require tests in the caller's owning suite for each new failure outcome. Component-only tests are insufficient when caller state, replay, startup, or recovery behavior can be affected.
+
 For code review findings, lead with defects and risks. If a finding identifies incorrect runtime behavior, include a `Required test:` line describing the triggering input or precondition and the asserted outcome.
 
 ## Implementation Discipline
@@ -89,7 +94,9 @@ Before finalizing implementation work, actively verify:
 3. the implementation matches the approved design or stated scope
 4. no obvious security issue is introduced, including unsafe input handling or secret exposure
 5. every field, member, parameter, or named constant added by the change has a production read-site beyond construction or initialization, unless an explicit compatibility or future-contract reason is documented
-6. formatting, linting, and available tests have been run or the reason they could not be run is reported
+6. every new failure outcome is traced through live, startup, resume, replay, and recovery callers before any irreversible caller-side commit
+7. caller-level tests cover new dependency failure outcomes and assert no committed inconsistent state, replay loop, crash loop, or unsafe exit path
+8. formatting, linting, and available tests have been run or the reason they could not be run is reported
 
 # Active Skills
 

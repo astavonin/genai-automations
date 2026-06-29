@@ -31,6 +31,11 @@ Treat this skill as the shared implementation and code-review contract. Apply it
 - Keep destructors, finalizers, and drop hooks non-throwing or non-panicking, bounded, and best-effort.
 - Define cleanup state transitions, idempotency, and shutdown order across dependent resources, callbacks, tasks, threads, and foreign handles.
 - Observe worker and background-operation results or deliberately transfer them to a documented supervisor.
+- Validate fallible preconditions before irreversible operations such as persisted config or disk writes, durable state transitions, database record creation, externally visible side effects, and non-RAII resource acquisition.
+- Treat any new failure outcome from a dependency as a caller-visible contract change even when the signature is unchanged, including null or empty returns, error values, exceptions, status codes, and enum variants. Trace every live, startup, resume, replay, and recovery caller and move required validation before caller-side commits.
+- If a caller must reject before committing state, expose the precondition through an explicit dependency interface query or policy object instead of duplicating private dependency logic in the caller.
+- If validate-after-commit is unavoidable, add an explicit rollback path and a test proving that committed state is unwound on failure.
+- A commit-then-reject path without rollback is a crash-loop, replay-loop, or resource-leak risk and must be fixed before approval.
 
 ## Concurrency And Reliability
 

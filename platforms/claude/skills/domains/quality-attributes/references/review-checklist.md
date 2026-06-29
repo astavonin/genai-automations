@@ -50,6 +50,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Resource management approach clear
 - [ ] Thread safety considered (if applicable)
 - [ ] Error handling level justified — for each error path, can the failure be prevented by an earlier check or a different API call? If not, is catching at this abstraction level correct, or does the error contain context a higher layer needs? Applies to all languages: C++ exceptions/error codes, Go error returns, Rust Result conversions, Python exceptions.
+- [ ] **Commit ordering:** For every operation sequence that writes persistent state (disk/params write, irreversible resource allocation, state transition), confirm all fallible preconditions (factory gate, permission check, validation) run before the commit. A design where validate-after-commit is the intended flow requires an explicit rollback path — flag if neither condition holds.
 
 #### Security
 - [ ] Input validation planned
@@ -139,6 +140,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Thread safety correct (if applicable)
 - [ ] No undefined behavior
 - [ ] Error handling level correct — for each catch/except/error-return/Result conversion site: (1) could this failure be prevented by an earlier check or a different API? (2) does catching here discard context (error type, message, chain) that a higher layer needs for recovery or reporting? Flag handling that answers yes to either as a design concern. Applies across all languages.
+- [ ] **Irreversible-before-check scan:** For every code path where a persistent side effect (disk/params write, state transition, resource allocation, DB record, externally visible side effect) precedes a conditional check (factory call, validation gate, permission check): verify the side effect is either reversible if the check fails, or that the check is provably infallible before the commit. A commit-then-reject ordering where the side effect cannot be unwound is a crash-loop, replay-loop, or resource-leak pre-condition — flag as Critical.
 
 **Rust — Borrow Checker Effectiveness (applies to all Rust reviews):**
 - [ ] **No expensive resource recreated per call** — check hot paths (loops, per-frame, per-request) for patterns where a stream, connection, buffer, or file handle is created and immediately dropped. This is the primary symptom of a missing scoped guard. Flag as `High` if the recreation defeats a streaming/pooling architecture.
@@ -186,7 +188,7 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 - [ ] **Falsifiability:** Mentally delete the production logic being tested — would the test catch the breakage? If not, the test does not verify what it claims.
 - [ ] **No bare sleeps for async behavior:** `time.sleep(N)` or `std::this_thread::sleep_for` used to wait for async side-effects is a race. Replace with polling or a signal/event.
 
-**Step 2 — Per-function negative coverage:** For every public function or method that has at least one test, verify:
+**Step 2 — Per-function negative coverage:** For every public function or method that has at least one test, verify the criteria below. Additionally, for every new failure mode introduced in the diff — regardless of whether the originating function has its own tests — verify a test exists at the *caller* level that exercises the full downstream consequence of that failure, not just the component in isolation. The test must assert no irreversible caller-side state was committed and no crash-loop, replay-loop, or error-exit entry point was created. The test belongs in the test file that owns the caller, not the component under test.
 - [ ] At least one negative/failure test exists for each distinct failure mode (wrong input, null return, resource exhaustion, dependency error, boundary violation).
 - [ ] Safety invariants have explicit negative tests — e.g. "action must NOT fire when ID mismatches" requires a test that asserts the action was not taken, not just that no exception was raised.
 - [ ] Error path tests assert the specific error type, code, or message — not just that "some error occurred".
@@ -212,6 +214,8 @@ This is a dedicated enumeration pass. Whenever a change touches a shared contrac
 - Redundant variable aliases (two CI variables resolving to the same registry path): **Medium** — they create confusion and divergence risk
 
 **Reporting:** Cite every mismatch with all affected file locations. Do not summarize as "flags are inconsistent" — name each site and the specific difference.
+
+**Step 4 — Behavioral extension tracing:** For every function, method, command, or dependency operation that gains a new failure outcome without a signature change (null or nil return, error value, exception, rejected async result, status code, new enum variant): actively trace every call site in the codebase — do not limit the search to the changed file — and verify the caller handles the new case. This step is distinct from signature consistency — it triggers on behavioral extensions to unchanged signatures.
 
 ### Dead Symbol Pass (mandatory — runs after Cross-Site Consistency Pass)
 

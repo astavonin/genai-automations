@@ -37,6 +37,16 @@ For a range check, test below-minimum and above-maximum rejection plus valid bou
 
 A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 
+## Composition Failure Coverage
+
+When a dependency you call gains a new failure mode, such as a new null or empty return, status, error value, exception, rejected async result, or enum variant, add a test in the caller's owning test suite. The test must:
+
+1. Simulate the dependency returning or raising the new failure through a fake, stub, configured return value, or equivalent project-native test hook
+2. Assert no irreversible caller-side state was committed, such as persisted configuration, disk state, durable records, or committed phases
+3. Assert no crash-loop, replay-loop, or error-exit entry point was created, such as an exit flag being set while persistent state would re-enter the same failure path
+
+This requirement applies even when the failing dependency has its own component test and even when the caller is only reachable indirectly, such as an FSM action. Startup, resume, replay, and recovery paths count as callers and need their own consequence tests when they can re-enter the failure.
+
 ## Assertion Correctness
 
 - Assert concrete expected values or observable behavior, not just non-null values or existence.

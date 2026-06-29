@@ -79,6 +79,27 @@ Trampolines and callbacks registered with external frameworks (libcurl, POSIX si
 
 `[[nodiscard]]` does **not** propagate from a virtual base to its overrides. Annotate every site explicitly: the base declaration, every override, and every test fake/mock that implements the interface.
 
+#### Commit ordering and fallible preconditions
+
+Before any irreversible operation — writing to persistent storage (Params, disk), committing a state transition, or allocating a non-RAII resource — validate every precondition that can fail:
+
+```cpp
+// Wrong: state committed before gate check; gate failure leaves corrupt persistent state
+context.state.accept_request(request);             // writes phase=downloadQueued to disk
+auto worker = factory.create_new(publisher, req);  // gate may return nullptr here
+if (!worker) { request_exit(context, "..."); }     // crash-loop: phase stays committed
+
+// Right: check gate before the irreversible commit
+if (!factory.is_download_allowed(req)) {
+  publisher.send_rejection(...);
+  return;
+}
+context.state.accept_request(request);  // only reached when gate passes
+auto worker = factory.create_new(publisher, req);
+```
+
+If validate-after-commit is unavoidable, a compensating rollback must exist and be tested. The absence of a rollback path for a failing check is a crash-loop, replay-loop, or resource-leak pre-condition.
+
 #### Exception boundaries
 
 Do not allow exceptions to escape destructors, C callbacks, C ABI boundaries, thread entry points, or cleanup paths. Catch at those boundaries and convert the failure to the appropriate status/result/logging behavior with diagnostic context.

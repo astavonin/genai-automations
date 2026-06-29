@@ -62,6 +62,9 @@ platforms/codex/skills/.system/
 # Auto-memory (may contain proprietary information — never committed)
 platforms/claude/memory/
 
+# Local per-project Claude permissions (machine-specific)
+.claude/settings.local.json
+
 # Logs
 *.log
 
