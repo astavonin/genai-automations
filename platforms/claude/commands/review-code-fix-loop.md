@@ -48,7 +48,9 @@ Invoke **coder agent** with:
 - The full list of findings selected above
 - The full design doc if one exists (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`)
 - The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`)
-- Instruction: fix all listed findings in one pass; for any finding whose `fix:` field contains a `Required test:` line, implementing that test is mandatory as part of the fix; flag explicitly any finding that cannot be addressed
+- Instruction: fix all listed findings in one pass; flag explicitly any finding that cannot be addressed; apply these test requirements:
+  - **Critical and High findings (mandatory):** every fix for a Critical or High finding must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
+  - **Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
 
 **If the coder agent flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 

@@ -60,14 +60,18 @@ For each finding:
 
 **2a. Present the finding** — show full description, location, and fix direction from the review.
 
-**2b. Apply the fix** — choose based on context:
-- Agent-driven: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only
-- Manual: wait for user to confirm the fix is applied before continuing
+**2b. Apply the fix** — apply the following test requirements before invoking the coder agent or accepting a manual fix:
+- **Critical and High findings (mandatory):** the fix must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
+- **Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
+
+Choose based on context:
+- Agent-driven: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only, explicitly passing the test requirements above
+- Manual: wait for user to confirm the fix (including any required tests) is applied before continuing
 
 **2c. Scoped verification** — invoke a **single reviewer agent** (not full consensus) with:
 - The specific finding ID, description, and fix direction
 - Output of `git diff` since the review baseline (or since the last commit)
-- Instruction: "Verify ONLY whether finding [ID] has been resolved. Do not expand scope beyond the changed lines. Return one of: RESOLVED / STILL OPEN / REGRESSION INTRODUCED. If REGRESSION INTRODUCED: describe what broke and where."
+- Instruction: "Verify ONLY whether finding [ID] has been resolved. Do not expand scope beyond the changed lines. Return one of: RESOLVED / STILL OPEN / REGRESSION INTRODUCED. If REGRESSION INTRODUCED: describe what broke and where. For Critical and High findings, also verify that a new or modified test covers the fix — return STILL OPEN if no test change is present."
 
 **2d. Record result**:
 - **RESOLVED** → mark finding fixed, proceed to next finding
