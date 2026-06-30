@@ -81,11 +81,11 @@ Trampolines and callbacks registered with external frameworks (libcurl, POSIX si
 
 #### Commit ordering and fallible preconditions
 
-Before any irreversible operation — writing to persistent storage (Params, disk), committing a state transition, or allocating a non-RAII resource — validate every precondition that can fail:
+Before any irreversible operation — writing to persistent storage (disk, KVS), committing a state transition, or allocating a non-RAII resource — validate every precondition that can fail:
 
 ```cpp
 // Wrong: state committed before gate check; gate failure leaves corrupt persistent state
-context.state.accept_request(request);             // writes phase=downloadQueued to disk
+context.state.accept_request(request);             // writes phase=Queued to disk
 auto worker = factory.create_new(publisher, req);  // gate may return nullptr here
 if (!worker) { request_exit(context, "..."); }     // crash-loop: phase stays committed
 

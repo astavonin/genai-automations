@@ -212,26 +212,26 @@ Follow the steps in that fragment. Surface the §8.2 warning block on failure; d
 ## Example
 
 ```yaml
-title: "Add DMS refactoring with pipeline architecture. Ref #117"
+title: "Add Pipeline refactoring with worker pool architecture. Ref #117"
 description: |
   # Summary
 
-  Refactors DMS module into a pipeline with thread pool and bounded queues.
+  Refactors the Pipeline module into a worker pool with bounded queues and thread pool.
 
   ---
 
   # Implementation Details
 
-  - Introduced DMSPipeline with configurable thread pool
+  - Introduced PipelineCoordinator with configurable thread pool
   - Added FrameContext with latch-based synchronization
-  - Replaced direct detector calls with async task queue
+  - Replaced direct worker calls with async task queue
 
   ---
 
   # How It Was Tested
 
   - Unit tests for ThreadPool, ResultQueue, FrameContext
-  - Integration test with mock detectors
+  - Integration test with mock workers
   - CI pipeline passed
 
 draft: true

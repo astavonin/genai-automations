@@ -1,16 +1,30 @@
 #!/usr/bin/env bash
-# Block commits that expose proprietary content in platforms/
-
-STAGED=$(git diff --cached --name-only | grep "^platforms/" | grep -v '/CLAUDE\.md$\|/CODEX\.md$' || true)
-[ -z "$STAGED" ] && exit 0
+# Block commits that expose proprietary work-path content in platforms/
 
 PATTERN='home/[a-zA-Z][a-zA-Z0-9_-]*/work/'
-HITS=$(echo "$STAGED" | xargs grep -lE "$PATTERN" 2>/dev/null || true)
+EXCL='/CLAUDE\.md$\|/CODEX\.md$'
+
+# Collect files NUL-delimited: staged files at commit time; all tracked files on manual run
+mapfile -d '' FILES < <(
+    git diff --cached --name-only -z 2>/dev/null \
+        | grep -z "^platforms/" | grep -zv "$EXCL" || true
+)
+
+if [ "${#FILES[@]}" -eq 0 ]; then
+    mapfile -d '' FILES < <(
+        git ls-files -z -- 'platforms/' 2>/dev/null \
+            | grep -zv "$EXCL" || true
+    )
+fi
+
+[ "${#FILES[@]}" -eq 0 ] && exit 0
+
+HITS=$(printf '%s\0' "${FILES[@]}" | xargs -0 grep -lE "$PATTERN" 2>/dev/null || true)
 
 if [ -n "$HITS" ]; then
     echo "❌  pre-commit: proprietary content detected in platforms/ files:"
     echo ""
-    echo "$STAGED" | xargs grep -nE "$PATTERN" 2>/dev/null || true
+    printf '%s\0' "${FILES[@]}" | xargs -0 grep -nE "$PATTERN" 2>/dev/null || true
     echo ""
     echo "Fix the above before committing. Use generic identifiers in examples."
     exit 1

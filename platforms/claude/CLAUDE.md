@@ -424,7 +424,7 @@ Any file under `platforms/` is committed to a public GitHub repository. Before p
 bash .git/hooks/pre-commit
 ```
 
-The hook checks for known proprietary identifiers (pattern list lives only in the hook, not here). Fix every hit before committing. This rule applies to me (Claude) on every edit to `platforms/` — not only when the user asks for a scan.
+The hook scans for `/home/<user>/work/` path leaks only. Removing project names, internal identifiers, and other proprietary nouns is a manual responsibility — see the Path exposure rules below. Fix every hit before committing. This rule applies to me (Claude) on every edit to `platforms/` — not only when the user asks for a scan.
 
 **Path exposure rules for `platforms/` files:**
 - `/home/*/projects/*` paths are acceptable (personal open project repos).

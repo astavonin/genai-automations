@@ -99,6 +99,10 @@ Read ~/.claude/skills/workflows/review-output-format/SKILL.md
 
 ## Behavioral Bug Test Requirement
 
+**Critical and High findings (mandatory):** every fix for a Critical or High finding must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
+
+**Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
+
 ```
 Read ~/.claude/skills/workflows/behavioral-bug-test/SKILL.md
 ```

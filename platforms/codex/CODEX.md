@@ -80,6 +80,8 @@ For every code review, run these mandatory failure passes:
 2. **Failure-outcome caller trace:** for every new or changed failure outcome from a function, method, command, or dependency operation, trace all live, startup, resume, replay, and recovery callers. Verify each caller either checks before committing state, rolls back on failure, or reaches a terminal safe state.
 3. **Caller-level consequence tests:** require tests in the caller's owning suite for each new failure outcome. Component-only tests are insufficient when caller state, replay, startup, or recovery behavior can be affected.
 
+*Cross-platform note: these three passes correspond to the Claude reviewer's Cross-Site Consistency Pass. Pass 1 ≡ Steps 1–3 (enumerate changed contracts at all call sites). Pass 2 ≡ Step 4 — Behavioral extension tracing. Pass 3 ≡ the Composition Failure Coverage test requirement.*
+
 For code review findings, lead with defects and risks. If a finding identifies incorrect runtime behavior, include a `Required test:` line describing the triggering input or precondition and the asserted outcome.
 
 ## Implementation Discipline

@@ -317,12 +317,14 @@ main() {
         else
             print_status "$BLUE" "==> Installing pre-commit hook..."
             if [[ -f "$hook_repo" ]]; then
-                if [[ "$DRY_RUN" == false ]]; then
+                if [[ "$DRY_RUN" == true ]]; then
+                    print_status "$GREEN" "✓ pre-commit hook would be installed (dry-run)"
+                elif confirm_install "pre-commit hook" "$hook_git"; then
                     mkdir -p "$(dirname "$hook_git")"
                     cp "$hook_repo" "$hook_git"
                     chmod +x "$hook_git"
+                    print_status "$GREEN" "✓ pre-commit hook installed"
                 fi
-                print_status "$GREEN" "✓ pre-commit hook installed"
             else
                 print_status "$YELLOW" "Warning: platforms/claude/hooks/pre-commit not found — skipping"
             fi
