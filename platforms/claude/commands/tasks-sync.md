@@ -123,21 +123,17 @@ issue_title[N] = "<title string>"
 
 Populate it from every epic and milestone output already captured. This table is the sole source of truth for Steps 3 and 4 — no further network calls to look up issue state.
 
-**2d — Load remaining individual issues (`[ ]` orphans only)**
+**2d — Load remaining individual issues (all orphans)**
 
-Collect all `#N` references found in planning files. Remove any N already present in `issue_state[]`. Split the remainder by local state:
-
-- **`[x]` orphans** (locally done, not in lookup): do NOT load — add directly to list A (close remote). `projctl update issue N --state close` is idempotent; no pre-fetch needed.
-- **`[ ]` orphans** (locally open, not in lookup): load these — needed to detect remote-closed issues for list B.
+Collect all `#N` references found in planning files. Remove any N already present in `issue_state[]`. Load all remaining orphans regardless of local state — remote state must be known before deciding whether to close or skip:
 
 ```bash
-# Only [ ] orphans get a network call
 issue_output=$(projctl load issue N)
 ```
 
 Add each result to `issue_state[]` and `issue_title[]`.
 
-**Rule:** if `issue_state[N]` is already populated, skip the `projctl load issue N` call entirely. If N is a `[x]` orphan, skip loading unconditionally.
+**Rule:** if `issue_state[N]` is already populated (from epic or milestone load), skip the `projctl load issue N` call entirely.
 
 **2e — Load MRs (`[ ]` only)**
 
@@ -171,7 +167,7 @@ Use `issue_state[]` and `issue_title[]` exclusively — no `projctl load` calls 
 
 Build three lists:
 
-**A. Local → Remote (close):** Tasks marked `[x]` with a remote reference where `issue_state[N] == "open"` OR `issue_state[N]` is absent (orphan skipped in 2d) → will call `projctl update issue N --state close`. The close is idempotent; no pre-check is needed for orphans.
+**A. Local → Remote (close):** Tasks marked `[x]` with a remote reference where `issue_state[N] == "open"` → will call `projctl update issue N --state close`. Skip if `issue_state[N] == "closed"` — no action needed.
 
 **B. Remote → Local (mark done):** Issues where `issue_state[N] == "closed"` but the local line is `[ ]` → will mark the local task line as `[x]`
 
@@ -181,10 +177,10 @@ Build three lists:
 
 ### Step 5 — Display sync plan
 
-Before making any changes, print a structured summary:
+Before making any changes, print a structured summary. Include a timestamp header so the user knows when the remote state was captured — concurrent changes after this point are not reflected in the plan.
 
 ```
-Sync Plan
+Sync Plan  (remote state captured at HH:MM)
 ─────────────────────────────────────
 Push to remote (close tickets):
   ✓ #145 Implement sync hook  →  will close
@@ -210,20 +206,23 @@ If there is nothing to sync, say so clearly and stop.
 
 Ask the user: **"Apply this sync plan? (yes / no / edit)"**
 
-- **yes** → execute all three lists in order: close remote tickets → mark local done → append new issues
+- **yes** → execute all three lists in order: mark local done → close remote tickets → append new issues
 - **no** → abort, make no changes
 - **edit** → show each action individually and ask per-action
 
+**Execution order rationale:** local marks happen first so that local state is correct even if a remote close fails. A failed remote close leaves local as `[x]` and remote as `open` — the next sync run will retry the close. The reverse order (close remote first) would leave local as `[ ]` after a successful remote close, which looks like the task is still pending and is more confusing to the user.
+
 **Execution:**
 
-Close remote tickets:
+Mark local tasks done first: edit each `status.md` file, replacing `- [ ] <text> #N` with `- [x] <text> #N`.
+
+Close remote tickets: for each issue in List A, run:
 ```bash
 projctl update issue N --state close
 ```
+If a close call fails, log the failure, continue with the remaining tickets, and record the failed issue number for Step 7. Do not abort the entire execution on a single failure.
 
-Mark local tasks done: edit the `status.md` file, replacing `- [ ] <text> #N` with `- [x] <text> #N`.
-
-Append new remote issues: add to the bottom of the **Tasks** section in the relevant `status.md`:
+Append new remote issues: add to the bottom of the **Tasks** section in the relevant `status.md`. If no Tasks section exists in the file, create one (`## Tasks`) immediately before appending:
 ```markdown
 - [ ] <title from remote> #N
 ```
@@ -231,9 +230,15 @@ Append new remote issues: add to the bottom of the **Tasks** section in the rele
 ### Step 7 — Report
 
 After execution, print a short summary of what was done:
-- N tickets closed in remote
 - N tasks marked done locally
+- N tickets closed in remote
 - N new issues added to local planning
+
+If any remote close calls failed, list them explicitly:
+```
+Failed to close (retry or resolve manually):
+  ✗ #148 Update CLAUDE.md  →  <error message>
+```
 
 ---
 
