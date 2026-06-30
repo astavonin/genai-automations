@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Block commits that expose proprietary content in platforms/
+
+STAGED=$(git diff --cached --name-only | grep "^platforms/" | grep -v '/CLAUDE\.md$\|/CODEX\.md$' || true)
+[ -z "$STAGED" ] && exit 0
+
+PATTERN='home/[a-zA-Z][a-zA-Z0-9_-]*/work/'
+HITS=$(echo "$STAGED" | xargs grep -lE "$PATTERN" 2>/dev/null || true)
+
+if [ -n "$HITS" ]; then
+    echo "❌  pre-commit: proprietary content detected in platforms/ files:"
+    echo ""
+    echo "$STAGED" | xargs grep -nE "$PATTERN" 2>/dev/null || true
+    echo ""
+    echo "Fix the above before committing. Use generic identifiers in examples."
+    exit 1
+fi

@@ -298,6 +298,36 @@ main() {
         fi
 
         echo ""
+
+        # Sync pre-commit hook separately — lives in .git/hooks, not ~/.claude
+        local hook_repo="$SCRIPT_DIR/platforms/claude/hooks/pre-commit"
+        local hook_git="$SCRIPT_DIR/.git/hooks/pre-commit"
+
+        if [[ "$MODE" == "sync" ]]; then
+            print_status "$BLUE" "==> Backing up pre-commit hook..."
+            if [[ -f "$hook_git" ]]; then
+                if [[ "$DRY_RUN" == false ]]; then
+                    mkdir -p "$(dirname "$hook_repo")"
+                    cp "$hook_git" "$hook_repo"
+                fi
+                print_status "$GREEN" "✓ pre-commit hook backed up"
+            else
+                print_status "$YELLOW" "Warning: .git/hooks/pre-commit not found — skipping"
+            fi
+        else
+            print_status "$BLUE" "==> Installing pre-commit hook..."
+            if [[ -f "$hook_repo" ]]; then
+                if [[ "$DRY_RUN" == false ]]; then
+                    mkdir -p "$(dirname "$hook_git")"
+                    cp "$hook_repo" "$hook_git"
+                    chmod +x "$hook_git"
+                fi
+                print_status "$GREEN" "✓ pre-commit hook installed"
+            else
+                print_status "$YELLOW" "Warning: platforms/claude/hooks/pre-commit not found — skipping"
+            fi
+        fi
+        echo ""
     fi
 
     # Process Codex configurations
