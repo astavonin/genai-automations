@@ -408,4 +408,25 @@ For ALL managerial tasks related to GitLab/GitHub, use `projctl`:
 
 **Critical rule:** If a required operation is not supported by projctl, extend it first (source at `~/projects/projctl`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass projctl.
 
-**Note:** `glab-management` is deprecated and should NOT be used.
+# Proprietary Information Policy
+
+**Any information specific to paid/professional work** (company tools, internal project names, colleague names, team workflows, client-specific conventions, internal URLs, proprietary tooling) **must go into project memory files — never into this file.**
+
+This file may be synced to GitHub or other public locations. Memory files (`~/.claude/projects/.../memory/`) are local only and safe for proprietary content.
+
+**Rule:** When in doubt whether something is proprietary, put it in memory.
+
+## `platforms/` files — mandatory pre-commit scan
+
+Any file under `platforms/` is committed to a public GitHub repository. Before proposing or applying any commit that touches `platforms/`, run:
+
+```bash
+bash .git/hooks/pre-commit
+```
+
+The hook checks for known proprietary identifiers (pattern list lives only in the hook, not here). Fix every hit before committing. This rule applies to me (Claude) on every edit to `platforms/` — not only when the user asks for a scan.
+
+**Path exposure rules for `platforms/` files:**
+- `/home/*/projects/*` paths are acceptable (personal open project repos).
+- `/home/*/work/*` paths are **strictly prohibited** — these are work-context repos that contain proprietary project names.
+- All other identifiers (project names, component names, internal labels, colleague names) must be replaced with generic fictional equivalents: `src/pipeline/pipeline.cc`, `component::api`, `ProjectX`.

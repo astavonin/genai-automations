@@ -18,13 +18,7 @@ trust_level = "trusted"
 [projects."/home/astavonin/projects/projctl"]
 trust_level = "trusted"
 
-[projects."/home/astavonin/work/openpilot"]
-trust_level = "trusted"
-
 [projects."/home/astavonin"]
-trust_level = "trusted"
-
-[projects."/home/astavonin/work/ci-support"]
 trust_level = "trusted"
 
 [notice]

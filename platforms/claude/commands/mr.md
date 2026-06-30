@@ -240,6 +240,6 @@ reviewers:
   - sarah
 labels:
   - "type::refactor"
-  - "component::dms"
+  - "component::api"
 milestone: "v2.0"
 ```
