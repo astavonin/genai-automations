@@ -104,17 +104,17 @@ Pass to the agent:
   - "No on-device scope — omit On-Device Verification with a one-line note"
 - For post-review fixes: the review report and the enumerated findings to address
 
-The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 7 sections required; sections 6–7 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note.
+The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 8 sections required; sections 7–8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note.
 
-**Section 7 format rules (mandatory):**
-- The section heading must be exactly `## 7. Open Questions`.
+**Section 8 format rules (mandatory):**
+- The section heading must be exactly `## 8. Open Questions`.
 - Use ONLY unchecked `- [ ] <question>` checkboxes for genuine open questions — those requiring external information or a stakeholder decision not yet made.
-- Items recorded in `analysis.md ## Clarifications` as `**Decision:** assumption — ...` are resolved defaults, NOT open questions. Do not copy them into `## 7. Open Questions`.
+- Items recorded in `analysis.md ## Clarifications` as `**Decision:** assumption — ...` are resolved defaults, NOT open questions. Do not copy them into `## 8. Open Questions`.
 - If there are no open questions, write exactly: `*(None — omit this section or list specific open questions as \`- [ ] <question>\` items)*` and do not include any `- [ ]` checkbox.
 
 ### Step 5: Resolve open questions (blocking gate)
 
-After the agent writes the design doc, read Section 7 (Open Questions) of `design.md`.
+After the agent writes the design doc, read Section 8 (Open Questions) of `design.md`.
 
 Apply the detection criteria from `~/.claude/skills/workflows/design-open-questions-gate/SKILL.md` Steps 2–3 to determine whether Section 7 is clean. That fragment is the authoritative definition — do not restate or re-derive the criteria here.
 

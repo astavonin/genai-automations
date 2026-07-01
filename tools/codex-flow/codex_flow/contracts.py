@@ -12,7 +12,8 @@ class ImplementationRequest:
 
     request_path: Path
     repository: Path
-    requirements: list[str]
+    functional_requirements: list[str]
+    non_functional_requirements: list[str]
     constraints: list[str]
     verification: str
     context_files: list[str]

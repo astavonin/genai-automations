@@ -48,8 +48,11 @@ Retries are needed for transient sync failures.
 
 **Repository:** `/tmp/repo`
 
-**Requirements:**
+**Functional Requirements:**
 - Retry transient failures up to three times
+
+**Non-Functional Requirements:**
+- Retry must add no more than 50 ms latency per attempt
 
 **Constraints:**
 - Keep the CLI unchanged
@@ -87,13 +90,27 @@ Keep retry handling inside the sync component boundary.
 
 ---
 
-## 6. Trade-offs and Alternatives
+## 6. Test Requirements
+
+### Unit Tests
+- Retry logic fires on transient error codes only
+
+### Integration Tests
+- Full sync with injected transient failure recovers within three retries
+
+### E2E Tests
+
+*(None — software-only feature)*
+
+---
+
+## 7. Trade-offs and Alternatives
 
 No meaningful alternatives for this narrow retry behavior.
 
 ---
 
-## 7. Open Questions
+## 8. Open Questions
 
 No open questions.
 """.strip(),
@@ -103,7 +120,8 @@ No open questions.
     parsed = parse_implementation_request(request)
 
     assert parsed.repository == Path("/tmp/repo")
-    assert parsed.requirements == ["Retry transient failures up to three times"]
+    assert parsed.functional_requirements == ["Retry transient failures up to three times"]
+    assert parsed.non_functional_requirements == ["Retry must add no more than 50 ms latency per attempt"]
     assert parsed.constraints == ["Keep the CLI unchanged"]
     assert parsed.context_files == ["src/sync.py", "tests/test_sync.py"]
     assert parsed.output_path == tmp_path / "design.implementation-output.md"
@@ -119,8 +137,11 @@ def test_parse_implementation_request_rejects_missing_verification(tmp_path: Pat
 
 **Repository:** `/tmp/repo`
 
-**Requirements:**
+**Functional Requirements:**
 - Do the thing
+
+**Non-Functional Requirements:**
+- Keep it fast
 
 **Constraints:**
 - Keep scope small

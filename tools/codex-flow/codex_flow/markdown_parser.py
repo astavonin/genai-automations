@@ -24,20 +24,24 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
     section = _extract_section(lines, "Implementation Context")
     repository = _require_absolute_path(_extract_field(section, "Repository"), "Repository")
 
-    requirements = _extract_bullets_after_field(section, "Requirements")
+    functional_requirements = _extract_bullets_after_field(section, "Functional Requirements")
+    non_functional_requirements = _extract_bullets_after_field(section, "Non-Functional Requirements")
     constraints = _extract_bullets_after_field(section, "Constraints")
     verification = _extract_code_block_after_field(section, "Verification")
     context_files = _extract_bullets_after_field(section, "Context Files")
 
-    if not requirements:
-        raise ValidationError("Implementation request must include at least one requirement.")
+    if not functional_requirements and not non_functional_requirements:
+        raise ValidationError(
+            "Implementation request must include at least one Functional or Non-Functional requirement."
+        )
     if not verification.strip():
         raise ValidationError("Implementation request must include a non-empty Verification block.")
 
     return ImplementationRequest(
         request_path=request_path.resolve(),
         repository=repository,
-        requirements=requirements,
+        functional_requirements=functional_requirements,
+        non_functional_requirements=non_functional_requirements,
         constraints=constraints,
         verification=verification.strip(),
         context_files=context_files,

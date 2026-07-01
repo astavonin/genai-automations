@@ -66,8 +66,11 @@ def _write_implementation_request(path: Path, repository: Path) -> None:
 
 **Repository:** `{repository}`
 
-**Requirements:**
+**Functional Requirements:**
 - Retry transient failures up to three times
+
+**Non-Functional Requirements:**
+- Retry must add no more than 50 ms latency per attempt
 
 **Constraints:**
 - Keep the CLI unchanged
