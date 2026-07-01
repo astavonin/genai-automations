@@ -29,7 +29,10 @@ What problem does this solve? Why now?
 
 **Repository:** `/absolute/path/to/repo`
 
-**Requirements:**
+**Functional Requirements:**
+- ...
+
+**Non-Functional Requirements:**
 - ...
 
 **Constraints:**
@@ -101,7 +104,21 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 
 ---
 
-## 6. Trade-offs and Alternatives
+## 6. Test Requirements
+
+### Unit Tests
+- ...
+
+### Integration Tests
+- ...
+
+### E2E Tests
+
+*(Omit with a one-line note if no E2E tests are required for this feature)*
+
+---
+
+## 7. Trade-offs and Alternatives
 
 ### Option A — <Chosen Approach>
 **Pros:** ...
@@ -117,6 +134,6 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 
 ---
 
-## 7. Open Questions
+## 8. Open Questions
 
 *(None — omit this section or list specific open questions as `- [ ] <question>` items)*
