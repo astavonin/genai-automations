@@ -85,7 +85,7 @@ Investigate existing codebase patterns, architecture, integration points.
 
 **Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 
-**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 7 sections required. Sections 6 and 7 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
+**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 8 sections required. Sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
 After writing: print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs accepted — conversational output only, not written to any file), then ask the user if they want to `open <path>` the design file.
 
