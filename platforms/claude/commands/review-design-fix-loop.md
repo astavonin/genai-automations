@@ -35,10 +35,10 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 - **Skip** the design doc status header update step (`**Status:** Draft → Approved`) — the fix-loop manages the header itself; it sets it only when the initial review (Step 1) or the final clean review (Step 4) returns APPROVED, never during re-review passes (Step 3)
 - **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `design-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
 
-**Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1, 3, 4). If Step 2 introduces new open questions in `## 7. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Steps 3 or 4), use this specific message instead of the gate's default:
+**Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1, 3, 4). If Step 2 introduces new open questions in `## 8. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Steps 3 or 4), use this specific message instead of the gate's default:
 
 ```
-Fix loop paused — Step 2 introduced new open questions in ## 7. Open Questions despite the prohibition.
+Fix loop paused — Step 2 introduced new open questions in ## 8. Open Questions despite the prohibition.
 Resolve via /design then re-invoke /review-design-fix-loop.
 ```
 
@@ -66,7 +66,7 @@ Invoke **architecture-research-planner agent** with:
 - The full design doc (`design.md`)
 - The analysis doc (`analysis.md`) if it exists — for original decision context
 - The full list of findings selected above
-- Instruction: apply all fixes to `design.md` in one pass; stay at the architectural level; validate any Mermaid diagrams that are added or modified; do not insert RESOLVED markers or finding IDs into the design doc; do NOT add new items to `## 7. Open Questions` — if something cannot be resolved architecturally while applying fixes, flag it as an unaddressable finding instead; flag explicitly any finding that cannot be addressed
+- Instruction: apply all fixes to `design.md` in one pass; stay at the architectural level; validate any Mermaid diagrams that are added or modified; do not insert RESOLVED markers or finding IDs into the design doc; do NOT add new items to `## 8. Open Questions` — if something cannot be resolved architecturally while applying fixes, flag it as an unaddressable finding instead; flag explicitly any finding that cannot be addressed
 
 **If the architecture-research-planner flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 

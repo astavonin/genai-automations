@@ -45,7 +45,7 @@ Record the outcome as one of:
   - If a special test package is required: **Build test package step is MANDATORY** within that section
   - If a standard build suffices: omit the build-package step with a one-line note
   - **Entry point:** name it if it already exists; if it doesn't exist, flag it as a deliverable of this feature
-- **On-device: YES, procedures unknown** — feature targets device, but no device procedures found in project docs → include an On-Device Verification stub block in Section 3 with every field explicitly marked TBD, and add an open question in Section 7 requiring resolution before implementation. Do not invent steps.
+- **On-device: YES, procedures unknown** — feature targets device, but no device procedures found in project docs → include an On-Device Verification stub block in Section 3 with every field explicitly marked TBD, and add an open question in Section 8 requiring resolution before implementation. Do not invent steps.
 - **On-device: NO** — feature is software-only → omit the section with a one-line note
 
 State the outcome explicitly in conversation before starting Q&A. Also write it to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## On-Device Scope` heading using the canonical machine-readable label — exactly one of: `YES` | `YES-UNKNOWN` | `NO` — followed by the source evidence (file name and relevant excerpt). The prose label "On-device: YES, procedures unknown" maps to the machine-readable label `YES-UNKNOWN`; always use the machine-readable form in analysis.md so downstream regex checks are reliable. If that file does not yet exist, create it with just this section. This heading is the authoritative scope signal for all downstream commands (review-design, review-code, verify) — they must read it rather than inferring scope from design doc section presence.
@@ -100,7 +100,7 @@ Pass to the agent:
 - The goal, milestone, feature context
 - The on-device determination from step 1 — explicitly state one of:
   - "On-device verification is MANDATORY — include the On-Device Verification block in Section 3 using procedures from [source file]; build-test-package step is MANDATORY / not required (standard build suffices); entry point is [existing: `<script>` | new deliverable: must be created as part of this feature]; include 'Expected outcome on device' and 'Failure indicators' fields populated from project documentation"
-  - "On-device scope detected but device procedures are unknown — include an On-Device Verification stub block in Section 3 with every field (entry point, build test package, deploy, verify, expected outcome, failure indicators) explicitly marked TBD; add an open question in Section 7 requiring resolution before implementation"
+  - "On-device scope detected but device procedures are unknown — include an On-Device Verification stub block in Section 3 with every field (entry point, build test package, deploy, verify, expected outcome, failure indicators) explicitly marked TBD; add an open question in Section 8 requiring resolution before implementation"
   - "No on-device scope — omit On-Device Verification with a one-line note"
 - For post-review fixes: the review report and the enumerated findings to address
 
@@ -116,7 +116,7 @@ The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` fo
 
 After the agent writes the design doc, read Section 8 (Open Questions) of `design.md`.
 
-Apply the detection criteria from `~/.claude/skills/workflows/design-open-questions-gate/SKILL.md` Steps 2–3 to determine whether Section 7 is clean. That fragment is the authoritative definition — do not restate or re-derive the criteria here.
+Apply the detection criteria from `~/.claude/skills/workflows/design-open-questions-gate/SKILL.md` Steps 2–3 to determine whether the Open Questions section is clean. That fragment is the authoritative definition — do not restate or re-derive the criteria here.
 
 **If the gate criteria report no unresolved items:** the design is complete — proceed to the Output section.
 
@@ -126,9 +126,9 @@ Increment the pass counter (starts at 0).
 
 1. For each open question in turn: present it (same dialog format as Step 2 — state the context, offer concrete options), wait for the user's answer (including "accepted as known-unknown"), then immediately append that answer to `analysis.md` under `## Clarifications` (same format as Step 3) before moving to the next question.
 2. After all open questions are answered, re-declare: "I'll use architecture-research-planner agent to update the design document with resolved questions..."
-3. Re-invoke the architecture-research-planner agent with the updated `analysis.md` (including new clarifications) and the instruction to update `design.md`: remove from `## 7. Open Questions` ALL items — both those answered with a decision AND those accepted as known-unknown. Accepted-as-known-unknown questions are tracked in `analysis.md ## Clarifications` only; they must not remain in `design.md` Section 7. Incorporate answered decisions into the relevant design sections. After this pass, `## 7. Open Questions` must contain only the template's "none" note or be absent. Follow the Section 7 format rules above. Overwrite `design.md`.
+3. Re-invoke the architecture-research-planner agent with the updated `analysis.md` (including new clarifications) and the instruction to update `design.md`: remove from `## 8. Open Questions` ALL items — both those answered with a decision AND those accepted as known-unknown. Accepted-as-known-unknown questions are tracked in `analysis.md ## Clarifications` only; they must not remain in `design.md` Section 8. Incorporate answered decisions into the relevant design sections. After this pass, `## 8. Open Questions` must contain only the template's "none" note or be absent. Follow the Section 8 format rules above. Overwrite `design.md`.
 4. Run `/verify-docs` on the modified `design.md`. If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface: "Doc consistency blockers remain — manual intervention needed." Pause and wait for user.
-5. Return to the top of Step 5 and check Section 7 again using the gate criteria. Repeat until the gate passes.
+5. Return to the top of Step 5 and check Section 8 again using the gate criteria. Repeat until the gate passes.
 
 **Iteration cap:** If the pass counter reaches 5 without the gate passing, stop and surface: "Design open questions unresolved after 5 passes — manual intervention needed." Pause and wait for user.
 
@@ -140,9 +140,10 @@ Increment the pass counter (starts at 0).
 - Header metadata (goal, milestone + GL/GH ref, feature ref, branch, status, revision)
 - Problem statement
 - Goals and non-goals
-- Implementation context (repo, requirements, constraints, verification commands, context files)
+- Implementation context (repo, functional requirements, non-functional requirements, constraints, verification commands, context files)
 - Architecture overview with Mermaid diagram
 - Detailed design (component boundaries and interfaces — not implementation details or method signatures)
+- Test requirements (unit, integration, E2E — instruct the agent to populate §6 with concrete test cases per level, not bare placeholders)
 - Trade-offs and alternatives
 - Open questions
 

@@ -34,10 +34,13 @@ without requiring a large code change or broad repo context.
 
 **Repository:** `/tmp/codex-flow-smoke-repo`
 
-**Requirements:**
+**Functional Requirements:**
 - Add a function `format_greeting(name: str) -> str`
 - Return `Hello, <name>!`
 - Strip leading and trailing whitespace from the input name before formatting
+
+**Non-Functional Requirements:**
+- No measurable latency impact (pure in-memory string operation)
 
 **Constraints:**
 - Keep the existing project structure unchanged
@@ -79,7 +82,22 @@ trimming without changing package boundaries or introducing new dependencies.
 
 ---
 
-## 6. Trade-offs and Alternatives
+## 6. Test Requirements
+
+### Unit Tests
+- `format_greeting` returns `Hello, <name>!` for a normal name
+- `format_greeting` strips leading/trailing whitespace from the input name
+
+### Integration Tests
+- N/A — pure function with no external dependencies
+
+### E2E Tests
+
+*(None — software-only utility function)*
+
+---
+
+## 7. Trade-offs and Alternatives
 
 ### Option A — Add a pure helper function
 **Pros:** Small scope, easy to test, low regression risk.
@@ -93,6 +111,6 @@ trimming without changing package boundaries or introducing new dependencies.
 
 ---
 
-## 7. Open Questions
+## 8. Open Questions
 
 - [ ] Update `Context Files` if the test repository uses different paths.

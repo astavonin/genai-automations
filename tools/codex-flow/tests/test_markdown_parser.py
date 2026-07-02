@@ -153,6 +153,67 @@ def test_parse_implementation_request_rejects_missing_verification(tmp_path: Pat
         parse_implementation_request(request)
 
 
+def test_parse_implementation_request_rejects_when_all_requirements_empty(tmp_path: Path) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Empty Requirements
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+
+**Non-Functional Requirements:**
+
+**Constraints:**
+- Keep scope small
+
+**Verification:**
+
+```bash
+pytest
+```
+
+**Context Files:**
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="at least one Functional or Non-Functional"):
+        parse_implementation_request(request)
+
+
+def test_parse_implementation_request_rejects_legacy_requirements_field(tmp_path: Path) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Legacy Format
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Requirements:**
+- Do the thing
+
+**Constraints:**
+- Keep scope small
+
+**Verification:**
+
+```bash
+pytest
+```
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="Missing required field: Functional Requirements"):
+        parse_implementation_request(request)
+
+
 def test_parse_review_request_extracts_contract(tmp_path: Path) -> None:
     request = tmp_path / "review.md"
     request.write_text(

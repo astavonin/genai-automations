@@ -107,14 +107,17 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 ## 6. Test Requirements
 
 ### Unit Tests
+*(Single-component tests with collaborators mocked or stubbed. List the specific behaviours and failure modes that must be covered — not file names.)*
 - ...
 
 ### Integration Tests
+*(Component-boundary tests that cross at least one real dependency — database, filesystem, IPC, network call. List the interaction paths that must be exercised.)*
 - ...
 
 ### E2E Tests
+*(System- or user-flow-level tests that exercise the feature end-to-end. Omit with a one-line note if the feature has no user-facing or cross-service flow.)*
 
-*(Omit with a one-line note if no E2E tests are required for this feature)*
+*(Omit E2E subsection with a one-line note if no E2E tests are required for this feature)*
 
 ---
 

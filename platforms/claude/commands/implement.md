@@ -45,9 +45,9 @@ test "$REVIEW" -nt "$DESIGN" || test "$REVIEW" -ef "$DESIGN"
 # d) status marker is exactly APPROVED
 DESIGN_STATE=$(head -20 "$REVIEW" | grep -m 1 '^\*\*Status:\*\*' | sed 's/^\*\*Status:\*\* //')
 [ "$DESIGN_STATE" = "APPROVED" ]
-# e) no unresolved on-device open questions in design doc Section 7
-# If analysis.md '## On-Device Scope' is YES or YES-UNKNOWN, verify that Section 7
-# of design.md contains no open (unchecked) items mentioning on-device scope:
+# e) no unresolved on-device open questions in design doc Open Questions section
+# If analysis.md '## On-Device Scope' is YES or YES-UNKNOWN, verify that the Open
+# Questions section of design.md contains no open (unchecked) items mentioning on-device scope:
 ANALYSIS="planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md"
 if grep -q '## On-Device Scope' "$ANALYSIS" 2>/dev/null && grep -A1 '## On-Device Scope' "$ANALYSIS" | grep -qiE '^(YES|YES-UNKNOWN)'; then
     ! grep -iE 'on-device verification|device procedures' "$DESIGN" | grep -q '^\- \[ \]'
