@@ -24,6 +24,8 @@ Three-way planning state update (APPROVED / CHANGES REQUESTED / REJECTED) follow
 
 ### 1. Update `planning/<goal>/milestone-XX/status.md` (canonical phase vocabulary)
 
+Note: `milestone-XX` is a pattern — substitute the actual folder name, including any name suffix (e.g., `milestone-01-foundations`). For the article workflow, `goal=book` and the full folder name (with suffix) must be used.
+
 - `APPROVED` → set Phase to `approved_phase`
 - `CHANGES REQUESTED` → set Phase to `changes requested 🔄`
 - `REJECTED` → set Phase to `rejected ❌`

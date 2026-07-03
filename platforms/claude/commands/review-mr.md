@@ -130,7 +130,7 @@ is not preserved. Copy the file manually before re-running if you need to keep i
 
 Before saving, parse and verify:
 1. Valid YAML syntax (no parse errors)
-2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `findings`
+2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `findings`; `approval` is optional (defaults to `"approved"`) but when present must be one of `"approved"`, `"changes_requested"`, `"none"`
 3. `mr_number` is an integer (not a string)
 4. Each finding has required fields: `severity`, `title`, `description`
 5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
@@ -201,6 +201,8 @@ mr_number: 134                          # integer, REQUIRED
 title: "Brief MR title"                 # string, REQUIRED (match MR title)
 review_date: "2026-02-11"               # YYYY-MM-DD, REQUIRED
 codex: ran                              # REQUIRED: "ran" | "not run: <reason>"
+approval: approved                      # "approved" | "changes_requested" | "none" — default: "approved"
+                                        # projctl comment applies this automatically after posting findings
 
 findings:
   - severity: Critical                  # REQUIRED: Critical | High | Medium | Low

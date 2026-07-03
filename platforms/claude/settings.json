@@ -237,7 +237,7 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "skipWorkflowUsageWarning": true,
-  "skipAutoPermissionPrompt": true,
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
-  "inputNeededNotifEnabled": true
+  "skipAutoPermissionPrompt": true
 }

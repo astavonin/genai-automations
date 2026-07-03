@@ -23,11 +23,12 @@ Current callers (commands with custom column updates that don't fit the standard
 - `/mr` — after MR number written to progress.md and status.md (sets MR column + Phase simultaneously)
 - `/verify` — after verification passes and planning state updated (Notes-only append, no Phase change)
 - `/review-mr` — after MR review YAML written and progress.md updated
-- `/review-article` — after article review written and planning state updated
 
 ## Steps
 
 ### 1. Push planning state
+
+Note: When reading or writing `planning/<goal>/milestone-XX/` paths referenced by calling skills, substitute the actual folder name including any name suffix (e.g., `milestone-01-foundations`). For the article workflow, `goal=book`.
 
 ```bash
 projctl sync push

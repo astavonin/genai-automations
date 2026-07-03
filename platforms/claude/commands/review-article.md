@@ -1,16 +1,17 @@
 ---
 name: review-article
-description: Review an article draft in two sequential passes — spec compliance first, then article quality. Runs after /write.
+description: Review an article across five quality scopes — code accuracy, facts accuracy, prose accuracy, completeness, and internal consistency.
 ---
 
 # Article Review Command
 
-Review an article draft in two sequential passes. Pass 1 (spec compliance) gates Pass 2
-(article quality) — if the implementation does not satisfy the spec, the article cannot
-be reviewed for quality yet.
+**MANDATORY CHECKPOINT:** Review article before publication.
 
-**No Codex** — this review evaluates spec compliance against a prose contract and article
-quality for a human reader; code-correctness tools do not apply.
+Review an article across five quality scopes using three focused agents and Codex in
+parallel. Implementation correctness is handled by `/review-code` before this command
+runs; this command covers only article quality.
+
+Applies equally to drafts, final articles, blog posts, and any other written format.
 
 ## Usage
 
@@ -19,183 +20,151 @@ quality for a human reader; code-correctness tools do not apply.
 /review-article <companion-repo-path>   # override companion repo location
 ```
 
+## Verification Scopes
+
+```
+Read ~/.claude/skills/workflows/article-review/SCOPES.md
+```
+
+Five scopes: Code Accuracy (Agent 1), Facts Accuracy (Agent 2), Prose Accuracy +
+Completeness + Internal Consistency (Agent 3). Each criterion specifies what to check,
+how to confirm it, and severity.
+
 ## Agents
 
-**1 × reviewer (opus)** — Pass 1 (spec compliance)
-**1 × reviewer (opus)** — Pass 2 (article quality) — only if Pass 1 is clean
+**3 × reviewer (opus)** — focused, in parallel
+**1 × codex-flow** — Scopes 1 and 2 cross-check, background
+
+Focus assignments:
+- **Agent 1:** Scope 1 — Code Accuracy (including 1.1 annotation check, excluded from Codex)
+- **Agent 2:** Scope 2 — Facts Accuracy; **must search the web**; every finding must cite
+  an authoritative source
+- **Agent 3:** Scopes 3 + 4 + 5 — Prose Accuracy, Completeness, Internal Consistency
+
+All agents receive the full article, spec (context), and companion repo files inline.
+All agents may flag High issues outside their primary scope.
+Consensus: **≥2 of 3 agents** to confirm a finding.
+
+---
 
 ## Setup
 
 ### 1. Locate required files
 
-All three must exist before launching any agents. Stop and report which is missing if any.
+All three must exist before launching any agents. Stop and report which is missing.
 
 | File | Default location |
 |------|-----------------|
 | Spec | `planning/book/milestone-XX-<name>/issues/<NNN-name>/spec.md` |
-| Draft | `planning/book/milestone-XX-<name>/issues/<NNN-name>/draft.md` |
+| Article | `planning/book/milestone-XX-<name>/issues/<NNN-name>/draft.md` |
 | Companion repo | See resolution rule below |
 
+`draft.md` is the canonical article filename regardless of content type. Fallback: the
+single `.md` file in the issue folder that is not `spec.md`, `analysis.md`, `design.md`,
+or `*-review.md`. If ambiguous, ask the user.
+
 **Companion repo resolution:**
-1. If `<companion-repo-path>` was provided as an argument, use that directly — skip steps 2–4
-2. Read `CLAUDE.local.md` companion repos table
-3. Match the current article's part number to the correct table entry
-4. Resolve local disk path as `~/projects/<repo-name>` from the matched entry
-5. If the match is ambiguous or the directory does not exist, ask the user
+
+Precondition: `CLAUDE.local.md` must exist at the repo root with a companion repos table
+(`part` and `repo-name`/`path` columns). If absent, the command must be invoked with an
+explicit `<companion-repo-path>` argument — otherwise stop and report.
+
+1. If `<companion-repo-path>` provided, use it directly — verify the directory exists
+2. Else read `CLAUDE.local.md`, match the article's part number, resolve path as `~/projects/<repo-name>`
+3. If ambiguous or directory missing, ask the user
 
 ### 2. Check for prior review
 
-If `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md` already exists,
-read it and partition prior findings by pass:
-- Prior **S-findings** (Pass 1) → include in the Pass 1 agent prompt
-- Prior **A-findings** (Pass 2) → include in the Pass 2 agent prompt
+If `article-review.md` exists in the issue folder, read it and route prior findings:
+- **A-prefixed findings** → agent whose primary scope matches (1→Agent 1, 2→Agent 2, 3/4/5→Agent 3).
+  Append: "Re-raise if unresolved at same severity; note explicitly if resolved."
+- **AC-prefixed findings** → Codex review-request Context section.
+  Append: "Re-raise if still present."
 
-In each case, append the instruction: "This finding was raised in a prior review. Verify
-whether it has been addressed. Re-raise if unresolved at the same severity; note
-explicitly if resolved."
+### 3. Enumerate and pre-read files
 
-### 3. Enumerate implementation files
+Extract type names and behaviour identifiers from the spec. Locate corresponding source
+files in the companion repo. Collect files referenced via `<!-- file: path:L10-L25 -->`
+annotations. Deduplicate.
 
-From the spec, extract all type names, behaviour identifiers, and integration constraints.
-Locate the corresponding source files in the companion repo using `grep` or directory
-traversal. Also collect every file referenced in the draft via
-`<!-- file: path/to/file.ext:L10-L25 -->` annotations. Deduplicate.
+Pre-read in the main conversation before launching any agents (pass inline; agents must
+not call Read themselves):
+- `spec.md`, article file, all companion repo source files identified above
+- "Technical Familiarity" section from `CLAUDE.local.md` → Agent 3 audience baseline.
+  If absent: use senior systems engineer as default; note in the review header.
 
-Pre-read every file in this list in the main conversation before launching any agents —
-pass contents inline. Do not let agents call Read themselves.
+Large repo: if >20 files or >4000 lines, prioritise annotation-cited files then
+spec-named files. Record omissions as `Files omitted: <list>` in the review header.
 
-Files to pre-read:
-- `spec.md`
-- `draft.md`
-- All companion repo source files identified above
-- The "Technical Familiarity" section of `CLAUDE.local.md` (pass to Pass 2 agent as
-  audience context)
+---
 
 ## File Overwrite Convention
 
-This skill always writes a single file `article-review.md` inside the issue folder,
-**overwriting** any prior content. No versioning suffixes. Git history preserves prior
-reviews if needed.
+Always writes a single file `article-review.md` inside the issue folder, overwriting
+any prior content. No versioning suffixes.
 
-## Status Marker Convention
+Only **APPROVED** and **CHANGES REQUESTED** are valid Status values. REJECTED is
+intentionally omitted — articles never require redesign; unresolvable problems map to
+CHANGES REQUESTED with High findings driving revision.
+
+**Path pattern note:** This workflow uses `book/milestone-XX-<name>/` (name suffix
+included). Substitute `goal=book` and `milestone-XX=milestone-XX-<name>` when calling
+shared skills that use the generic `<goal>/milestone-XX/` pattern.
+
+---
+
+## Review
+
+### Step 1 — Write Codex review-request
 
 ```
-Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
+Read ~/.claude/skills/workflows/article-review/CODEX-REQUEST-TEMPLATE.md
 ```
-(`review_file = planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`)
 
-## Pass 1 — Spec Compliance
+Write the populated document to `planning/reviews/<issue-slug>-article-codex-review.md`.
+The `Output File` field must match this path exactly. Use the **article project root**
+(the repo containing `planning/`) as `Repository` — not the companion code repo. Provide
+the companion repo path in the Context section. Copy Requirements bullets verbatim from
+`## Codex Review-Request Requirements` in SCOPES.md.
 
-Launch a single reviewer (opus) agent. Provide inline:
-- Full `spec.md`
-- Implementation source files identified in Setup §3
-- Any prior Pass 1 findings from a previous review (per Setup §2)
-- The checklist below
+### Step 2 — Hard gate + parallel launch
 
-**Do not provide the draft** — Pass 1 is about the code, not the article.
+```
+Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
+```
+(`test_coverage = no`)
 
-### Spec compliance checklist
+Launch simultaneously:
+- **Agent 1** — Scope 1; article + source files inline; include full Scope 1 criteria from SCOPES.md
+- **Agent 2** — Scope 2; article + source files inline; MUST search the web; every finding MUST cite an authoritative source (URL, RFC number, spec section with version); include full Scope 2 criteria from SCOPES.md
+- **Agent 3** — Scopes 3+4+5; article + spec + audience baseline inline; include full Scopes 3–5 criteria from SCOPES.md
+- **Codex** — `codex-flow` Bash call (`run_in_background: true`) with the review-request above
 
-For items 1–5, cite the spec section and the implementation location (file:line).
-For item 6 (scope creep), cite only the implementation location — there is no spec
-section because the item is absent from the spec by definition.
+**Agent instruction (all agents):** This is an article quality review. Do not apply the
+8-attribute software quality checklist. Apply only the scope criteria assigned to you,
+plus any High issues you observe in other scopes.
 
-1. **Types present** — every type named in the spec exists with the correct name and
-   visibility
-2. **Invariants enforced** — each type invariant from the spec is enforced by the
-   implementation, not merely documented
-3. **Behaviours implemented** — every behaviour described in the spec is present and
-   produces the correct observable outcome (return value, side effect, error)
-4. **Smoke test assertions match** — every assertion in the spec's smoke test section
-   (tolerances, thresholds, counts) is present verbatim or equivalent in the test code
-5. **Integration constraints satisfied** — each constraint in the spec's integration
-   constraints section (target platforms, runtime restrictions, dependency rules) is met
-6. **Scope creep** — note any public types, public methods, or testable behaviours present
-   in the implementation that are absent from the spec; these do not block Pass 1 but
-   must be listed so the article author can decide whether to cover them
+### Step 3 — Aggregate
 
-Items 1–5 are blocking. Item 6 is informational.
+Wait for all 3 agents to complete. Then wait for Codex (Monitor tool; fall back to
+polling the output file with 10-minute timeout). Read Codex output at
+`planning/reviews/<issue-slug>-article-codex-review.md`. If absent or empty, record
+`Codex: ✗ not run — no output written` in the review header.
 
-### Pass 1 gate
+**Deduplication:** Two findings are duplicates when they cover the same criterion and
+the same location. Use the Codex label → scope criterion mapping table in SCOPES.md.
 
-If items 1–5 have any violations → write the review file with `**Status:** CHANGES REQUESTED`,
-include Pass 1 findings only, skip Pass 2.
+**Claude consensus:** ≥2 of 3 Claude agents → confirmed finding.
+**Codex (finder only, not a voter):** A Codex finding needs ≥2 Claude agents to confirm
+it; otherwise it goes to Codex-Only Findings.
 
-If Pass 1 is clean (zero violations in items 1–5) → proceed to Pass 2.
+**Edge cases:**
+- Codex fails → proceed on Claude findings only; record in header.
+- Agent errors → re-launch once; on second failure include partial findings under
+  `Findings Requiring Manual Review`, set `**Status:** CHANGES REQUESTED`.
+- Empty pool → mark review clean.
 
-## Pass 2 — Article Quality
-
-Only runs after a clean Pass 1.
-
-Launch a single reviewer (opus) agent. Provide inline:
-- Full article draft
-- `spec.md` (context — what the article is supposed to cover)
-- Implementation source files identified in Setup §3 (needed to verify snippet accuracy)
-- The "Technical Familiarity" section from `CLAUDE.local.md` (pre-read in Setup §3)
-- Any prior Pass 2 findings from a previous review (per Setup §2)
-- The checklist below
-
-**Agent instruction:** This is an article quality review, not a software code review.
-Do not apply the 8-attribute software quality checklist. Apply only the article quality
-checklist below.
-
-**Audience context:** Use the "Technical Familiarity" section provided inline above as
-the baseline for judging what counts as over-explanation — do not assume a generic
-"systems engineer" profile.
-
-### Article quality checklist
-
-Severity guidance — High: reader is misled or cannot follow the article; Medium: article
-works but has a structural or clarity problem; Low: polish issue.
-
-#### Structure
-- **WHY before HOW** — every section establishes motivation before showing mechanics;
-  the reader understands why they are reading each section before they read it
-  *(High if a core section jumps straight to code with no motivation)*
-- **No section duplication** — the same information does not appear in two places
-  *(Medium)*
-- **Heading hierarchy** — each heading maps to a distinct concept; no heading merely
-  restates its parent *(Low)*
-
-#### Audience calibration
-- **No over-explanation** — the target reader is a systems engineer; skip definitions of
-  V4L2 ioctls, Rust ownership basics, Linux kernel concepts unless the article is
-  specifically about those things *(Medium if occasional, High if pervasive)*
-- **Trade-offs are named** — design decisions are explained in terms of what was given up,
-  not just what was chosen *(Medium)*
-- **Voice is direct** — no hedging ("might", "could potentially"), no preamble before the
-  point *(Low)*
-
-#### Code examples
-- **One concept per snippet** — each snippet illustrates exactly one key insight; anything
-  not essential to that insight is absent *(Medium)*
-- **No noise** — no boilerplate imports, unrelated helpers, or scaffolding unless the
-  article is specifically about those *(Medium)*
-- **File path and line numbers present** — every snippet has a `<!-- file: path:L10-L25 -->`
-  annotation *(High — without this, accuracy cannot be verified)*
-- **Snippet accuracy** — the snippet matches what is actually at those lines in the
-  companion repo *(High — reader following the wrong code is a direct harm)*
-
-#### Diagrams
-- **Derived from code** — each diagram reflects actual runtime structure or data flow
-  *(High if diagram contradicts code)*
-- **No prose duplication** — the diagram shows something the adjacent prose does not
-  already say completely *(Low)*
-- **Captioned** — every diagram has a caption that states what it shows *(Low)*
-
-#### Technical accuracy
-- **Numbers match code** — any constant, threshold, or measured value cited in prose
-  matches the implementation *(High)*
-- **Behaviour descriptions match code** — no approximations that would mislead a careful
-  reader *(High)*
-
-#### Completeness
-- **Opening promise kept** — the article covers what its opening paragraph claims
-  *(High if a promised topic is absent)*
-- **No stranded reader** — the reader finishing the article has enough context to extend
-  or debug the code without re-reading the spec *(Medium)*
-- **Key failure modes addressed** — if the spec or implementation has known limitations,
-  the article acknowledges them *(Medium)*
+---
 
 ## Output
 
@@ -204,54 +173,57 @@ Write `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`:
 ```markdown
 # Article Review
 
-**Status:** APPROVED  (or CHANGES REQUESTED / REJECTED)
+**Status:** APPROVED
 
-**Article:** <article title from draft>
+**Article:** <title>
 **Spec:** planning/book/milestone-XX-<name>/issues/<NNN-name>/spec.md
 **Companion repo:** <path used>
-**Pass 1:** ✅ Clean | ⚠️ N violations
-**Pass 2:** ✅ Ran | ⏭ Skipped — Pass 1 violations must be resolved first
+**Audience baseline:** Technical Familiarity from CLAUDE.local.md | default: senior systems engineer
+**Files omitted:** <list> — exceeded inline budget  *(omit if nothing omitted)*
+**Codex:** ✓ ran  *(on success)*  |  ✗ not run — <reason>  *(on failure)*
 
 ---
 
-## Pass 1 — Spec Compliance
+## Code Accuracy
 
-*(Clean — no violations.)*
+*(Clean.)* OR list findings:
 
-OR, if violations found:
+- **A1** [High | Medium | Low]
+  Agents: <Claude agents only — Codex is a finder, not a voter>
+  Location: `<file:line or article section>`
+  Votes: <N of 3>
+  Evidence: <what was found vs what is expected>
+  Confirmation: `<file:line read to verify>`
 
-- **S1** [type | invariant | behaviour | smoke-test | constraint]
-  Spec: `<spec section>`
-  Implementation: `<file:line>`
-  Gap: <what is missing or wrong>
+## Facts Accuracy
 
-- **S2** [scope-creep]
-  Implementation: `<file:line>`
-  Note: <what extra public surface is present and whether the article should cover it>
+- **A2** [High | Medium | Low]  Agents: ...  Location: ...  Votes: ...
+  Evidence: <claim vs correct>  Source: `<URL or spec section and version>`
 
-## Pass 2 — Article Quality
+## Prose Accuracy
 
-*(Skipped — resolve Pass 1 violations first.)*
+- **A3** [High | Medium | Low]  Agents: ...  Location: ...  Votes: ...
+  Evidence: <quoted passage>
 
-OR, if ran:
+## Completeness
 
-### Structure
-- **A1** [High | Medium | Low] <finding>
+- **A4** [High | Medium | Low]  Agents: ...  Location: ...  Votes: ...
+  Evidence: <what is promised and where it is missing>
 
-### Audience Calibration
-- **A2** [High | Medium | Low] <finding>
+## Internal Consistency
 
-### Code Examples
-- **A3** [High | Medium | Low] <finding>
+- **A5** [High | Medium | Low]  Agents: ...  Locations: `<A>` and `<B>`  Votes: ...
+  Evidence: <quoted contradicting statements>
 
-### Diagrams
-- **A4** [High | Medium | Low] <finding>
+## Codex-Only Findings
 
-### Technical Accuracy
-- **A5** [High | Medium | Low] <finding>
+Always include. Findings raised by Codex not confirmed by ≥2 Claude agents. Write "None." if empty.
 
-### Completeness
-- **A6** [High | Medium | Low] <finding>
+- **AC1** [High | Medium | Low]  Location: ...  Evidence: ...  Source: `<cited source>`
+
+## Dropped Findings (failed 2/3)
+
+Always include. Write "None." if empty.
 
 ---
 
@@ -260,46 +232,43 @@ OR, if ran:
 <what must change; reference findings by ID>
 ```
 
-A-finding IDs are globally sequential across all sections (A1, A2, A3 … not restarting
-per section). S-finding IDs are globally sequential within Pass 1 (S1, S2, S3 …).
+**Finding IDs:** A-prefix globally sequential across all scopes. AC-prefix for Codex-only.
+
+---
 
 ## Assessment
 
-- ✅ **Approve:** Pass 1 clean + zero High article quality findings
-- ⚠️ **Request Changes:** Pass 1 blocking violations that are fixable without restructuring
-  the article (missing behaviour, wrong threshold, constraint not met) OR one or more High
-  article quality findings
-- ❌ **Reject:** Pass 1 violations that invalidate the article's central narrative — the
-  type or behaviour the article is built around exists but has the wrong contract, meaning
-  the article's explanation of *why* the design is what it is would be wrong even after
-  patching the implementation
+- ✅ **Approve:** Zero High findings. Medium findings do not block (unlike `/review-code`).
+- ⚠️ **Request Changes:** One or more High findings.
 
-After writing, ask the user if they want to `open <path>` the review file.
-
-## After Resolving CHANGES REQUESTED Findings
-
-### Pass 1 violations (implementation issues)
-1. Fix the implementation in the companion repo
-2. Re-run `/write` — the draft may reference wrong code and needs to be regenerated
-3. Re-run `/review-article`
-
-### Pass 2 findings (article quality issues)
-1. Edit `draft.md` to address the findings
-2. Re-run `/review-article` — Pass 1 will re-run; if still clean, Pass 2 re-evaluates the
-   updated draft
-
-### REJECTED outcome
-1. Revise `spec.md` — return to Phase 1 (`/spec`) and correct the contract
-2. Re-implement in the companion repo (Phase 2)
-3. Re-run `/write` to produce a new draft (Phase 3)
-4. Re-run `/review-article`
-
-## Final Step — Push planning to backup
-
-After the review file is written and the marker verified:
+Verify the status marker:
 
 ```
-Read ~/.claude/skills/workflows/push-planning/SKILL.md
+Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
 ```
+(`review_file = planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`)
 
-Follow the steps in that fragment. Surface a warning on failure; do not fail this skill.
+Ask the user if they want to `open <path>` the review file.
+
+**Block until the user explicitly approves** before the article proceeds to publication
+or any revision cycle. Articles do not carry a status header in the article file itself
+(no doc-status update required on approval, unlike `/review-design`).
+
+---
+
+## After Resolving Findings
+
+1. Edit the article file to address the findings.
+2. Re-run `/review-article`.
+
+---
+
+## Final Step
+
+```
+Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
+```
+(`approved_phase = article approved ✅`, `review_label = article review`,
+`approved_next = ready for publication or revision`, `escalation = standard`)
+
+`review-planning-update` pushes to backup as its last step — no separate push needed.
