@@ -132,6 +132,8 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 8. Complete:   /complete → update progress.md (propose & confirm) → sync push → gated auto-compact
 ```
 
+**The AI never auto-advances between phases even after reviewer `APPROVED` — the user must explicitly invoke the next command (`/implement`, `/verify`, etc.). See Critical Rules.**
+
 ## Critical Rules
 
 - **Always use `/ticket` for any issue creation or weight mutation** — never run `projctl create`, `projctl update issue N --weight <value>` (or any weight-field mutation), or write a `tickets.yaml` outside the `/ticket` command workflow. This applies regardless of context: during `/design`, `/start`, `/research`, or any other command. If a user affirms a deferred creation with "ok" or "go ahead" without typing `/ticket`, do not create — respond: "Please invoke `/ticket` to create this issue — estimation and dry-run gates only apply within that command."
@@ -141,6 +143,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
+- **Reviewer agent `APPROVED` is a precondition for asking the user, NOT a substitute for the user's answer.** After Phase 3 (design review) and Phase 5 (code review), do not advance to the next phase until the user explicitly invokes the next command (`/implement` for Phase 4, `/verify` for Phase 6, or an equivalent explicit directive as defined in the phase gate — see Phase 3 and Phase 5). Conversational acknowledgements ("ok", "looks good", "go ahead") do not count as authorization.
 - **NEVER use `isolation: "worktree"` when invoking coder or devops-engineer agents** — this strands all changes in a throw-away branch. Omit the `isolation` parameter for all implementation agents so changes land directly in the user's working branch.
 - **Review files MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** — machine-readable, no emoji. Pre-existing reviews without this marker cause gates to skip (fail-safe). See §4 below.
 - **Auto-compaction fires at three phase boundaries** without a prompt: `/start` (unconditional), `/implement` (gated), `/complete` (gated). Always followed by a `✓ Compacted at <phase>` confirmation line.
@@ -239,15 +242,15 @@ ls planning/<goal>/milestone-XX/issues/
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 8 sections required; sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions
 - After writing the design file, print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
+- Do not auto-invoke `/review-design` — wait for the user to run it.
 
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file
-- Present design to user
-- Wait for explicit user approval
-- DO NOT proceed without approval
+- Present a summary of the review outcome to the user
+- **Wait for the user to explicitly invoke `/implement` to proceed to Phase 4. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements ("ok", "looks good", "sounds right", "go ahead") after a design summary are NOT authorization. If the user has not typed `/implement` or an equivalent explicit directive ("start implementation", "proceed to Phase 4"), stop and ask.**
 - If rejected: return to Phase 2
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 
@@ -258,6 +261,7 @@ ls planning/<goal>/milestone-XX/issues/
 - Include comprehensive unit tests
 - Verify build passes
 - Apply formatting
+- Do not auto-invoke `/review-code` — wait for the user to run it.
 
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
@@ -267,7 +271,7 @@ ls planning/<goal>/milestone-XX/issues/
 - **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file
-- Block until approved
+- **Wait for the user to explicitly invoke `/verify` to proceed to Phase 6. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements ("ok", "looks good", "sounds right", "go ahead", "lgtm") after a review summary are NOT authorization. If the user has not typed `/verify` or an equivalent explicit directive ("run verify", "proceed to Phase 6"), stop and ask.**
 - If rejected: fix and return for re-review
 - **Last step:** push planning to backup (elevated warning on failure: also recommend `projctl sync status` before `/complete`)
 
@@ -286,6 +290,7 @@ ls planning/<goal>/milestone-XX/issues/
 - **New commit** (initial implementation): propose message in format `<short description>. Ref #<issue-number>`, wait for approval
 - **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends the existing commit, no new message needed
 - Never create a new commit for a fix; never suggest a separate commit per review finding
+- After the commit is created, wait for the user to invoke `/complete`. Do not auto-invoke.
 
 ### Phase 8: Completion
 **Step 0: Refresh live ticket and MR states**
