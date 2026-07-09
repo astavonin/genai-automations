@@ -28,6 +28,8 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 
 ## Actions
 
+**Preamble:** Initialize `iteration = 0` before Step 1. This counter is set exactly once at command start and is never reset mid-run.
+
 ### Step 1: Initial review
 
 Declare: "I'll use reviewer agent for the initial code review..."
@@ -36,7 +38,7 @@ Follow `/review-code` with the deviations listed above. Writes `code-review.md`.
 
 If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
 
-If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Reset iteration counter to 0.
+If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2.
 
 ### Step 2: Fix all findings
 
@@ -61,7 +63,7 @@ Invoke **coder agent** with:
 
 ### Step 3: Re-review
 
-Increment iteration counter. Declare: "I'll use reviewer agent for re-review pass [N]..."
+Increment `iteration` (`iteration += 1`). Declare: "I'll use reviewer agent for re-review pass [N]..." where N is the current value of `iteration`.
 
 Follow `/review-code` with the deviations listed above. **Pass the current `code-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `code-review.md`.
 
@@ -76,6 +78,8 @@ If result is `CHANGES REQUESTED` or `REJECTED`: return to Step 2.
 Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-code` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `code-review.md`.
+
+If this final clean review returns `APPROVED`: proceed to Step 5.
 
 If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: push planning to backup (to preserve the review file), then report to the user and stop:
 ```
@@ -104,7 +108,7 @@ Read ~/.claude/skills/workflows/push-planning/SKILL.md
 Output:
 ```
 Code review loop complete: APPROVED
-Iterations: N  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md
 ```
 

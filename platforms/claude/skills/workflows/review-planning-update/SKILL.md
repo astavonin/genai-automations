@@ -13,12 +13,16 @@ metadata:
 
 Three-way planning state update (APPROVED / CHANGES REQUESTED / REJECTED) followed by push to backup. Called by any review skill after the status marker has been verified. Push fires **before** any blocking approval step.
 
-## Caller Must Specify (immediately before the Read call)
+## Caller Must Specify (at the Read call site)
 
 - **`approved_phase`** — canonical phase label to set when APPROVED (e.g., `implementing 🔨`, `code review ✅`)
 - **`review_label`** — short human label for the review type (e.g., `design review`, `code review`, `fix review`)
 - **`approved_next`** — what comes next after approval (e.g., `ready for implementation`, `ready for MR`)
 - **`escalation`** — `standard` or `elevated` (`elevated` for `/review-code` adds the "check before /complete" line)
+
+**Convention:** code-review callers use `escalation = elevated`; design-review and fix-review callers use `escalation = standard`.
+
+**Path context (implicit, not a parameter):** The executor must have already identified the active issue's `<goal>` and `milestone-XX` values from the calling command's context (typically loaded from `planning/progress.md` and `planning/<goal>/milestone-XX/status.md`). This fragment derives the files it updates — `planning/<goal>/milestone-XX/status.md` and `planning/progress.md` — from that context. These values are not passed as explicit parameters.
 
 ## Steps
 
