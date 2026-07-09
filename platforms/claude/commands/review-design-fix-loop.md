@@ -33,7 +33,7 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
-- **Skip** the "block until approved" step (the loop continues without user input)
+- **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is the step in `/review-design` that blocks until the user invokes `/implement`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
 - **Skip** the design doc status header update step (`**Status:** Draft → Approved`) — the fix-loop manages the header itself; it sets it only when the initial review (Step 1) or the final clean review (Step 4) returns APPROVED, never during re-review passes (Step 3). (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
 - **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `design-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
 

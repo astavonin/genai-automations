@@ -162,4 +162,4 @@ Design files describe **HOW** the system is structured (architecture, component 
 
 ## Next Step
 
-After design is complete, use `/review-design` to get approval before implementation.
+**Next step:** Do not auto-invoke `/review-design`. Wait for the user to type `/review-design` or an equivalent explicit directive. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.

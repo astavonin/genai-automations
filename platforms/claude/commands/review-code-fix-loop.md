@@ -23,7 +23,7 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
-- **Skip** the "block until approved" step (the loop continues without user input)
+- **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is Step 7 in `/review-code` that blocks until the user invokes `/verify`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
 - **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `code-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
 
 ## Actions

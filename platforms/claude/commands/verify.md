@@ -182,4 +182,4 @@ Follow the steps in that fragment. Surface the §8.2 warning block on failure; d
 
 ## Next Step
 
-After all checks pass, user handles commit (Phase 7), then use `/complete` to mark work done.
+**Next step:** Do not auto-propose a commit message or invoke `/complete`. Wait for the user to explicitly initiate a commit directive or type `/complete`. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.

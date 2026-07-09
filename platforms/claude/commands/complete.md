@@ -119,6 +119,7 @@ Before running this command:
 - ⚠️ **NEVER update planning files automatically**
 - ⚠️ **ALWAYS propose explicitly and wait for user confirmation**
 - ⚠️ **Assume work is complete ONLY after user confirms**
+- ⚠️ **Inter-issue stop:** After this command completes (including gated auto-compact), do not start Phase 0 for the next issue listed in `progress.md`. Wait for the user to explicitly invoke `/start`. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.
 
 ## Usage Pattern
 

@@ -212,6 +212,8 @@ If any stale MR entries are found, propose the exact edits and wait for explicit
    - Blockers
    - Next steps
 
+**Next step:** Do not auto-invoke `/research`. Wait for the user to type `/research` or an equivalent explicit directive. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.
+
 ## Output
 
 Concise summary of:

@@ -308,7 +308,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 - MUST write review to a YAML file: `planning/reviews/MR<number>-review.yaml`
 
 **For `/review-design` and `/review-code` commands:**
-- Output inline in conversation (no file needed)
+- Write the review report to the designated planning file (`design-review.md` or `code-review.md` under the active issue folder). The file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as the first non-empty line after the H1 title, within the first 20 lines. See the `Review File Status-Marker Convention` section under `Workflow Safety — New Behaviors` in CLAUDE.md for the full convention.
 
 **ALL reviews must use YAML format:**
 

@@ -72,7 +72,7 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
    Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
    ```
 
-7. Block until approved
+7. **Phase gate (MANDATORY):** Do not auto-invoke `/verify`. Wait for the user to explicitly invoke `/verify` or an equivalent explicit directive. Reviewer `APPROVED` is NOT authorization — it is a precondition for asking the user. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization. See CLAUDE.md Critical Rules for the two-part test.
 
 ## Review Scope
 
@@ -110,4 +110,4 @@ When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/
 
 ## Next Step
 
-After approval, use `/verify` to run tests and static analysis.
+After the user explicitly invokes `/verify`, run tests and static analysis (Phase 6). Do not suggest or auto-invoke `/verify` — the phase gate above applies.

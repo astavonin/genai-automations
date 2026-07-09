@@ -167,4 +167,4 @@ Read ~/.claude/skills/workflows/planning-checkpoint/SKILL.md
 
 ## Next Step
 
-After implementation, use `/review-code` for mandatory code review.
+**Next step:** Do not auto-invoke `/review-code`. Wait for the user to type `/review-code` or an equivalent explicit directive. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.

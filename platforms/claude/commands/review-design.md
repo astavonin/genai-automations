@@ -66,7 +66,7 @@ Only proceed when the gate passes.
    ```
 
 8. After writing, ask the user if they want to `open <path>` the review file
-9. Block until approved (MANDATORY — no code without approval)
+9. **Phase gate (MANDATORY):** Do not auto-invoke `/implement`. Wait for the user to explicitly invoke `/implement` or an equivalent explicit directive. Reviewer `APPROVED` is NOT authorization — it is a precondition for asking the user. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization. See CLAUDE.md Critical Rules for the two-part test.
 
 ## Design-Level Constraint (MANDATORY — pass to every reviewer agent)
 
