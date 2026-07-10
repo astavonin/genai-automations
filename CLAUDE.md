@@ -16,25 +16,29 @@ The practical operating split is: use Claude for research/investigation and work
 ### `platforms/`
 Backup of AI platform configurations:
 - **`claude/`** - Claude Code configs (mirrors `~/.claude/`)
-  - `CLAUDE.md` - Workflow rules and process guidelines
-  - `PLANNING-TEMPLATE.md` - Project planning template
-  - `agents/*.md` - Agent definitions (coder, devops-engineer, architecture-research-planner, reviewer)
-  - `commands/*.md` - Slash command definitions (mr, load, ticket, review-mr, etc.)
+  - `CLAUDE.md` - Workflow rules, phase gates, commit format, agent dispatch, quality standards
+  - `agents/*.md` - Agent definitions (architecture-research-planner, coder, devops-engineer, reviewer, debugger, writer)
+  - `commands/*.md` - 27 slash command definitions (start, research, design, implement, review-*, verify, complete, and utilities)
+  - `skills/` - Modular knowledge base: languages (C++, Go, Rust, Python, Zig, Shell), domains (architecture, testing, code-quality, devops, quality-attributes), workflows (complete-workflow, planning, review gates, push-planning)
+  - `hooks/` - Git hooks: pre-commit scans platforms/ for path leaks
+  - `scripts/` - Helper scripts: codex-pipe, projctl-post-create.sh
+  - `memory/` - Persistent memory files synced across sessions
+  - `settings.json` - Claude Code permissions, hooks, env vars
 - **`codex/`** - Narrowed Codex config backup (subset of `~/.codex/`)
   - `CODEX.md` - Core Codex guidance and active-skill scope
   - `config.toml` - Default profile and trusted project settings
   - `rules/` - Command allow rules
-  - `skills/` - Architecture/review workflow skills plus C++, Python, Go, Rust, and Shell guidance
-  - `templates/` - Input templates for `codex-flow`
+  - `skills/` - Architecture/review skills plus C++, Python, Go, Rust, Shell, Zig guidance
+  - `templates/` - Input templates for `codex-flow` (implementation-input.md, review-input.md)
 
 ### `sync-configs.sh`
 Two-way sync utility for platform configurations between this repo and `~/.claude/` / `~/.codex/`.
 
 ```bash
-./sync-configs.sh sync          # Backup all configs (home → repo)
-./sync-configs.sh install       # Restore configs (repo → home)
-./sync-configs.sh install --force  # Restore without confirmation prompts (overwrites home configs)
-./sync-configs.sh sync --dry-run
+./sync-configs.sh sync              # Backup all configs (home → repo)
+./sync-configs.sh sync --dry-run    # Preview what would be backed up
+./sync-configs.sh install           # Restore configs (repo → home, interactive)
+./sync-configs.sh install --force   # Restore without confirmation prompts
 ```
 
 ### `planning/`
@@ -47,7 +51,6 @@ Project planning documents for ongoing and completed work.
 | Tool | Location |
 |------|----------|
 | `projctl` | `~/projects/projctl` |
-| `anki-sync` | `~/projects/anki-sync` |
 
 `projctl` is installed from `~/projects/projctl`.
 Use `projctl --help` to see usage and find its CLAUDE.md.
