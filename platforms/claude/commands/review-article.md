@@ -81,6 +81,16 @@ If `article-review.md` exists in the issue folder, read it and route prior findi
 - **AC-prefixed findings** → Codex review-request Context section.
   Append: "Re-raise if still present."
 
+### 2b. Cross-article TODO scan
+
+If `planning/book/todos.md` exists, read it and extract two lists for the article under review:
+
+**Type A — Inline placeholders:** Open entries where `Referenced in` contains the current article slug or number. Grep the article draft for each `<!-- TODO[ID] -->` pattern. Every match is an unresolved placeholder that must appear in the review.
+
+**Type B — Resolution TODOs:** Open entries where `Resolves in` contains the current article slug, number, or milestone. Check whether the article now covers the described content — either explicitly or via a cross-link to content already written.
+
+Record both lists. Pass them to Agent 3 verbatim as completeness context. If `todos.md` does not exist, skip this step silently.
+
 ### 3. Enumerate and pre-read files
 
 Extract type names and behaviour identifiers from the spec. Locate corresponding source
@@ -215,6 +225,21 @@ Write `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`:
 - **A5** [High | Medium | Low]  Agents: ...  Locations: `<A>` and `<B>`  Votes: ...
   Evidence: <quoted contradicting statements>
 
+## Cross-Article TODOs
+
+*(Populated from `planning/book/todos.md` scan — not from agent consensus.)*
+
+**Type A — Inline placeholders still present:**
+- `TODO[ID]` — *description from todos.md* — placeholder at `<article section / line>` *(High — publication blocker)*
+
+**Type B — Resolution TODOs this article should close:**
+- `TODO[ID]` — *description* — covered ✓ / not covered ✗ *(Medium if not covered)*
+
+**Proposed todos.md updates:**
+- Move `ID` from Open → Resolved: *reason*
+
+*(Write "None." for each subsection if empty.)*
+
 ## Codex-Only Findings
 
 Always include. Findings raised by Codex not confirmed by ≥2 Claude agents. Write "None." if empty.
@@ -260,6 +285,14 @@ or any revision cycle. Articles do not carry a status header in the article file
 
 1. Edit the article file to address the findings.
 2. Re-run `/review-article`.
+
+## After Approval: Update todos.md
+
+If any TODOs are confirmed resolved (Type A placeholders removed from the article, or Type B items now covered):
+
+1. Propose the exact rows to move from `## Open` to `## Resolved` in `planning/book/todos.md`, with today's date in the `Date` column.
+2. Wait for explicit user confirmation before writing.
+3. After writing, push planning to backup via the push-planning fragment.
 
 ---
 

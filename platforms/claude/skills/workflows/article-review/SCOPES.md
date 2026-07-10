@@ -139,6 +139,10 @@ The spec is provided as context for what the article is supposed to cover.
    Confirm: identify uncovered surface; note whether an exclusion note exists.
    Severity: **Low**.
 
+5. **No inline TODO placeholders** — the article must not contain any `<!-- TODO[ID] -->` comment. These markers indicate deferred or unresolved content registered in `planning/book/todos.md` and are publication blockers.
+   Confirm: search the article for `<!-- TODO[` — cite every occurrence with its section heading.
+   Severity: **High**.
+
 ---
 
 ## Scope 5 — Internal Consistency *(Agent 3)*
