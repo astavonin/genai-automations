@@ -24,6 +24,8 @@ cat planning/book/milestone-XX-<name>/status.md   # article notes for this issue
 
 Also read `planning/book/milestone-XX-<name>/issues/<NNN-name>/analysis.md` if it exists.
 
+If `planning/book/todos.md` exists, read it and extract all open entries where `Resolves in` contains the current article slug or number. These are cross-article items registered to be closed by this article — pass them to the agent in Step 3 as additional requirements context with instruction: "These open TODOs must be resolved by this article — incorporate their resolution as Functional Requirements, Non-Functional Requirements, or Test Requirements in the appropriate spec sections. Do not list them as a separate TODO section."
+
 ### Step 1: Locate companion repo
 
 From `CLAUDE.local.md` companion repos table, resolve the local path for the current article's part. Confirm the directory exists before proceeding. If the path does not exist, stop and ask the user.
