@@ -16,6 +16,7 @@ class ImplementationRequest:
     non_functional_requirements: list[str]
     constraints: list[str]
     verification: str
+    on_device_verification: str | None
     context_files: list[str]
     raw_markdown: str
 

@@ -10,6 +10,13 @@ from .contracts import ImplementationRequest, ReviewRequest
 
 RESOURCE_ROOT = "codex_flow.resources"
 
+_ODV_ABSENT_PROMPT = (
+    "On-Device Verification field from design doc: ABSENT — "
+    "the design doc has no On-Device Verification field. "
+    'Add to open_issues: "On-Device Verification: BLOCKED — '
+    'On-Device Verification field missing from design doc."'
+)
+
 IMPLEMENTATION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -124,6 +131,14 @@ def build_implementation_prompt(request: ImplementationRequest) -> str:
         if target.exists():
             context_blocks.append(_file_block(target, relative_path))
 
+    odv_blocks = []
+    if request.on_device_verification is not None:
+        odv_blocks.append(
+            "On-Device Verification field from design doc:\n" + request.on_device_verification
+        )
+    else:
+        odv_blocks.append(_ODV_ABSENT_PROMPT)
+
     return "\n\n".join(
         [
             "You are running codex-flow in implementation mode.",
@@ -134,6 +149,7 @@ def build_implementation_prompt(request: ImplementationRequest) -> str:
             "The runner writes the Markdown artifact; do not try to write the output document yourself.",
             "Bundled workflow guidance:",
             skill_text,
+            *odv_blocks,
             "Authoritative request document:",
             request.raw_markdown.strip(),
             "Loaded context files:",

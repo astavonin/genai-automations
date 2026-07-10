@@ -125,6 +125,7 @@ No open questions.
     assert parsed.constraints == ["Keep the CLI unchanged"]
     assert parsed.context_files == ["src/sync.py", "tests/test_sync.py"]
     assert parsed.output_path == tmp_path / "design.implementation-output.md"
+    assert parsed.on_device_verification is None
 
 
 def test_parse_implementation_request_rejects_missing_verification(tmp_path: Path) -> None:
@@ -289,3 +290,222 @@ pytest tests/test_sync.py
 
     with pytest.raises(ValidationError):
         parse_review_request(request)
+
+
+def test_parse_implementation_request_extracts_on_device_verification_full_block(
+    tmp_path: Path,
+) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Device Feature
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+- Deploy and verify on device
+
+**Non-Functional Requirements:**
+- Verification must complete within 60 s
+
+**Constraints:**
+- Do not modify device firmware
+
+**Verification:**
+
+```bash
+pytest tests/
+```
+
+**On-Device Verification:**
+
+*Derived from project README.*
+
+**Entry point:** `make verify-device`
+
+```bash
+# Deploy to device
+make deploy-device
+
+# Verify on device
+make verify-device
+```
+
+Expected outcome on device:
+- All tests pass
+
+**CI integration:** Set DEVICE_IP env var in CI.
+
+**Context Files:**
+- `src/main.py`
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parsed = parse_implementation_request(request)
+
+    assert parsed.on_device_verification is not None
+    assert "Entry point" in parsed.on_device_verification
+    assert "make verify-device" in parsed.on_device_verification
+    assert "CI integration" in parsed.on_device_verification
+    assert parsed.context_files == ["src/main.py"]
+
+
+def test_parse_implementation_request_extracts_on_device_verification_skip_note(
+    tmp_path: Path,
+) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Software-Only Feature
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+- Process data in memory
+
+**Non-Functional Requirements:**
+- Low latency
+
+**Constraints:**
+- No external dependencies
+
+**Verification:**
+
+```bash
+pytest tests/
+```
+
+**On-Device Verification:** N/A — feature is software-only (on-device scope: NO).
+
+**Context Files:**
+- `src/processor.py`
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parsed = parse_implementation_request(request)
+
+    assert parsed.on_device_verification is not None
+    assert "on-device scope: NO" in parsed.on_device_verification
+
+
+def test_parse_implementation_request_on_device_verification_empty_content_is_none(
+    tmp_path: Path,
+) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Empty ODV Field
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+- Handle network timeouts
+
+**Non-Functional Requirements:**
+- Retry within 100 ms
+
+**Constraints:**
+- Keep API surface unchanged
+
+**Verification:**
+
+```bash
+pytest tests/
+```
+
+**On-Device Verification:**
+**Context Files:**
+- `src/network.py`
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parsed = parse_implementation_request(request)
+
+    assert parsed.on_device_verification is None
+
+
+def test_parse_implementation_request_on_device_verification_empty_content_blank_line_is_none(
+    tmp_path: Path,
+) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — Empty ODV With Blank Line
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+- Handle network timeouts
+
+**Non-Functional Requirements:**
+- Retry within 100 ms
+
+**Constraints:**
+- Keep API surface unchanged
+
+**Verification:**
+
+```bash
+pytest tests/
+```
+
+**On-Device Verification:**
+
+**Context Files:**
+- `src/main.py`
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parsed = parse_implementation_request(request)
+
+    assert parsed.on_device_verification is None
+
+
+def test_parse_implementation_request_on_device_verification_absent_is_none(
+    tmp_path: Path,
+) -> None:
+    request = tmp_path / "design.md"
+    request.write_text(
+        """
+# Design — No Device Field
+
+## 3. Implementation Context
+
+**Repository:** `/tmp/repo`
+
+**Functional Requirements:**
+- Handle network timeouts
+
+**Non-Functional Requirements:**
+- Retry within 100 ms
+
+**Constraints:**
+- Keep API surface unchanged
+
+**Verification:**
+
+```bash
+pytest tests/
+```
+
+**Context Files:**
+- `src/network.py`
+""".strip(),
+        encoding="utf-8",
+    )
+
+    parsed = parse_implementation_request(request)
+
+    assert parsed.on_device_verification is None

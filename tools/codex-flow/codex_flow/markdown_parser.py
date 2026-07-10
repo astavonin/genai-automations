@@ -11,6 +11,9 @@ from .exceptions import ValidationError
 FIELD_PATTERN = re.compile(r"^\*\*(?P<name>[^*]+):\*\*\s*(?P<value>.*)$")
 HEADING_PATTERN = re.compile(r"^(?P<level>#+)\s+(?P<title>.+?)\s*$")
 
+_ODV_FIELD_NAME = "On-Device Verification"
+_ODV_TERMINATOR = "Context Files"
+
 
 def parse_implementation_request(request_path: Path) -> ImplementationRequest:
     """Parse and validate an implementation request document."""
@@ -28,6 +31,7 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
     non_functional_requirements = _extract_bullets_after_field(section, "Non-Functional Requirements")
     constraints = _extract_bullets_after_field(section, "Constraints")
     verification = _extract_code_block_after_field(section, "Verification")
+    on_device_verification = _extract_on_device_verification(section)
     context_files = _extract_bullets_after_field(section, "Context Files")
 
     if not functional_requirements and not non_functional_requirements:
@@ -44,6 +48,7 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
         non_functional_requirements=non_functional_requirements,
         constraints=constraints,
         verification=verification.strip(),
+        on_device_verification=on_device_verification,
         context_files=context_files,
         raw_markdown=text,
     )
@@ -234,3 +239,54 @@ def _require_absolute_path(value: str, field_name: str) -> Path:
 def _normalize_heading(title: str) -> str:
     normalized = title.strip()
     return re.sub(r"^\d+(?:\.\d+)*\.\s+", "", normalized)
+
+
+def _extract_on_device_verification(lines: list[str]) -> str | None:
+    """Extract the On-Device Verification field and its continuation lines.
+
+    Collects from the matched field line up to (but not including) the
+    ``**Context Files:**`` field or the end of the section lines.  Returns
+    ``None`` if the field is absent OR if the field is present but has no
+    content after stripping whitespace.
+
+    Terminator:
+        ``**Context Files:**`` is the required terminator — any content
+        between ``**On-Device Verification:**`` and ``**Context Files:**``
+        is absorbed into the payload.
+
+    Sub-field absorption:
+        Bold-field lines within the ODV block (such as ``**Entry point:**``
+        and ``**CI integration:**``) are intentionally absorbed as sub-fields
+        per DESIGN-TEMPLATE.md §3.  They are not treated as section
+        terminators; only ``**Context Files:**`` stops collection.
+
+    Missing terminator:
+        If ``**Context Files:**`` is absent or reordered, the extractor
+        absorbs all remaining section lines.  The subsequent
+        ``_extract_bullets_after_field(section, "Context Files")`` call then
+        raises ``ValidationError`` because the terminator field is missing.
+    """
+    start: int | None = None
+    for index, line in enumerate(lines):
+        match = FIELD_PATTERN.match(line.strip())
+        if match and match.group("name").strip() == _ODV_FIELD_NAME:
+            start = index
+            break
+
+    if start is None:
+        return None
+
+    # Capture the inline value on the header line (e.g. a one-line skip note),
+    # then gather any continuation lines up to **Context Files:**.
+    header_match = FIELD_PATTERN.match(lines[start].strip())
+    inline_value = header_match.group("value").strip() if header_match else ""
+
+    continuation: list[str] = []
+    for line in lines[start + 1 :]:
+        match = FIELD_PATTERN.match(line.strip())
+        if match and match.group("name").strip() == _ODV_TERMINATOR:
+            break
+        continuation.append(line)
+
+    full_text = "\n".join([inline_value, *continuation]).strip()
+    return full_text or None
