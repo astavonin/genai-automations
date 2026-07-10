@@ -31,15 +31,25 @@ Optional context the user may provide:
    - Default: `planning/drafts/<topic-slug>.md` in the current project
    - If user specifies a path, use that instead
 
-2. **Invoke writer agent** with:
+2. **Cross-article TODO context (book articles only):**
+   If the output path resolves under `planning/book/` and `planning/book/todos.md` exists, read it and extract:
+   - **Type A** — open entries where `Referenced in` matches the current article slug or number: these are deferred items that belong in this article as `<!-- TODO[ID] -->` markers
+   - **Type B** — open entries where `Resolves in` matches the current article slug or number: content this article is expected to cover
+
+   Pass both lists to the writer agent with instruction: "Insert `<!-- TODO[ID] -->` markers for Type A items where the deferred content would naturally appear. Attempt to cover Type B items inline; if a Type B item cannot be covered yet, insert a `<!-- TODO[ID] -->` marker with a brief note. Do not add a separate TODO section — markers are inline only."
+
+   Skip this step for non-book drafts.
+
+3. **Invoke writer agent** with:
    - The user's topic/request
    - The current working directory as the codebase root
    - Any additional context provided by the user
+   - The TODO context from step 2 (if applicable)
    - Instruction to produce a complete Markdown draft following the writer agent output structure
 
-3. **Save the draft** to the determined output path
+4. **Save the draft** to the determined output path
 
-4. **Report to user:**
+5. **Report to user:**
    - Draft saved to: `<path>`
    - Brief summary of what was covered
    - Any open questions or gaps flagged in the draft
