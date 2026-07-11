@@ -98,6 +98,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/review-design` - Review design before implementation (MANDATORY)
 - `/implement` - Run implementation (coder or devops-engineer agent)
 - `/review-code` - Review code after implementation (MANDATORY)
+- `/review-article` - Review article before publication across five scopes (MANDATORY for publication)
 - `/verify` - Run verification (linters first, then tests, then static analysis)
 - `/comment` - Add comments to code: WHY-only inline comments + public API documentation (classes, interfaces, types, enums)
 - `/complete` - Mark work complete, update progress tracking, backup planning state

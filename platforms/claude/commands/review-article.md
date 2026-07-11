@@ -83,13 +83,21 @@ If `article-review.md` exists in the issue folder, read it and route prior findi
 
 ### 2b. Cross-article TODO scan
 
-If `planning/book/todos.md` exists, read it and extract two lists for the article under review:
+If `planning/book/todos.md` exists:
 
-**Type A — Inline placeholders:** Open entries where `Referenced in` contains the current article slug or number. Grep the article draft for each `<!-- TODO[ID] -->` pattern. Every match is an unresolved placeholder that must appear in the review.
+```
+Read ~/.claude/skills/workflows/article-review/TODOS.md
+```
 
-**Type B — Resolution TODOs:** Open entries where `Resolves in` contains the current article slug, number, or milestone. Check whether the article now covers the described content — either explicitly or via a cross-link to content already written.
+Derive the article identifier from `<NNN-name>` in the issue folder path (from Setup Step 1). Determine the article's part from `status.md`. If the part cannot be determined, skip the TODO scan, set `**TODO scan:** ✗ skipped — part indeterminate from status.md`, and proceed without it — do not halt the review.
 
-Record both lists. Pass them to Agent 3 verbatim as completeness context. If `todos.md` does not exist, skip this step silently.
+Follow the Type A Predicate, Type B Predicate, and Article Identifier Derivation rules in TODOS.md to extract two lists:
+
+**Type A — Inline placeholders:** Open entries matching via Type A Predicate. Grep the article draft for each `<!-- TODO[ID] -->` pattern. Every match is an unresolved placeholder that must appear in the review.
+
+**Type B — Resolution TODOs:** Open entries matching via Type B Predicate. Check whether the article now covers the described content — either explicitly or via a cross-link to content already written.
+
+Record both lists. Pass them to Agent 3 verbatim as completeness context. Set the scan status: `**TODO scan:** ✓ ran (N Type A, N Type B)` (replace N with actual counts). If `todos.md` does not exist, skip this step and set `**TODO scan:** ✗ skipped — todos.md not present`.
 
 ### 3. Enumerate and pre-read files
 
@@ -131,7 +139,7 @@ shared skills that use the generic `<goal>/milestone-XX/` pattern.
 Read ~/.claude/skills/workflows/article-review/CODEX-REQUEST-TEMPLATE.md
 ```
 
-Write the populated document to `planning/reviews/<issue-slug>-article-codex-review.md`.
+Write the populated document to `planning/reviews/<NNN-name>-article-codex-review.md`.
 The `Output File` field must match this path exactly. Use the **article project root**
 (the repo containing `planning/`) as `Repository` — not the companion code repo. Provide
 the companion repo path in the Context section. Copy Requirements bullets verbatim from
@@ -158,7 +166,7 @@ plus any High issues you observe in other scopes.
 
 Wait for all 3 agents to complete. Then wait for Codex (Monitor tool; fall back to
 polling the output file with 10-minute timeout). Read Codex output at
-`planning/reviews/<issue-slug>-article-codex-review.md`. If absent or empty, record
+`planning/reviews/<NNN-name>-article-codex-review.md`. If absent or empty, record
 `Codex: ✗ not run — no output written` in the review header.
 
 **Deduplication:** Two findings are duplicates when they cover the same criterion and
@@ -191,6 +199,7 @@ Write `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`:
 **Audience baseline:** Technical Familiarity from CLAUDE.local.md | default: senior systems engineer
 **Files omitted:** <list> — exceeded inline budget  *(omit if nothing omitted)*
 **Codex:** ✓ ran  *(on success)*  |  ✗ not run — <reason>  *(on failure)*
+**TODO scan:** ✓ ran (N Type A, N Type B)  *(or: ✗ skipped — todos.md not present | ✗ skipped — part indeterminate from status.md)*
 
 ---
 
@@ -286,13 +295,14 @@ or any revision cycle. Articles do not carry a status header in the article file
 1. Edit the article file to address the findings.
 2. Re-run `/review-article`.
 
-## After Approval: Update todos.md
+## After Final Approval: Update todos.md
+
+This step runs once, only when the review cycle ends with `**Status:** APPROVED`.
 
 If any TODOs are confirmed resolved (Type A placeholders removed from the article, or Type B items now covered):
 
 1. Propose the exact rows to move from `## Open` to `## Resolved` in `planning/book/todos.md`, with today's date in the `Date` column.
 2. Wait for explicit user confirmation before writing.
-3. After writing, push planning to backup via the push-planning fragment.
 
 ---
 
