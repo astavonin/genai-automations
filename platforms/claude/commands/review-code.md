@@ -52,7 +52,8 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
 
    - **Launch simultaneously:** 3 focus-differentiated Claude reviewer agents + test-coverage agent (Step F) + Codex (Step E) in parallel — see protocol for agent focus assignments
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding reverification) → Step H (manual passes)
+   - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding adversarial reverification) → Step H (manual passes)
+   - **Before launching Step G verifier agents:** reuse the `Repository:` value from the Step 0 Codex review-request document if one was written (same value Codex used); otherwise obtain it by running `pwd` in the main conversation's shell. Supply this path as the `Repository:` field in each verifier prompt (see protocol §Step G "How the main conversation obtains Repository"). Without it, relative `file:line` locations cannot be resolved and Step G findings will be silently REFUTED-and-discarded.
 2. Format consolidated findings as a markdown review report:
    ```
    Read ~/.claude/skills/workflows/review-output-format/SKILL.md

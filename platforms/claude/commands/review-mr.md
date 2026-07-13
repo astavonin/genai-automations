@@ -100,10 +100,12 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
   codex-flow review planning/reviews/MR<number>-review-request.md
   ```
 
-Aggregate once all five have returned per protocol Steps B–H, then cross-aggregate Step F output:
+Aggregate once all five have returned per protocol Steps B–H:
 - Test-coverage findings that also appear in Claude consensus: mark as corroborated
 - Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections)
-- Step G reverified findings: merge into the YAML findings list, marked with a "(reverified)" note in the description
+- Step G reverified findings: merge into the YAML findings list. Prefix the finding description with exactly `[Reverified] ` (bracketed literal, single trailing space) so downstream consumers can distinguish findings that survived the adversarial pass from consensus findings. This prefix is required, not optional.
+
+**Before launching Step G verifier agents:** reuse the `Repository:` absolute path already written into `planning/reviews/MR<number>-review-request.md` (Step 0) — this is the same value Codex used. If Step 0 was skipped or the `Repository:` field is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface the warning defined in protocol §Step G "How the main conversation obtains Repository" and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Supply the resolved path as the `Repository:` field in each verifier prompt.
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
@@ -119,7 +121,7 @@ GitLab will interpret these as real user mentions and send notifications.
 **5a. Generate YAML**
 
 Write the review to `planning/reviews/MR<number>-review.yaml` following the schema below.
-Include ALL findings: consensus findings first, then Codex-only findings. Do NOT prefix titles with `[Codex]` or any other source label — all findings appear identically regardless of origin.
+Include ALL findings from the aggregation pipeline in this order: consensus findings first, then Step G `[Reverified]` survivors (single-agent Claude and Codex-only findings that both verifiers CONFIRMED — Step G rejects — REFUTED and unparseable-after-retry — MUST NOT appear in the YAML; rule 4 warnings surface unparseable-after-retry cases to the user, not the YAML), then Step F test-coverage-only findings. Do NOT prefix titles with `[Codex]` or any other source label — all findings appear identically regardless of origin; use only the `[Reverified]` description prefix defined in Step 4 for Step G survivors.
 
 **Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced.
 

@@ -7,12 +7,12 @@ A shared multi-agent review mechanism used by all `/review*` commands.
 Three focus-differentiated reviewer agents evaluate the subject in parallel. The full pipeline is Steps 0–H:
 
 - **Step 0:** Write Codex review-request doc before any agents launch
-- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code reviews only) launch simultaneously
-- **Steps B–D:** Claude consensus — findings need 2/3 agreement; single-agent findings route to Step G except test-correctness and cross-site findings which go directly to the report
-- **Step E:** Codex cross-aggregate — Codex-only findings route to Step G
-- **Step F:** Test-coverage agent (code reviews only) — findings included directly, not filtered by consensus
-- **Step G:** Single-finding reverification — 2 agents verify each single-agent/Codex-only finding; include if ≥1 confirms
-- **Step H:** Manual passes (code reviews only) — Cross-Site Consistency Pass and Test Quality Pass completion check
+- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code and MR reviews only) launch simultaneously
+- **Steps B–D:** Claude consensus — findings need 2/3 agreement; non-exception single-agent findings route to Step G (code and MR reviews) or to the `## Single-Agent Findings` section (design reviews). Direct-inclusion exceptions (test-correctness → `## Test-coverage Findings`; cross-site → `## Manual Pass Findings`) apply in code/MR reviews only.
+- **Step E:** Codex cross-aggregate — Codex-only findings route to Step G (code and MR reviews) or to the `## Codex-Only Findings` section (design reviews)
+- **Step F:** Test-coverage agent (code and MR reviews only) — findings included directly, not filtered by consensus
+- **Step G:** Single-finding adversarial reverification (code and MR reviews only — skipped for design reviews) — 2 agents try to *refute* each single-agent/Codex-only finding with full-file context; include only if **both** verifiers return `VERDICT: CONFIRMED`; any REFUTED discards; unparseable verdicts are retried once, then discarded with a warning
+- **Step H:** Manual passes (code and MR reviews only) — Cross-Site Consistency Pass and Test Quality Pass completion check
 
 ## Protocol Steps
 
@@ -46,7 +46,7 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
   ```bash
   codex-flow review planning/reviews/<feature>-review-request.md
   ```
-- For **code reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
+- For **code and MR reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
 
 Do not split these across separate messages. Codex is typically the slowest; starting it in the
 same batch as the Claude agents eliminates its wall-clock cost from the critical path.
@@ -103,13 +103,17 @@ describe the same root cause in the same code location (fuzzy match on concept, 
 
 **Inclusion rule:** include a finding only if **2 or more agents** flagged it.
 
-Do not discard single-agent findings — route them to **Step G** for reverification.
+Do not discard single-agent findings — route them per review type (see "Non-exception single-agent findings by review type" below): Step G for code/MR reviews, or the `## Single-Agent Findings` section for design reviews.
 
 **Exception — single-agent findings that bypass Step G and go directly to the final report:**
-- **Test-correctness findings** (name/assertion alignment, vacuous assertions, missing negative paths, bare sleeps): include directly. These are observable facts; a reverifier would confirm the same fact.
-- **Cross-site consistency findings** (build flag mismatches across Makefile/CI jobs, function signature mismatches across declarations/overrides/mocks, config value mismatches across consumers): include directly. These are enumerable facts, not judgment calls.
+- **Test-correctness findings** (name/assertion alignment, vacuous assertions, missing negative paths, bare sleeps): include directly. These are observable facts; a reverifier would confirm the same fact. Routing: code/MR reviews → `## Test-coverage Findings` section (merged alongside Step F output). Not applicable to design reviews (no tests to evaluate).
+- **Cross-site consistency findings** (build flag mismatches across Makefile/CI jobs, function signature mismatches across declarations/overrides/mocks, config value mismatches across consumers): include directly. These are enumerable facts, not judgment calls. Routing: code/MR reviews → `## Manual Pass Findings` section (merged alongside Step H output). Not applicable to design reviews (no code artifacts to cross-check).
 
-All other single-agent findings → Step G reverification.
+Both exception categories are code/MR-review-only by construction — their triggers presuppose code or tests that a design doc does not contain.
+
+**Non-exception single-agent findings by review type:**
+- Code/MR reviews → **Step G** reverification (adversarial)
+- Design reviews → included directly in the design review's `## Single-Agent Findings` section (no reverification — Step G is code/MR-only)
 
 ### Step C: Aggregate — Severity Consensus
 
@@ -151,17 +155,23 @@ cat planning/reviews/<feature>-codex-review.md
 |----------------|--------|
 | In Claude consensus **and** Codex | Mark as **✓ Corroborated by Codex** |
 | Claude consensus only | Include as-is (already filtered by 2/3) |
-| Codex only | Include separately under **"Codex-only findings"** |
+| Codex only | Add to the intermediate **Codex-only working set** for routing per review type (see below) |
 
 Two findings refer to the same issue if they describe the same root cause at the same code location (fuzzy match on concept, not wording).
 
+**Note on naming:** "Codex-only working set" is an intermediate bucket used during aggregation — it is NOT a final report section. For code/MR reviews it feeds Step G; for design reviews it feeds the `## Codex-Only Findings` section of the design report. Do not conflate this working-set label with the final section name.
+
 After Step E, the working set contains:
 1. Consensus findings (with corroboration tags where applicable)
-2. Codex-only findings (routed to Step G for reverification)
+2. Codex-only working set — routed per review type:
+   - Code/MR reviews → Step G reverification (adversarial); survivors land in `## Reverified Findings`
+   - Design reviews → included directly in the `## Codex-Only Findings` section (no reverification — Step G is code/MR-only)
 
-The full report is assembled after Steps F–H complete.
+For design reviews, Step E is the last aggregation step: after this, the report is assembled from consensus findings, Codex-only findings, and single-agent findings (per Step B non-exception routing). Steps F, G, and H are skipped for design reviews.
 
-### Step F: Test-Coverage and Pitfalls Agent (code review only — skip for design reviews)
+For code/MR reviews, the full report is assembled after Steps F–H complete.
+
+### Step F: Test-Coverage and Pitfalls Agent (code and MR reviews only — skip for design reviews)
 
 A dedicated **reviewer (opus)** agent runs in parallel with Step A, focused exclusively on test
 quality. It does **not** participate in the 3-agent consensus (Steps B–C) — its output is
@@ -205,9 +215,11 @@ Output a raw list: title, severity, description, location.
 |----------------|--------|
 | In Claude consensus **and** test-coverage agent | Mark as **✓ Corroborated by test-coverage agent** |
 | Claude consensus only | Include as-is |
-| Test-coverage agent only | Include under **"Test-coverage findings"** (separate section) |
+| Test-coverage agent only | Include under **`## Test-coverage Findings`** (separate section — matches the SKILL.md template heading exactly) |
 
-### Step G: Single-Finding Reverification
+### Step G: Single-Finding Adversarial Reverification (code and MR reviews only)
+
+**Applicability.** Step G runs only for `/review-code` and `/review-mr`. It does **not** run for `/review-design`. Design-review routing for single-agent Claude findings and Codex-only findings is handled at Step B and Step E respectively — see those sections. This section describes code/MR-review behavior only.
 
 After Steps B–F complete, collect all findings that require reverification:
 - Single-agent Claude findings **not** covered by the direct-inclusion exceptions in Step B
@@ -215,32 +227,64 @@ After Steps B–F complete, collect all findings that require reverification:
 
 If the set is empty, skip Step G entirely.
 
-For each finding, launch **2 independent reviewer (opus) agents** in parallel with this focused prompt:
+**Why adversarial:** A permissive Step G would combine three permissive choices — a neutral "is this a real issue?" framing, a narrow code excerpt around the location, and 1-of-2 approval — and the three together would let plausible-sounding findings survive reverification. This step deliberately tightens all three simultaneously: skeptical framing, full-file context (read via the Read tool), and 2-of-2 CONFIRMED with default-to-refute. The tradeoff is explicit — a higher false-negative rate (some real single-agent findings will be discarded) in exchange for a lower false-positive rate.
+
+**On Codex-only findings:** Codex-only findings route through Step G with the same 2-of-2 CONFIRMED rule. This is deliberately symmetric with single-agent Claude findings, not an oversight: Codex-only findings without Claude corroboration are the exact category most prone to model-specific hallucination, and the adversarial pass is where we filter those. The cost is that Claude verifiers can veto real Codex signal; accept this rather than adding a separate looser track.
+
+For each finding, launch **2 independent reviewer (opus) agents** in parallel with the prompt below. The launching context (the main conversation running this protocol) MUST supply an absolute `Repository:` path — the reviewer agent has no reliable CWD inheritance, and relative `file:line` locations cannot be resolved without it.
+
+**How the main conversation obtains Repository:** Unified path for both `/review-code` and `/review-mr`: reuse the `Repository:` value already written into the Step 0 review-request document (`planning/reviews/<feature>-review-request.md`). If Step 0 was skipped, or the value is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface a warning to the user (`⚠️ Step G cannot run: Repository path unavailable. Findings requiring reverification will be skipped.`) and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Do not silently REFUTE-and-drop.
 
 ```
-You are verifying a specific code review finding. Your ONLY job is to determine whether this finding is a genuine issue in the code shown. Do not report other findings.
+You are the skeptic verifying a specific code review finding. Your job is to REFUTE this finding — find evidence that it is NOT a genuine issue.
 
 Finding:
   Title: [title]
   Severity: [severity]
   Description: [description]
-  Location: [file:line]
+  Location: [file:line]      # may be relative — resolve against Repository below
+  Repository: [absolute path to repo root]
 
-Relevant code (±20 lines of context around the cited location):
-[code excerpt]
+Read the file at Location in full using the Read tool (resolve relative paths against Repository). Then read up to 3 additional files that the finding's description names explicitly, ranked by proximity to the described failure (prefer: the interface/header for a changed source file, a specific caller mentioned in the description, upstream code that sets an invariant the finding claims is violated, error-handling code the finding claims is missing). Do not read speculative files — only files the description itself names or unambiguously points to. Total read budget: the Location file plus at most 3 named dependencies.
 
-Is this a genuine issue? Answer YES or NO followed by one sentence of reasoning.
+Actively look for evidence that refutes the finding:
+- Is the described precondition actually reachable in practice?
+- Does surrounding code (invariants set upstream, error handling elsewhere, the calling contract) already prevent the described failure?
+- Is there a guard, check, type constraint, or convention that makes the described bug impossible?
+- Does the description misread what the code actually does?
+
+**Output format — strict.** The FIRST LINE of your response MUST be exactly one of these two strings, with no trailing text on that line:
+  VERDICT: CONFIRMED
+  VERDICT: REFUTED
+Put ALL reasoning on line 2 and after (one to two sentences citing the specific code you read). Do not append reasoning to the verdict line. If you cannot definitively confirm the finding is real after reading the relevant files, or if the file at Location cannot be read for any reason, output `VERDICT: REFUTED` on line 1.
 ```
 
-**Aggregation rule:**
-- ≥1 of 2 verifiers answers YES → include in final report, marked **✓ Reverified**
-- Both answer NO → discard
+**Aggregation rule.** Parse only the first line of each verifier response. Match case-sensitively against `^VERDICT: (CONFIRMED|REFUTED)$`. Anything else — hedges, prose without a verdict line, missing response, agent crash — counts as `Unparseable`.
 
-Run all reverification agents for all findings in a single parallel batch — do not serialize per finding.
+Evaluate the outcome using the ordered rules below. Rules 1 and 2 gate the Unparseable retry loop and must resolve first — they may explicitly route to rule 4 regardless of what other verdicts are present in the retried pair. Rules 3–5 apply only after rules 1 and 2 have completed (i.e., only to a fully-parseable retried pair, or when neither original verdict was Unparseable). Within rules 3–5, first match wins.
 
-**Note:** Step F (test-coverage agent) findings are not subject to Step G — they come from a dedicated specialized agent and are included directly in the Test-coverage findings section.
+1. **Both verifiers `Unparseable`** → retry both in parallel. If retry still yields any `Unparseable`, fall through to rule 4 with the retried verdicts. Otherwise, re-evaluate against rules 3–5 with the retried verdicts.
+2. **Exactly one verifier `Unparseable`** → retry that verifier once. Substitute the retry verdict. If the retry still yields `Unparseable`, fall through to rule 4 with the new pair. Otherwise, re-evaluate against rules 3–5 with the new pair.
+3. **Any `REFUTED`** (either or both verifiers) → **Discard**.
+4. **Any `Unparseable` remains after retry** → **Discard** and emit warning:
+   ```
+   ⚠️ Step G verifier failed twice for finding: <title>
+       Location: <file:line>
+       Action: discarded (unable to reverify).
+   ```
+5. **Both `VERDICT: CONFIRMED`** → **Include** as ✓ Reverified.
 
-### Step H: Manual Passes (code review only — always required after Steps B–G)
+**Deliberate asymmetry.** A single REFUTED discards; a single CONFIRMED does not include. This is the mechanism that filters plausible-but-wrong findings at the cost of dropping some correct ones. Do not "fix" it — the asymmetry is the intervention.
+
+**Warning behavior.** Findings discarded via rule 4 (verifier failed twice) are logged as warnings to the main conversation so the user is aware; the finding is *not* held in some intermediate state. Discard-with-warning is chosen over "hold for manual triage" because none of the calling commands (`/review-mr`, `/review-code`) have a report section or workflow step for held items — held findings would silently disappear anyway. If a warning appears and the user believes the finding is real, they can add it manually.
+
+Run all reverification agents for all findings in a single parallel batch — do not serialize per finding. **Step G is a discrete blocking phase — Step H does not start until every finding's Step G outcome is resolved (Include, Discard, or Discard-with-warning).**
+
+**Note:** Step F (test-coverage agent) findings are not subject to Step G — they come from a dedicated specialized agent and are included directly in the `## Test-coverage Findings` section.
+
+**Reporting.** Findings that survive Step G are prefixed with `[Reverified]` in their description when written to any downstream output. This prefix is machine-recognizable and required, not optional — the previous soft "(reverified) note" convention was ambiguous and drifted.
+
+### Step H: Manual Passes (code and MR reviews only — always required after Steps B–G)
 
 After all agent and Codex outputs are aggregated, the **main reviewer** must manually complete both enumeration passes. These cannot be delegated to agents — they require deliberate cross-file auditing that agents perform inconsistently.
 
@@ -250,7 +294,7 @@ For every function/method signature, build command, interface definition, or con
 **2. Test Quality Pass completion check**
 Verify the test-coverage agent (Step F) enumerated every test function touched by the diff by name. For any test function not enumerated by the agent, manually complete the per-test checks: assertion specificity, name/assertion alignment, falsifiability, bare sleeps.
 
-Add all Step H findings to the final report under **"Manual pass findings"** (separate section after test-coverage findings).
+Add all Step H findings to the final report under **`## Manual Pass Findings`** (separate section after `## Test-coverage Findings` — matches the SKILL.md template heading exactly).
 
 ## What Each Agent Should NOT Flag
 
@@ -268,4 +312,7 @@ To keep signal high, instruct each agent to skip:
 - **Step 0 (write review request doc) must complete before Step A fires** — it is a prerequisite, not a Codex phase
 - **Step A is a single message** containing all Agent calls + the background `codex-flow` Bash call — never split across messages
 - Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true` — never call `codex` directly
-- The final report sections are: Consensus findings → Codex-only findings → Reverified findings (Step G) → Test-coverage findings (Step F) → Manual pass findings (Step H)
+- Final report sections by review type:
+  - **Code and MR reviews:** `## Findings` (consensus) → `## Reverified Findings` (Step G — holds surviving single-agent Claude and Codex-only findings) → `## Library Reuse Findings` → `## Common Library Promotion Candidates` (when present) → `## Test-coverage Findings` (Step F) → `## Manual Pass Findings` (Step H). See `~/.claude/skills/workflows/review-output-format/SKILL.md` for the authoritative section list.
+  - **Design reviews:** Consensus findings → Codex-only findings → Single-agent findings. See `~/.claude/commands/review-design.md` for the authoritative template.
+  - Note: code/MR reviews do not emit a separate `## Codex-Only Findings` section — Codex-only findings route through Step G and land in `## Reverified Findings` on survival, discarded otherwise.

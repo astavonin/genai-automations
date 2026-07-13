@@ -34,7 +34,7 @@ Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
 Only proceed when the gate passes.
 
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
-2. Run the **Consensus Review Protocol** (Steps 0, A–G; skip Step F and Step H — both are code-only) against the design document
+2. Run the **Consensus Review Protocol** (Steps 0, A–E; skip Step F, Step G, and Step H — all three are code/MR-only) against the design document
 
    ```
    Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
@@ -43,7 +43,7 @@ Only proceed when the gate passes.
 
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel — skip Step F (no code or tests to evaluate)
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step G (single-finding reverification)
+   - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate). Step G is NOT run for design reviews — single-agent Claude findings and Codex-only findings are included in the report directly (see protocol §Step G "Applicability" for rationale)
    - **Each agent prompt must include the full "Design-Level Constraint" section below** — paste it verbatim before the review checklist so agents know what to flag and what to skip
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
@@ -138,15 +138,21 @@ Produce a markdown report:
 
 ## Codex-Only Findings
 
-Findings raised by Codex not present in Claude consensus. Write "None." if empty.
+Findings raised by Codex not present in Claude consensus. Write "None." if empty. Design reviews do not run Step G, so these findings are included without adversarial reverification.
 
 - **X1** [severity] Description...
+
+## Single-Agent Findings
+
+Findings raised by only 1 of the 3 Claude reviewers (and not covered by Step B's direct-inclusion exceptions for test-correctness or cross-site consistency). Design reviews do not run Step G, so these are included without adversarial reverification — treat them as lower-confidence than the consensus findings above. Write "None." if empty.
+
+- **S1** [severity] Description...
 
 ## Recommendation
 <rationale and required actions — concept level only; no implementation specifics>
 ```
 
-IDs are prefixed by severity: C = Critical, H = High, M = Medium, L = Low. Number sequentially within each severity. IDs are stable within a review session.
+IDs are prefixed by severity for the main Findings section (C = Critical, H = High, M = Medium, L = Low), by `X` for Codex-Only Findings, and by `S` for Single-Agent Findings. Number sequentially within each section (e.g., `S1`, `S2`). IDs are stable within a review session.
 
 ## Assessment
 

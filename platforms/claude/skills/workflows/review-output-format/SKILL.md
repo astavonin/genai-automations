@@ -1,6 +1,6 @@
 ---
 name: review-output-format
-description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Codex-Only, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Not used for design reviews (different structure).
+description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Codex-only findings for code/MR reviews route through Step G and land in Reverified (there is no separate Codex-Only section). Not used for design reviews (different structure).
 allowed-tools: Bash
 compatibility: claude-code
 metadata:
@@ -49,17 +49,13 @@ Markdown report template for **code reviews** and **fix reviews**. Design review
 ### Low
 - **L1** [attribute] Description...
 
-## Codex-Only Findings
-
-Findings raised by Codex that did not reach 2/3 Claude consensus. Include even if 0 — write "None."
-
-- **X1** [severity] Description...
-
 ## Reverified Findings
 
-Single-agent Claude findings and Codex-only findings that survived Step G reverification (≥1 of 2 verifiers confirmed). Include even if 0 — write "None."
+Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted only by code reviews (`/review-code`) and MR reviews (`/review-mr`); design reviews skip Step G and have no Reverified Findings section.
 
-- **V1** [severity] ✓ Reverified — Description...
+- **V1** [severity] [Reverified] Description...
+
+The `[Reverified]` prefix at the start of the description is required so downstream consumers (MR YAML posting, code review report readers, GitLab comment readers who see the finding stripped from its section) can distinguish reverified findings from consensus findings without relying on section membership. Section membership alone is not sufficient because the MR YAML output flattens all findings into a single list.
 
 ## Library Reuse Findings
 
