@@ -20,6 +20,7 @@
 ## Markdown Writing
 
 - **Never add manual line breaks within paragraphs.** Do not wrap prose at a fixed column width. Let the Markdown renderer handle line wrapping. Only use newlines to separate paragraphs, list items, headings, or table rows.
+- **Do not number section headings in general docs (READMEs, architecture docs, guides, notes).** Write `## Overview`, not `## 1. Overview`. The only exceptions are docs generated from the `DESIGN-TEMPLATE.md` and `SPEC-TEMPLATE.md` templates, whose numbered sections (`## 1. Problem Statement` … `## 8. Open Questions`) are load-bearing — they are referenced by number in review gates and must not be renamed. For everything else, use unnumbered headings — the pattern in those two templates does not generalize.
 
 ## Mermaid Diagrams
 
