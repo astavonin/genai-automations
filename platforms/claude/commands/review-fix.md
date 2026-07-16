@@ -83,7 +83,7 @@ Focus areas for a fix review:
 - **Root cause:** Does it address the root cause or only a symptom?
 - **Safety / Security:** No new vulnerabilities introduced
 - **Tests:** Is the fix covered by a test?
-- **On-device verification (when `analysis.md ## On-Device Scope` is YES or YES-UNKNOWN — authoritative trigger; do not key off design doc section presence):** Verify the entry-point script is still present on disk and covers all documented build/deploy/verify steps; flag if the fix could break the entry point or invalidate the expected outcome stated in the design doc; if the design doc is missing the On-Device Verification section despite YES scope, flag that absence as a separate finding.
+- **On-device verification (when `analysis.md ## On-Device Scope` is YES or YES-UNKNOWN — authoritative trigger; do not key off design doc section presence):** Verify the entry-point script is still present on disk and covers all documented build/deploy/verify steps; flag if the fix could break the entry point or invalidate the expected outcome stated in the design doc; if the design doc is missing the On-Device Verification section despite YES or YES-UNKNOWN scope, flag that absence as a separate finding.
 
 Aggregate per protocol Steps B–H. Note: Step F (test-coverage agent) is optional for fix reviews — include it when the fix touches test files or adds new tests.
 

@@ -74,6 +74,6 @@ Prefer project-native validation. When available, run:
 - Docker build or targeted build stage for changed Dockerfiles, if feasible
 - local wrapper command that mirrors CI, such as `./dev.sh`, `make build`, or the project CI runner script
 - targeted wrapper checks when the project forbids full-tree modes, such as changed-file lint instead of broad `--all`
-- HIL verifier in `--ci` or non-interactive mode when a device is available
+- HIL verifier in `--ci` or non-interactive mode when the task is device-verifiable; if a design/spec/project guide provides concrete device commands, run those commands as an implementation completion gate
 
-If full CI or device verification cannot run locally, report the exact blocked item and the CI job or device entry point that must provide evidence.
+If full CI or device verification cannot run locally after checking the documented entry point, report the implementation as incomplete/blocked with the exact CI job or device entry point that must provide evidence.

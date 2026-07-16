@@ -113,13 +113,13 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 7. **On-device verification:**
 
    **Step 7-pre — Determine scope from analysis.md:**
-   Read `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` and check the `## On-Device Scope` recorded there (values: `YES`, `YES, procedures unknown`, or `NO`).
+   Read `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` and check the `## On-Device Scope` recorded there (values: `YES`, `YES-UNKNOWN`, or `NO`).
    - If scope is `NO`: skip Steps 7a–7c entirely with a one-line note.
-   - If scope is `YES` or `YES, procedures unknown`: continue to Step 7a — do NOT skip even if the design doc's On-Device Verification section is absent. A missing section when scope is `YES` is a gap that must be surfaced, not silently skipped.
+   - If scope is `YES` or `YES-UNKNOWN`: continue to Step 7a — do NOT skip even if the design doc's On-Device Verification section is absent. A missing section when scope is `YES` or `YES-UNKNOWN` is a gap that must be surfaced, not silently skipped.
    - If `analysis.md` does not exist or contains no `## On-Device Scope` entry: treat scope as unknown and continue to Step 7a.
 
    **Step 7a — Locate entry point:**
-   Check the active issue's design doc for an `**Entry point:**` line. If the design doc has an On-Device Verification section but no `**Entry point:**` line, or if the On-Device Verification section is absent entirely when scope is `YES`, surface an error: "On-device scope is YES but the design doc is missing the On-Device Verification section or Entry point — cannot determine entry point. Resolve before proceeding." Do not attempt to find an entry point from project files; this is a gate failure that should have been caught at `/review-design`.
+   Check the active issue's design doc for an `**Entry point:**` line. If the design doc has an On-Device Verification section but no `**Entry point:**` line, or if the On-Device Verification section is absent entirely when scope is `YES` or `YES-UNKNOWN`, surface an error: "On-device scope is YES or YES-UNKNOWN but the design doc is missing the On-Device Verification section or Entry point — cannot determine entry point. Resolve before proceeding." Do not attempt to find an entry point from project files; this is a gate failure that should have been caught at `/review-design`.
 
    **Step 7b — Run verification:**
    If an entry point is found and a device is reachable, invoke it:
@@ -128,7 +128,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    ```
 
    **Step 7c — Device unavailable locally:**
-   If no device is connected, flag explicitly: "On-device verification pending — run `<entry-point>` before merge. CI must cover it via the CI trigger defined in the design doc's On-Device Verification block (e.g., `DEVICE_IP` env var, runner label, or equivalent)." Treat verification as incomplete — do not update planning state and do not proceed to `/complete` until CI evidence of a passing device run is produced and recorded in the issue folder (e.g., a CI log link in a `device-verification.md` file). This is a blocker, not an advisory.
+   If no device is connected, flag explicitly: "On-device verification pending — run `<entry-point>` on a device or record passing CI/HIL device evidence before merge." Treat verification as incomplete — do not update planning state and do not proceed to `/complete` until CI evidence of a passing device run is produced and recorded in the issue folder (e.g., a CI log link in a `device-verification.md` file). This is a blocker, not an advisory.
 
 ## Requirements
 
@@ -140,7 +140,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - ✅ Zero static analysis errors
 - ✅ No breaking changes (or properly documented)
 - ✅ Build passes
-- ✅ On-device verification passed, or explicitly deferred with a CI-coverage statement if no device is available locally
+- ✅ On-device verification passed locally, or passing CI/HIL device evidence is recorded when no local device is available
 
 ## Failure Handling
 

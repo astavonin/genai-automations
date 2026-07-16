@@ -117,7 +117,7 @@ fi
 
 1. Select appropriate agent based on task type
 2. Write code following approved design
-2a. **Check for on-device entry point deliverable:** First read `analysis.md ## On-Device Scope`. If scope is YES or YES-UNKNOWN, verify the design doc contains an `**Entry point:**` line — if it does not, abort with a workflow-safety warning: "On-device scope is YES but design doc is missing the On-Device Verification section; resolve before implementing." If the section is present, check whether the named script or Makefile target exists on disk:
+2a. **Check for on-device entry point deliverable:** First read `analysis.md ## On-Device Scope`. If scope is YES or YES-UNKNOWN, verify the design doc contains an `**Entry point:**` line — if it does not, abort with a workflow-safety warning: "On-device scope is YES or YES-UNKNOWN but design doc is missing the On-Device Verification section; resolve before implementing." If the section is present, check whether the named script or Makefile target exists on disk:
    ```bash
    # Example (non-exhaustive — adapt to the entry point form named in the design doc):
    test -f scripts/verify-device.sh \

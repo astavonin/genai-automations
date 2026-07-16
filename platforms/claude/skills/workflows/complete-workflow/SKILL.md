@@ -148,7 +148,7 @@ Run all checks in this order:
 3. **Integration tests** (if applicable)
 4. **Static analysis** (zero errors)
 5. **Regression check** (no existing functionality broken)
-6. **On-device verification** (when `analysis.md ## On-Device Scope` is YES — authoritative trigger; do not key off design doc section presence): invoke the named entry point; if no device is available, record an explicit deferred statement for CI coverage and do not mark verification complete.
+6. **On-device verification** (when `analysis.md ## On-Device Scope` is YES or YES-UNKNOWN — authoritative trigger; do not key off design doc section presence): invoke the named entry point; if no device is available, record the blocker and do not mark verification complete until passing CI/HIL device evidence is recorded.
 
 **Critical:** Linting MUST be run before tests. Fix all linter errors and warnings before proceeding.
 

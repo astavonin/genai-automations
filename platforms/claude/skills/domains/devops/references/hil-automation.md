@@ -2,6 +2,13 @@
 
 Use this reference for hardware-in-the-loop jobs, ADB/SSH device workflows, on-device validation, firmware flashing, OTA scenarios, lab runners, and verification CLIs.
 
+## Terminology
+
+This reference uses GitLab-flavored CI terminology. GitHub Actions equivalents:
+- `resource_group` → `concurrency` group (one physical device per group key)
+- `after_script` → job step with `if: always()`
+- protected runners / variables → environment-scoped runners and secrets
+
 ## CI Contract
 
 - Give every HIL job an explicit runner tag that maps to the required lab or device class.

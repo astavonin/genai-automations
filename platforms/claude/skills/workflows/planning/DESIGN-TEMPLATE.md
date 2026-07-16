@@ -53,7 +53,7 @@ What problem does this solve? Why now?
 <command>
 ```
 
-**On-Device Verification:** *(MANDATORY when the feature's final goal is on-device execution and the project has documented device procedures; omit with a one-line note containing the explicit tag `on-device scope: NO` otherwise — e.g., "On-Device Verification: N/A — feature is software-only (on-device scope: NO)." A note without this tag is treated as ambiguous by the reviewer.)*
+**On-Device Verification:** *(MANDATORY when the feature is device-verifiable and the project has documented device procedures. A feature is device-verifiable when the task, acceptance criteria, changed code path, CI/HIL job, verifier script, or project guidance makes target hardware or device/HIL validation relevant. Omit with a one-line note containing the explicit tag `on-device scope: NO` only after checking those sources — e.g., "On-Device Verification: N/A — feature is software-only (on-device scope: NO)." A note without this tag is treated as ambiguous by the reviewer.)*
 
 *Derive from the project's `CLAUDE.md`, `README.md`, or existing planning docs. Do not invent steps — only include procedures that are known for this project's device.*
 

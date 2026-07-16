@@ -33,22 +33,22 @@ Also read:
 
 ### Step 1: Detect on-device scope
 
-Before Q&A, determine whether the feature's final goal involves execution on a physical device:
+Before Q&A, determine whether the feature is device-verifiable. A feature is device-verifiable when the task, acceptance criteria, changed code path, CI/HIL job, verifier script, or project guidance makes target hardware or device/HIL validation relevant.
 
 - Read the analysis doc and ticket description for signals: deployment targets, hardware references, CI-on-device, boot/init behavior, sensor or network interface access, OTA, embedded runtimes.
-- If on-device execution is the final goal (or a mandatory part of verification), check whether the project documents how to reach the device — look in the project's `CLAUDE.md`, `README.md`, and any existing planning docs.
+- If on-device execution or HIL/device validation is relevant to implementation or acceptance, check whether the project documents how to reach the device — look in the project's `CLAUDE.md`, `README.md`, and any existing planning docs.
 - Also determine whether verification requires a special test package (OTA image, firmware bundle, test APK, signed archive, etc.) that must be built before deploying. Look for packaging scripts, build targets, or CI jobs in the project that produce such artifacts.
 - Also check for an existing verification entry point: search for `scripts/verify-device.sh`, Makefile targets (`verify-device`, `test-device`), or a `dev.sh` subcommand that wraps build + deploy + verify. Note whether an entry point already exists or must be created as a deliverable of this feature.
 
 Record the outcome as one of:
-- **On-device: YES** — feature targets device, project has documented procedures → On-Device Verification section is **MANDATORY** in the design doc
+- **On-device: YES** — feature is device-verifiable, project has documented procedures → On-Device Verification section is **MANDATORY** in the design doc
   - If a special test package is required: **Build test package step is MANDATORY** within that section
   - If a standard build suffices: omit the build-package step with a one-line note
   - **Entry point:** name it if it already exists; if it doesn't exist, flag it as a deliverable of this feature
-- **On-device: YES, procedures unknown** — feature targets device, but no device procedures found in project docs → include an On-Device Verification stub block in Section 3 with every field explicitly marked TBD, and add an open question in Section 8 requiring resolution before implementation. Do not invent steps.
+- **On-device: YES-UNKNOWN** — feature is device-verifiable, but no device procedures found in project docs → include an On-Device Verification stub block in Section 3 with every field explicitly marked TBD, and add an open question in Section 8 requiring resolution before implementation. Do not invent steps.
 - **On-device: NO** — feature is software-only → omit the section with a one-line note
 
-State the outcome explicitly in conversation before starting Q&A. Also write it to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## On-Device Scope` heading using the canonical machine-readable label — exactly one of: `YES` | `YES-UNKNOWN` | `NO` — followed by the source evidence (file name and relevant excerpt). The prose label "On-device: YES, procedures unknown" maps to the machine-readable label `YES-UNKNOWN`; always use the machine-readable form in analysis.md so downstream regex checks are reliable. If that file does not yet exist, create it with just this section. This heading is the authoritative scope signal for all downstream commands (review-design, review-code, verify) — they must read it rather than inferring scope from design doc section presence.
+State the outcome explicitly in conversation before starting Q&A. Also write it to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## On-Device Scope` heading using the canonical machine-readable label — exactly one of: `YES` | `YES-UNKNOWN` | `NO` — followed by the source evidence (file name and relevant excerpt). Always use the machine-readable form in analysis.md so downstream regex checks are reliable. If that file does not yet exist, create it with just this section. This heading is the authoritative scope signal for all downstream commands (review-design, review-code, verify) — they must read it rather than inferring scope from design doc section presence.
 
 ### Step 2: Q&A Phase (main conversation — back-and-forth dialog)
 
@@ -104,7 +104,7 @@ Pass to the agent:
   - "No on-device scope — omit On-Device Verification with a one-line note"
 - For post-review fixes: the review report and the enumerated findings to address
 
-The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 8 sections required; sections 7–8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note.
+The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 8 sections required; sections 7–8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note containing `on-device scope: NO`.
 
 **Section 8 format rules (mandatory):**
 - The section heading must be exactly `## 8. Open Questions`.

@@ -80,7 +80,7 @@ When a specification, design document, ticket, or implementation context is prov
 - preserve existing project patterns unless the specification explicitly requires a different approach
 - ask for clarification only when a missing or contradictory requirement blocks a safe implementation; otherwise make the smallest defensible assumption and report it
 - if implementation reality requires deviating from the specification, stop and call out the discrepancy before finalizing
-- before finalizing, verify that every requirement and constraint is implemented, tested where practical, checked against real CI when CI behavior is in scope (on-device verification follows its own mandatory reporting rule — see `## On-Device Verification` below), or explicitly reported as not covered
+- before finalizing, verify that every requirement and constraint is implemented, tested where practical, checked against real CI when CI behavior is in scope, and verified on device when the task is device-verifiable (see `## On-Device Verification` below), or explicitly reported as incomplete/blocked
 
 ## Review Routing
 
@@ -116,22 +116,47 @@ Before finalizing implementation work, actively verify:
 7. caller-level tests cover new dependency failure outcomes and assert no committed inconsistent state, replay loop, crash loop, or unsafe exit path
 8. real CI evidence has been inspected and relevant CI has been run or reported blocked when CI behavior is in scope
 9. formatting, linting, and available tests have been run or the reason they could not be run is reported
-10. on-device verification is reported or flagged per `## On-Device Verification` below
+10. on-device verification has passed when required; if it is blocked, the implementation is reported as incomplete/blocked per `## On-Device Verification` below
 
 ## On-Device Verification
 
-On-device verification is a required verification step depending on which of the following three shapes the design doc's `On-Device Verification` field takes:
+On-device verification is a completion gate for device-verifiable implementation work. If the project guidance, task spec, design doc, issue, AGENTS/CLAUDE/CODEX file, device docs, or changed code makes the device/HIL verification path clear, Codex must run that verification before claiming the task is complete.
+
+A task is device-verifiable when any of these are true:
+- project guidance names an on-device, HIL, provisioning, flashing, deployment, ADB/SSH, or hardware verifier entry point relevant to the change
+- the task spec or design doc lists device steps, a physical target, a HIL scenario, or a device CI job
+- the change affects firmware, device services, deployment/provisioning, hardware integration, OTA/update flows, camera/sensor/media behavior, or code whose acceptance criteria require target hardware
+- a local or CI wrapper exposes a non-interactive device verification mode for the touched behavior
+
+Codex must determine on-device scope from all available project sources, not only from the design doc. Use this precedence:
+1. explicit user request or task spec
+2. project guidance files such as `AGENTS.md`, `CLAUDE.md`, `CODEX.md`, verification docs, and CI/HIL docs
+3. design doc `On-Device Verification` field
+4. repository scripts, CI jobs, and verifier CLIs discovered during implementation
+5. the changed code path and its deployment/runtime target
+
+When on-device verification is required:
+- if a design doc, task spec, or project guidance gives concrete on-device commands, execute those commands automatically after implementation; do not wait for a separate user request
+- a full design-doc `On-Device Verification` block is an execution checklist, not background documentation
+- run the project-approved device/HIL verification if the target device, lab runner, or CI device job is available
+- use the exact project entry point and scenario set from project guidance or the task spec; do not replace it with a weaker local-only check
+- do not tell the user "you can run this to verify on the device" when Codex can run or trigger it
+- do not mark the task complete unless required on-device verification has passed
+- before declaring verification blocked, check the documented device/HIL/CI entry point and confirm what is unavailable; do not assume the device path is unavailable without checking
+- if the device, lab runner, credentials, or CI trigger is unavailable after checking, report the work as incomplete/blocked and provide the exact verification entry point that remains
+
+The design doc's `On-Device Verification` field still carries these meanings:
 
 - (a) the design doc has a full `On-Device Verification` block (multi-line, with an `**Entry point:**` and device steps) — on-device verification is required
-- (b) the design doc has a one-line omission note that contains the tag `on-device scope: NO` — skip, no entry required
-- (c) the design doc is missing both the full block and any omission note — the absence is a gap to surface; treat as required
+- (b) the design doc has a one-line omission note that contains the tag `on-device scope: NO` — skip only when project guidance and changed-code analysis also show the task is not device-verifiable
+- (c) the design doc is missing both the full block and any omission note — the absence is a gap to surface; use the broader scope rules above to decide whether device verification is required
 
-"Tested where practical" and "available tests" do not cover on-device verification. The absence of a physical device is a gap to report, not a reason to skip silently. The implementation output must either include on-device verification results or an explicit blocked entry. Omitting the entry entirely is not acceptable.
+"Tested where practical" and "available tests" do not cover on-device verification. Passing unit tests, local integration tests, build-only checks, or non-device CI is not enough for a device-verifiable task. The absence of a physical device is a blocker to completion, not a reason to skip silently. The implementation output must either include on-device verification results or an explicit blocked/incomplete entry. Omitting the entry entirely is not acceptable.
 
 Blocked entry format — the literal prefix `On-Device Verification:` must appear at column 0, followed by `BLOCKED` (uppercase), followed by a dash and a plain-text reason:
 
 ```
-On-Device Verification: BLOCKED — no physical device available in this environment.
+On-Device Verification: BLOCKED — incomplete until <entry-point> runs on <target/device/job>.
 ```
 
 Passed entry format — same column-0 prefix, `PASSED` (uppercase), dash, plain-text summary. Link to the CI evidence file when available:
@@ -140,7 +165,7 @@ Passed entry format — same column-0 prefix, `PASSED` (uppercase), dash, plain-
 On-Device Verification: PASSED — all checks passed on <device-type>.
 ```
 
-Codex derives on-device scope from the design doc's `On-Device Verification` field, which is the implementation contract passed via `codex-flow`. The design doc's scope must be consistent with `analysis.md`'s `## On-Device Scope` entry — any divergence is a design-phase gap that should have been caught at `/review-design`, not something Codex resolves at implementation time.
+When a design doc is provided, its scope must be consistent with `analysis.md`'s `## On-Device Scope` entry. Any divergence is a design-phase gap that should have been caught at `/review-design`; at implementation time, Codex still follows the stricter rule: if the task is device-verifiable from project guidance or changed-code facts, on-device verification is required.
 
 *This corresponds to the Claude-side on-device gate in `~/.claude/commands/verify.md`.*
 
@@ -166,4 +191,5 @@ Codex derives on-device scope from the design doc's `On-Device Verification` fie
 - Do not let prompt wording stand in for runtime enforcement when a hard invariant is required.
 - Separate confirmed facts from proposed behavior.
 - For workflow docs, ensure request fields, templates, and examples stay aligned.
+- Do not mark device-verifiable implementation work complete until required on-device/HIL verification has passed.
 - Apply the relevant language and domain skills as the canonical implementation contract; do not replace them with duplicated summaries in this file.
