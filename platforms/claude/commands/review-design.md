@@ -86,6 +86,9 @@ This is a **design review**, not a code review. Reviewers must stay at the archi
 - On-Device Verification section present but entry point is neither confirmed to exist in the repo nor listed as a deliverable of this feature — flag as High
 - On-Device Verification section present but expected outcome or failure indicators are undefined — flag as High
 
+**Ticket Constraint Guardrail (applies to all flag rules above):**
+Before flagging a design for violating a ticket restriction, consult `analysis.md` `## Ticket Constraints`. Only ACCEPTED and REVISED entries are enforceable — DROPPED entries and restrictions not listed must not be flagged. If the section is absent (research predates this convention, no ticket text was available in-session, or no ticket-originated restrictions were found), no ticket-originated restrictions are enforceable in this review — flag only design-quality issues.
+
 **Do NOT flag (implementation-level — out of scope for design review):**
 - Specific language constructs (`[[nodiscard]]`, `mutable`, `noexcept`, `static_assert`, etc.)
 - Exact method signatures, return types, or parameter names

@@ -75,11 +75,15 @@ Investigate existing codebase patterns, architecture, integration points.
 
 **Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
 
+**Ticket Constraint Validation:** After writing `analysis.md`, run the Ticket Constraint Validation step (see `commands/research.md`). Produces `## Ticket Constraints` in `analysis.md` when explicit restrictions are found; always records the outcome (found/none-found/no-ticket-text) in the `progress_line` suffix.
+
 ### Phase 2: Design
 **Command:** `/design`
 **Agent:** architecture-research-planner (Step 3 only — Q&A runs in main conversation first)
 
 **Step 1 — Q&A (main conversation):** Read analysis + ticket, then ask one question at a time with concrete options. Write answers to `analysis.md` under `## Clarifications`. Non-blocking: unanswered questions become open questions in the design doc.
+
+**Constraint precedence:** `## Ticket Constraints` (if present) is the authoritative source for ticket-originated restrictions — treat only ACCEPTED/REVISED entries as active during Q&A.
 
 **Step 2 — Write design doc (architecture-research-planner):** Uses enriched analysis as input.
 
@@ -95,6 +99,8 @@ After writing: print a short summary in the conversation (3–6 bullet points: c
 **MANDATORY:** User approval required before implementation
 
 Review design against 8 quality attributes. Block until approved.
+
+**Constraint guardrail:** Before flagging a design for a ticket restriction, consult `analysis.md ## Ticket Constraints`. Only ACCEPTED/REVISED entries are enforceable; absent section → flag only design-quality issues.
 
 **Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`.
 After writing, ask the user if they want to `open <path>` the review file.

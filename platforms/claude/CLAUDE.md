@@ -244,10 +244,12 @@ ls planning/<goal>/milestone-XX/issues/
 - Use architecture-research-planner agent
 - Investigate existing codebase patterns and architecture
 - Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
+- After writing `analysis.md`, run the Ticket Constraint Validation step defined in `commands/research.md`. Phase 2 reads only the ACCEPTED/REVISED entries recorded under `## Ticket Constraints`; if the section is absent, no ticket restrictions have been validated for this issue.
 - Do not auto-advance to Phase 2 (/design). Wait for the user to explicitly invoke `/design`. Completing research does not license advancing to design.
 
 ### Phase 2: Design
-- **Step 1 — Q&A (main conversation):** Read analysis + ticket; ask one question at a time with concrete options; write answers into `analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
+- **Step 1 — Q&A (main conversation):** Before questioning, read `analysis.md ## Ticket Constraints` (if present) and treat only ACCEPTED and REVISED entries as active restrictions — do not question the user about DROPPED restrictions or ticket restrictions not listed there. Then read analysis + ticket; ask one question at a time with concrete options; write answers into `analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
+- **Constraint precedence:** `## Ticket Constraints` in `analysis.md` is the authoritative source for ticket-originated restrictions. Original ticket text is context only — a restriction not recorded under `## Ticket Constraints` is not a constraint. DROPPED entries are treated as absent.
 - **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
 - Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 8 sections required; sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions
@@ -257,6 +259,7 @@ ls planning/<goal>/milestone-XX/issues/
 
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
+- Before flagging a design for violating a ticket restriction, consult `analysis.md` `## Ticket Constraints`. If the section exists, only ACCEPTED and REVISED entries are enforceable — DROPPED entries and restrictions not listed must not be flagged. If the section is absent (research predates this convention, no ticket text was available in-session, or no ticket-originated restrictions were found), no ticket-originated restrictions are enforceable in this review — flag only design-quality issues.
 - **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file

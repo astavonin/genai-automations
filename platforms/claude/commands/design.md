@@ -52,6 +52,8 @@ State the outcome explicitly in conversation before starting Q&A. Also write it 
 
 ### Step 2: Q&A Phase (main conversation — back-and-forth dialog)
 
+- **Constraint check (before Q&A):** If `analysis.md` contains a `## Ticket Constraints` section, read it first and treat only ACCEPTED and REVISED entries as active restrictions during Q&A — do not question the user about DROPPED restrictions or ticket restrictions not listed there.
+
 Before spawning the agent, run a clarifying dialog in the main conversation.
 
 **How to drive it:**

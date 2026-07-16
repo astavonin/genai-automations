@@ -166,11 +166,10 @@ issues:
     weight: 8               # REQUIRED — replace 8 with the value from your step 3 estimate; keep the comment above
     description: |
       # Description
-      What needs to be done and why.
+      <what is broken/missing and why it matters now — state the observable gap, not the approach>
 
       # Acceptance Criteria
-      - Criterion 1
-      - Criterion 2
+      - <observable outcome — verifiable as done/not done>
     labels: ["priority::high"]  # optional, merged with config defaults
     assignee: "username"        # optional, GitLab username
     milestone: "Milestone Title" # optional, title (not ID)
@@ -192,15 +191,14 @@ issues:
 ```markdown
 # Description
 
-Explain **what needs to be done** and **why it matters**.
-Include background context, related problems, or dependencies if relevant.
+State the **problem or need** and **why it matters now**. Focus on the observable gap — what is broken, missing, or inadequate, and what impact that has. Do not specify approach, technology choices, or design decisions; those belong in the design doc.
 
 ---
 
 # Acceptance Criteria
 
-- <clear, measurable, testable criterion>
-- <clear, measurable, testable criterion>
+- <observable outcome — what can be verified as done/not done>
+- <observable outcome — what can be verified as done/not done>
 
 ---
 
@@ -214,7 +212,7 @@ Add any references, related Epics, Issues, links, or notes for reviewers.
 ```markdown
 # Description
 
-Explain **what needs to be done** and **why it matters**.
+State the **problem area or capability gap** and **why it matters**. Describe the outcome the epic delivers, not the approach.
 
 ---
 
@@ -224,10 +222,15 @@ Add any references, related issues, or notes.
 ```
 
 **Quality rules:**
-- Descriptions answer WHAT and WHY, not HOW
-- Acceptance criteria are testable (can be verified as done/not done)
-- Titles are concise, under 70 characters
-- Avoid implementation details in descriptions — those belong in MR descriptions
+- Descriptions state WHAT is broken/missing and WHY it matters — never HOW to fix it
+- **HOW-smell test:** if a developer could skip the design phase because the description already specifies the approach, technology, or solution structure, rewrite the description
+- **Rewrite triggers** — flag and rewrite any description that contains:
+  - Implementation verbs in the body: "implement", "build", "expose", "migrate", "port", "swap"
+  - Extension/addition verbs that name a specific artifact or technology: "add a <technology> that", "extend <component> with", "attach <thing> to", "wire <thing> to", "hook <thing> up", "create a script that <does X>"
+  - Technology choices: specific libraries, languages, file names, class names
+  - Design decisions: "use X pattern", "call Y API", "store in Z"
+- Acceptance criteria state observable outcomes, not implementation steps ("configuration survives reboot" not "write config to /etc/…")
+- Titles are concise, under 70 characters. Titles may describe the user-visible outcome with action verbs (e.g., "Persist preferences across sessions", "Support concurrent writes") but must not name a specific technology or implementation target (e.g., "Add Redis cache", "Migrate to Postgres", "Refactor auth middleware").
 
 ### 6. Show YAML for Verification
 
@@ -294,24 +297,25 @@ issues:
     weight: 8
     description: |
       # Description
-      Investigate caching options for the API response layer.
+      API response latency spikes under load because every request hits the database.
+      We need to understand what caching options are viable before committing to an approach.
 
       # Acceptance Criteria
-      - At least 3 strategies evaluated
-      - Trade-offs documented in design doc
+      - At least 3 strategies evaluated with trade-offs documented
+      - A recommended approach is identified with rationale
     labels: ["type::research"]
 ```
 
 ### New epic with issues under existing milestone
 
 ```
-Weight estimate — "Preferences API endpoint":
+Weight estimate — "Persist user preferences across sessions":
   design: 7h  — read api/routes.go and middleware/auth.go; resolve session token interaction
   coding:  3h  — new route handler + validation + DB call
   review:  6h  — unit tests (happy path + validation errors) + integration test + review cycle
   total:  16h  → weight: 16
 
-Weight estimate — "Preferences settings page":
+Weight estimate — "Let users view and change their preferences in the product":
   design: 5h  — read existing page components; resolve state management approach for form
   coding:  4h  — new page component + form + API client call
   review:  7h  — unit tests + E2E (submit flow) + review cycle
@@ -325,30 +329,34 @@ epic:
 
 issues:
   - id: "prefs-api"
-    title: "Preferences API endpoint"
+    title: "Persist user preferences across sessions"
     # weight estimate: design 7h + coding 3h + review 6h = 16h → 16
     weight: 16
     description: |
       # Description
-      Implement REST endpoint for reading and writing user preferences.
+      User preferences have no persistence layer. Changes are lost on session end,
+      requiring users to reconfigure settings on every login. This blocks the settings
+      UI from being useful.
 
       # Acceptance Criteria
-      - GET /preferences returns current settings
-      - PUT /preferences validates and persists changes
-      - Unit tests cover happy path and validation errors
+      - Reading preferences returns the last saved values for a user
+      - Writing preferences persists them so they survive session expiry
+      - Invalid preference payloads are rejected with a descriptive error
 
   - id: "prefs-ui"
-    title: "Preferences settings page"
+    title: "Let users view and change their preferences in the product"
     # weight estimate: design 5h + coding 4h + review 7h = 16h → 16
     weight: 16
     description: |
       # Description
-      Build the UI page for managing user preferences.
+      Users currently have no way to view or change their preferences within the
+      product. Settings can only be changed by direct API calls, which is not viable
+      for end users.
 
       # Acceptance Criteria
-      - Page renders current preferences
-      - Changes are saved on submit
-      - Error states are handled
+      - Users can view their current preferences without tools outside the product
+      - Changes made in the UI persist and appear on the user's next view of preferences
+      - Submission failures are surfaced to the user
     dependencies: ["prefs-api"]
 ```
 
@@ -372,13 +380,13 @@ issues:
     weight: 24
     description: |
       # Description
-      network_init.sh configures the interface for the current session only;
-      settings do not survive reboot, breaking CI scenarios that reboot the device.
+      Network configuration does not survive device reboot. Any CI scenario that
+      reboots the device loses its network setup and requires manual intervention
+      to restore connectivity, making automated reboot testing impractical.
 
       # Acceptance Criteria
-      - Network configuration written once survives a hard reboot
-      - Interface obtains an address automatically on boot without intervention
-      - CI pipeline passes after device reboot
+      - Network configuration written once survives a hard reboot without intervention
+      - CI pipeline completes successfully after a device reboot step
     labels: ["type::bug"]
     assignee: "username"
 ```
@@ -386,7 +394,7 @@ issues:
 ### Milestone with epic and issues
 
 ```
-Weight estimate — "Email notification sender":
+Weight estimate — "Deliver triggered notifications via email":
   design: 7h  — read notifier/sender.go and retry/policy.go; resolve backoff strategy
   coding:  3h  — sender implementation + retry wrapper
   review:  6h  — unit tests (send + retry paths) + integration test + review cycle
@@ -403,16 +411,18 @@ epic:
   description: "Core notification sending infrastructure"
 
 issues:
-  - title: "Email notification sender"
+  - title: "Deliver triggered notifications via email"
     # weight estimate: design 7h + coding 3h + review 6h = 16h → 16
     weight: 16
     description: |
       # Description
-      Implement email delivery for triggered notifications.
+      Triggered notifications are currently silently dropped. Users have no way to
+      receive time-sensitive alerts outside the product, which means they must stay
+      logged in to avoid missing events.
 
       # Acceptance Criteria
-      - Emails sent within 30s of trigger
-      - Failed deliveries are retried up to 3 times
-      - Delivery status logged
+      - A triggered notification reaches the user's email within 30s
+      - Transient delivery failures do not permanently drop the notification
+      - Delivery outcome is observable without querying the sending service directly
     milestone: "v3.0 — Notifications"
 ```
