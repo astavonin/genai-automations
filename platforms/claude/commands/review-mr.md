@@ -228,6 +228,8 @@ findings:
 - 1–3 sentences per finding description — state what breaks and what the impact is.
 - No passive-aggressive language: never "you should have", "obviously", "this ignores", "dangerously", "poorly".
 - Bad: "This function dangerously ignores the error return value." Good: "If the error return is ignored here, the caller proceeds with an invalid state."
+- **Unrelated / scope-creep changes → ask "why?", don't demand revert or split.** When a diff contains a change that looks unrelated to the MR's stated purpose (config value tweaks, block-list additions, dependency bumps, formatting sweeps, etc.), the default fix is NOT "revert" or "split into a separate commit/MR". First check whether the MR description already explains it — if it does, don't file the finding. If it doesn't, frame the finding as a question about intent and ask for a one-line rationale in the **MR description** (not the commit message — MR description is the review record; commit messages are not). Reserve "revert" only for changes that are clearly wrong (e.g., a value that breaks something) — and even then, phrase it as "confirm intent; if yes, document it; if no, revert." Severity for pure "why?" findings is Medium at most, usually Low.
+- Bad: "Unrelated bitrate change ships in the same MR. Fix: revert, or split into its own commit with rationale." Good: "Was the bitrate change intentional? Nothing in the MR description mentions it. Fix: if intentional, add a one-line rationale to the MR description so the next reader does not have to ask; if not, revert."
 
 **Schema rules:**
 - `location` (singular) and `locations` (plural list) are mutually exclusive
