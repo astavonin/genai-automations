@@ -1,14 +1,15 @@
 # Codex Configuration Backup
 
-Backup of the tracked Codex configuration for architecture/design work plus primary implementation execution for approved specifications in **C++**, **Python**, **Go**, **Rust**, and **Shell**.
+Backup of the tracked Codex configuration for architecture/design work plus primary implementation execution for approved specifications in **C++**, **Python**, **Go**, **Rust**, **Shell**, and **Zig**, with focused DevOps support for CI and HIL automation.
 
 ## Scope
 
 This tracked backup currently includes:
 - design docs and architecture research
 - architecture review
-- language guidance for C++, Python, Go, Rust, and Shell
+- language guidance for C++, Python, Go, Rust, Shell, and Zig
 - shared coding guidance for testing and code quality
+- DevOps guidance for GitLab CI, Docker/BuildKit, self-hosted runners, cache-heavy CI, HIL/on-device verification, and automation
 - specification-driven implementation execution
 - code-review support through language, testing, and code-quality checklists
 
@@ -31,6 +32,7 @@ platforms/codex/
     ├── domains/
     │   ├── architecture/
     │   ├── code-quality/
+    │   ├── devops/
     │   ├── quality-attributes/
     │   └── testing/
     ├── languages/
@@ -38,7 +40,8 @@ platforms/codex/
     │   ├── go/
     │   ├── python/
     │   ├── rust/
-    │   └── shell/
+    │   ├── shell/
+    │   └── zig/
     └── workflows/
         └── architecture-review/
 ```
@@ -46,4 +49,4 @@ platforms/codex/
 ## References
 
 - Main guide: `CODEX.md`
-- Claude source material used for restoration lives under `../claude/skills/` and `../claude/agents/coder.md`
+- Claude source material used for restoration lives under `../claude/skills/`, `../claude/agents/coder.md`, and `../claude/agents/devops-engineer.md`

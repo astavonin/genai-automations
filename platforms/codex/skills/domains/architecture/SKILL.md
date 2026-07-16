@@ -123,7 +123,3 @@ When reviewing architecture:
 - Are trade-offs understood?
 - Is it consistent with existing patterns?
 - Can it evolve as requirements change?
-
-## References
-
-See `references/` directory for detailed architecture patterns and diagram examples.

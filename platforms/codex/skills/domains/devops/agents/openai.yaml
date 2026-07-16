@@ -1,0 +1,4 @@
+interface:
+  display_name: "DevOps"
+  short_description: "GitLab CI, Docker, runners, and HIL"
+  default_prompt: "Use $devops to design, debug, or review GitLab CI, Docker, self-hosted runner, HIL, or automation changes."

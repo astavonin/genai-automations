@@ -10,8 +10,10 @@ Active implementation focus:
 - Go
 - Rust
 - Shell
+- Zig
+- DevOps support for GitLab CI, Docker/BuildKit, self-hosted runners, HIL/on-device verification, and automation
 
-Keep the scope narrow to these languages unless explicitly expanded.
+Keep the scope narrow to these languages and DevOps surfaces unless explicitly expanded.
 
 # Communication Style
 
@@ -51,10 +53,23 @@ When implementing code:
 - use `skills/languages/go/` for Go
 - use `skills/languages/rust/` for Rust
 - use `skills/languages/shell/` for POSIX sh, Bash, and Zsh
+- use `skills/languages/zig/` for Zig
+- use `skills/domains/devops/` for GitLab CI, Dockerfiles, CI images, self-hosted runner configuration, package/registry publishing, cache-heavy CI, HIL/on-device automation, and CI debugging
 - use `skills/domains/testing/` when writing or reviewing tests
 - use `skills/domains/code-quality/` for shared structure, failure, lifecycle, concurrency, observability, dependency, I/O, compatibility, comment, suppression, and formatting expectations
 
 Prefer language-idiomatic solutions, explicit validation, and project-native tooling.
+
+## Real CI Investigation And Verification
+
+When a repository has CI and the task touches build, test, lint, package, deploy, HIL, or automation behavior, real CI is mandatory development evidence. Do not rely only on local reasoning, local commands, or expected behavior.
+
+During development:
+- inspect the actual CI configuration, pipeline/job state, logs, artifacts, runner tags, image versions, and invoked commands through the project-approved tooling
+- when `projctl` is available for the repository, use `projctl pipeline-debug` first for failed branch/MR pipelines and `projctl pipeline-debug --job-id <id>` for a specific job trace before reaching for raw GitLab CLI or API calls
+- use local reproduction only after mapping it to the real CI job contract: image, platform, mounts, environment, cache/artifact inputs, command, and runner/device constraints
+- after changing behavior, either run or trigger the relevant CI job/pipeline, inspect the result, and report the evidence, or state that CI verification is blocked with the exact job/pipeline entry point needed
+- for CI fixes, trace the failing real CI evidence first, then explain why the change addresses that observed failure
 
 ## Specification-Driven Implementation
 
@@ -65,13 +80,14 @@ When a specification, design document, ticket, or implementation context is prov
 - preserve existing project patterns unless the specification explicitly requires a different approach
 - ask for clarification only when a missing or contradictory requirement blocks a safe implementation; otherwise make the smallest defensible assumption and report it
 - if implementation reality requires deviating from the specification, stop and call out the discrepancy before finalizing
-- before finalizing, verify that every requirement and constraint is implemented, tested where practical (on-device verification follows its own mandatory reporting rule — see `## On-Device Verification` below), or explicitly reported as not covered
+- before finalizing, verify that every requirement and constraint is implemented, tested where practical, checked against real CI when CI behavior is in scope (on-device verification follows its own mandatory reporting rule — see `## On-Device Verification` below), or explicitly reported as not covered
 
 ## Review Routing
 
 Use the right review path for the artifact under review:
 
 - **Code review:** use the relevant language skill plus `skills/domains/testing/`, `skills/domains/code-quality/`, and `skills/domains/code-quality/references/code-review-checklist.md`. Do not use `skills/reviewer/` for code-level style, language idioms, tests, or implementation defects.
+- **DevOps review:** use `skills/domains/devops/` plus `skills/languages/shell/` for shell scripts and `skills/domains/testing/` when reviewing CI tests, HIL tests, or automation test coverage.
 - **Architecture/design review:** use `skills/reviewer/`, `skills/workflows/architecture-review/`, `skills/domains/architecture/`, and `skills/domains/quality-attributes/`.
 - **Workflow or command design review:** use the architecture/design review path and run the required field/path/invariant consistency pass from the design-doc workflow.
 
@@ -98,8 +114,9 @@ Before finalizing implementation work, actively verify:
 5. every field, member, parameter, or named constant added by the change has a production read-site beyond construction or initialization, unless an explicit compatibility or future-contract reason is documented
 6. every new failure outcome is traced through live, startup, resume, replay, and recovery callers before any irreversible caller-side commit
 7. caller-level tests cover new dependency failure outcomes and assert no committed inconsistent state, replay loop, crash loop, or unsafe exit path
-8. formatting, linting, and available tests have been run or the reason they could not be run is reported
-9. on-device verification is reported or flagged per `## On-Device Verification` below
+8. real CI evidence has been inspected and relevant CI has been run or reported blocked when CI behavior is in scope
+9. formatting, linting, and available tests have been run or the reason they could not be run is reported
+10. on-device verification is reported or flagged per `## On-Device Verification` below
 
 ## On-Device Verification
 
@@ -134,6 +151,7 @@ Codex derives on-device scope from the design doc's `On-Device Verification` fie
 - `skills/reviewer/`
 - `skills/domains/architecture/`
 - `skills/domains/quality-attributes/`
+- `skills/domains/devops/`
 - `skills/domains/testing/`
 - `skills/domains/code-quality/`
 - `skills/languages/cpp/`
@@ -141,6 +159,7 @@ Codex derives on-device scope from the design doc's `On-Device Verification` fie
 - `skills/languages/go/`
 - `skills/languages/rust/`
 - `skills/languages/shell/`
+- `skills/languages/zig/`
 
 # Critical Rules
 

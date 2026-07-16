@@ -8,4 +8,5 @@ Codex implementation responsibilities:
 - implement the specified requirements and constraints, not a broader redesign
 - trace each requirement to code, tests, or verification evidence
 - use the listed build, test, and debug commands when available
+- when CI behavior is in scope, inspect real CI job/pipeline evidence during development and run or trigger the relevant CI verification; if blocked, report the exact CI entry point needed
 - report any requirement that could not be implemented or verified
