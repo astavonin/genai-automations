@@ -85,7 +85,7 @@ planning/
 
 **Style:** Concise, scannable, checklist format
 
-**Example:**
+**Example** (every `#N` / `&N` / `%N` / `!N` reference is rendered as a clickable Markdown link — never bare):
 ```markdown
 # Milestone 15: Performance Predictability
 
@@ -95,21 +95,21 @@ planning/
 
 ## Epics
 
-- ✅ Epic #30: Frame rate measurement (5/5 issues closed)
-- 🔶 Epic #31: Latency optimization (2/4 issues closed)
-- 🔴 Epic #32: Resource profiling (0/3 issues - blocked)
-- ⬜ Epic #33: Performance baselines (not started)
-- ⬜ Epic #34: Regression tests (not started)
+- ✅ Epic [&30](URL): Frame rate measurement (5/5 issues closed)
+- 🔶 Epic [&31](URL): Latency optimization (2/4 issues closed)
+- 🔴 Epic [&32](URL): Resource profiling (0/3 issues - blocked)
+- ⬜ Epic [&33](URL): Performance baselines (not started)
+- ⬜ Epic [&34](URL): Regression tests (not started)
 
 ## Blockers
 
-- Epic #32 blocked: Profiling tools not available in CI
+- Epic [&32](URL) blocked: Profiling tools not available in CI
 
 ## Next Actions
 
-- [ ] Complete Epic #31: Issues #145, #146
-- [ ] Resolve Epic #32 blocker: Install profiling tools
-- [ ] Start Epic #33: Define baseline metrics
+- [ ] Complete Epic [&31](URL): Issues [#145](URL), [#146](URL)
+- [ ] Resolve Epic [&32](URL) blocker: Install profiling tools
+- [ ] Start Epic [&33](URL): Define baseline metrics
 ```
 
 ---
@@ -276,12 +276,12 @@ mkdir -p planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/
 ## Active Work
 
 **Milestone 5:** Initial Video Streaming (70% complete)
-**Focus:** Epic &26 - encoderd streaming start/stop
+**Focus:** Epic [&26](URL) - encoderd streaming start/stop
 
 ### In Progress
 
-- #140: VisionIpcClient for streaming-only scenarios
-- #141: Graceful shutdown for streaming encoders
+- [#140](URL): VisionIpcClient for streaming-only scenarios
+- [#141](URL): Graceful shutdown for streaming encoders
 
 ### Blockers
 
@@ -289,9 +289,9 @@ None
 
 ### Next Steps (This Week)
 
-- [ ] Complete #140, #141 (Jan 14-15)
-- [ ] Start #142: Multi-process support (Jan 16)
-- [ ] Start #121: Config parsing (Jan 16)
+- [ ] Complete [#140](URL), [#141](URL) (Jan 14-15)
+- [ ] Start [#142](URL): Multi-process support (Jan 16)
+- [ ] Start [#121](URL): Config parsing (Jan 16)
 ```
 
 ### Good Milestone List (`overview.md`)
@@ -299,17 +299,17 @@ None
 ```markdown
 ## Milestones
 
-**%5: Initial Video Streaming** ✅
+**[%5](URL): Initial Video Streaming** ✅
 - Single SRT stream working end-to-end
 - Configuration system via parameters
 - Basic testing infrastructure
 
-**%15: Performance Predictability**
+**[%15](URL): Performance Predictability**
 - Establish frame rate and latency baselines
 - Optimize resource usage (<50% CPU)
 - Performance regression tests
 
-**%16: Graceful Degradation**
+**[%16](URL): Graceful Degradation**
 - Handle network failures without crashes
 - Isolate streaming errors from recording
 - Validate configuration gracefully
@@ -323,15 +323,15 @@ None
 **Completion:** 70% → 75% (+5%)
 
 **Completed This Week:**
-- ✅ #140: VisionIpcClient handling
-- ✅ #141: Graceful shutdown
+- ✅ [#140](URL): VisionIpcClient handling
+- ✅ [#141](URL): Graceful shutdown
 
 **In Progress:**
-- 🔶 #142: Multi-process support (50% done)
+- 🔶 [#142](URL): Multi-process support (50% done)
 
 **Next:**
-- [ ] Complete #142
-- [ ] Start #143: Error handling
+- [ ] Complete [#142](URL)
+- [ ] Start [#143](URL): Error handling
 ```
 
 ---

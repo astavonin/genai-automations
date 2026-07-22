@@ -1,8 +1,8 @@
 # Design — <Feature Name>
 
 **Goal:** `<goal-folder-name>`
-**Milestone:** `milestone-XX-<name>` · `%N`
-**Feature:** `#N`
+**Milestone:** `milestone-XX-<name>` · [%N](URL)
+**Feature:** [#N](URL)
 **Branch:** `feature/<branch-name>`
 **Status:** Draft | Approved | Superseded
 **Revision:** 1

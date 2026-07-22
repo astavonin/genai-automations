@@ -2,7 +2,7 @@
 
 **Article:** <NNN-slug>
 **Companion repo:** <repo-name>
-**Issue:** #N
+**Issue:** [#N](URL)
 **Status:** Draft | Approved
 
 ---

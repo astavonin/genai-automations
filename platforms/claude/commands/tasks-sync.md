@@ -44,14 +44,14 @@ Use `epic:` for a single epic, `epics:` for a list. Both are supported. If both 
 
 Task lines are any `- ` bullet that contains a remote reference anywhere in the line.
 
-**Preferred format** (reference at end):
+**Preferred format** (reference at end, linked per the CLAUDE.md clickable-ticket-links rule):
 ```markdown
-- [x] Implement sync hook #145
-- [ ] Write tests for sync #146
+- [x] Implement sync hook [#145](URL)
+- [ ] Write tests for sync [#146](URL)
 - [ ] Untracked task (no remote reference)
 ```
 
-**Also recognized** (existing files may use emoji status or reference at start):
+**Also recognized** (existing files may use emoji status, reference at start, or bare sigils from before the clickable-links rule was adopted):
 ```markdown
 - ✅ #183 [Design] Analyze manager.py
 - ⏳ #239 Watchdog instrumentation
@@ -60,13 +60,15 @@ Task lines are any `- ` bullet that contains a remote reference anywhere in the 
 - [ ] Start #140: VisionIpcClient handling
 ```
 
+Read-side matching accepts both bare and linked forms for backward compatibility. **All new writes must use the linked form** (see Preferred format above); when done-marking a legacy bare-sigil line, preserve whichever sigil form is already present — do not rewrite the sigil format during a state change.
+
 **Completion state mapping:**
 | Marker | State |
 |--------|-------|
 | `[x]` or `✅` | done |
 | `[ ]`, `⬜`, `⏳`, `🔶` | todo |
 
-**Reference extraction:** first occurrence of `#N`, `&N`, `%N`, or `!N` anywhere in the line (N = one or more digits).
+**Reference extraction:** first occurrence of a ticket reference in either form — bare (`#N`, `&N`, `%N`, `!N`) or linked (`[#N](URL)`, `[&N](URL)`, `[%N](URL)`, `[!N](URL)`) — anywhere in the line (N = one or more digits).
 
 Valid reference prefixes:
 - `#N` — issue
@@ -119,9 +121,10 @@ After all epic and milestone loads are complete, construct a single in-memory ma
 ```
 issue_state[N] = "open" | "closed"
 issue_title[N] = "<title string>"
+issue_url[N]   = "<web_url from projctl output>"
 ```
 
-Populate it from every epic and milestone output already captured. This table is the sole source of truth for Steps 3 and 4 — no further network calls to look up issue state.
+Populate it from every epic and milestone output already captured — `projctl load` returns `web_url` for each child. This table is the sole source of truth for Steps 3 and 4 — no further network calls to look up issue state. `issue_url[N]` is required by Step 6 to write linked-form references when appending newly discovered issues.
 
 **2d — Load remaining individual issues (all orphans)**
 
@@ -173,11 +176,13 @@ Build three lists:
 
 **B2. MR remote → local (mark done):** MRs where `mr_state[N]` is `"merged"` or `"closed"` but the local line is `[ ]` → will mark the local task line as `[x]`. Never push `[x]` local state back to remote for MRs.
 
-**C. New remote issues (discovery):** Epic child issue numbers not present in local `status.md` → will append as `- [ ] <issue_title[N]> #N` to the relevant status file
+**C. New remote issues (discovery):** Epic child issue numbers not present in local `status.md` → will append as `- [ ] <issue_title[N]> [#N](<issue_url[N]>)` to the relevant status file (linked form per the CLAUDE.md rule)
 
 ### Step 5 — Display sync plan
 
 Before making any changes, print a structured summary. Include a timestamp header so the user knows when the remote state was captured — concurrent changes after this point are not reflected in the plan.
+
+Console/terminal display uses **bare sigils** for readability (CLI output is exempt from the clickable-links rule). File writes below (Step 6) still use the linked form.
 
 ```
 Sync Plan  (remote state captured at HH:MM)
@@ -214,7 +219,7 @@ Ask the user: **"Apply this sync plan? (yes / no / edit)"**
 
 **Execution:**
 
-Mark local tasks done first: edit each `status.md` file, replacing `- [ ] <text> #N` with `- [x] <text> #N`.
+Mark local tasks done first: edit each `status.md` file, flipping the checkbox on the matched task line — replace `- [ ]` with `- [x]` while preserving the rest of the line verbatim, including whichever sigil form (bare `#N` or linked `[#N](URL)`) is already present. Do NOT rewrite the sigil format during a done-mark; format migration is out of scope for `/tasks-sync`.
 
 Close remote tickets: for each issue in List A, run:
 ```bash
@@ -222,9 +227,9 @@ projctl update issue N --state close
 ```
 If a close call fails, log the failure, continue with the remaining tickets, and record the failed issue number for Step 7. Do not abort the entire execution on a single failure.
 
-Append new remote issues: add to the bottom of the **Tasks** section in the relevant `status.md`. If no Tasks section exists in the file, create one (`## Tasks`) immediately before appending:
+Append new remote issues: add to the bottom of the **Tasks** section in the relevant `status.md`. If no Tasks section exists in the file, create one (`## Tasks`) immediately before appending. Use the linked form; the URL comes from `issue_url[N]` populated in Step 2c:
 ```markdown
-- [ ] <title from remote> #N
+- [ ] <title from remote> [#N](<issue_url[N]>)
 ```
 
 ### Step 7 — Report
