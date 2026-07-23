@@ -130,6 +130,16 @@ Weight estimate — "Persist network configuration across reboots":
 
 ### 4. Generate YAML
 
+**Pre-flight: fetch label allowlist**
+
+Before writing any `labels:` field into the YAML (issue-level or epic-level), run the shared fragment:
+
+```
+Read ~/.claude/skills/workflows/label-allowlist/SKILL.md
+```
+
+Follow every step in that fragment. The snapshot lands at `planning/.label-allowlist.txt` and is the sole source of truth for the `labels:` fields below. On empty allowlist, tool failure, or pre-feature projctl, follow the branches defined in the fragment — do not proceed silently.
+
 **Precondition:** Every issue to be added has (a) a stated estimate block in the conversation and (b) a `# weight estimate:` comment already written into the YAML above its `weight:` field. Do not start this step otherwise.
 
 **Post-write check:** After writing the YAML, scan every `weight:` field in the file. Each must be immediately preceded by a `# weight estimate:` comment. If any are missing, the YAML is invalid — fix before showing to the user.
@@ -156,7 +166,7 @@ epic:
   # Option B: create new epic
   # title: "Epic Title"
   # description: "Epic description"
-  # labels: ["type::epic"]  # merged with config defaults
+  # labels: ["<label-from-projctl-labels>"]  # placeholder — replace with an entry from planning/.label-allowlist.txt. Projctl merges labels.default from config into the submitted set; this pre-flight does NOT verify labels.default (see fragment's Residual failure paths).
 
 # ── ISSUES (required unless creating milestone/epic only) ──────────
 issues:
@@ -170,7 +180,7 @@ issues:
 
       # Acceptance Criteria
       - <observable outcome — verifiable as done/not done>
-    labels: ["priority::high"]  # optional, merged with config defaults
+    labels: ["<label-from-projctl-labels>"]  # optional; placeholder — replace with an entry from planning/.label-allowlist.txt. Omit the key entirely if no listed label fits. Projctl merges labels.default into the submitted set (not verified by this pre-flight).
     assignee: "username"        # optional, GitLab username
     milestone: "Milestone Title" # optional, title (not ID)
     dependencies: []            # optional, see dependency formats below
@@ -234,12 +244,31 @@ Add any references, related issues, or notes.
 
 ### 6. Show YAML for Verification
 
-Display the file:
+Execute these sub-steps in strict order. The fragment re-invocation MUST run before any `cat` of the YAML — otherwise the confirmation-time snapshot check cannot gate the display, and the compaction-safety property of the invoke-twice pattern is lost.
+
+**Sub-step 6a — Re-invoke the shared fragment (only Step 5 fires on this invocation):**
+
+```
+Read ~/.claude/skills/workflows/label-allowlist/SKILL.md
+```
+
+The fragment's Step 5 verifies `planning/.label-allowlist.txt` is present and re-runs Steps 1–2 if it is missing or stale. Do not proceed to sub-step 6b until Step 5 completes.
+
+**Sub-step 6b — Show the allowlist snapshot:**
+
+```bash
+cat planning/.label-allowlist.txt
+```
+
+**Sub-step 6c — Show the generated YAML:**
+
 ```bash
 cat planning/<goal>/milestone-XX-<name>/tickets.yaml
 ```
 
-Ask the user if they want to `open planning/<goal>/milestone-XX-<name>/tickets.yaml`, then wait before continuing.
+**Sub-step 6d — State any label omissions explicitly.** For any issue or epic where `labels:` was omitted — no listed label fit, or the fragment's empty-allowlist / pre-feature-projctl branches fired — name the omission in the summary rather than hiding it.
+
+**Sub-step 6e — Ask about opening:** ask the user if they want to `open planning/<goal>/milestone-XX-<name>/tickets.yaml`, then wait for confirmation before proceeding.
 
 ### 7. Dry Run
 
@@ -270,12 +299,14 @@ Show the created issue/epic/milestone URLs. Ask if the user wants to `open <url>
 7. **Required sections** — every issue description must have `# Description` and `# Acceptance Criteria`
 8. **YAML file first** — always write `planning/<goal>/milestone-XX-<name>/tickets.yaml` before running any projctl command; for user-supplied YAML, insert `# weight estimate:` comments before saving to disk
 9. **Dry run before create** — always run `--dry-run` and show output; wait for confirmation
-10. **Never guess labels** — use only labels known from config or explicitly provided by the user
+10. **Label allowlist** — before writing any `labels:` field (issue-level or epic-level), run the `label-allowlist` shared fragment (`~/.claude/skills/workflows/label-allowlist/SKILL.md`), and re-invoke it at Step 6 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt`. If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior tickets, or copy from a stale draft. Whether `projctl create` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; labels merged in by projctl from `labels.default` in config are NOT verified here (see the fragment's Residual failure paths).
 11. **User confirmation required** — do NOT run `projctl create` without explicit approval after dry-run review
 
 ## Examples
 
 Each example shows the required output: all estimates first (batch upfront), then full YAML with `# weight estimate:` comments.
+
+The `labels:` values in the YAML examples below are illustrative placeholders. Replace them with entries from `planning/.label-allowlist.txt` (written by the Step 4 pre-flight) for your project — do not copy them verbatim. If no listed label fits, omit the `labels:` key entirely.
 
 ### Add issues to existing epic
 
@@ -303,7 +334,7 @@ issues:
       # Acceptance Criteria
       - At least 3 strategies evaluated with trade-offs documented
       - A recommended approach is identified with rationale
-    labels: ["type::research"]
+    labels: ["<label-from-projctl-labels>"]  # placeholder — see disclaimer under ## Examples
 ```
 
 ### New epic with issues under existing milestone
@@ -387,7 +418,7 @@ issues:
       # Acceptance Criteria
       - Network configuration written once survives a hard reboot without intervention
       - CI pipeline completes successfully after a device reboot step
-    labels: ["type::bug"]
+    labels: ["<label-from-projctl-labels>"]  # placeholder — see disclaimer under ## Examples
     assignee: "username"
 ```
 
