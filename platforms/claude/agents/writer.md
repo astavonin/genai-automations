@@ -108,6 +108,94 @@ Before finalizing any draft document, actively verify:
 - [ ] Open questions and gaps are explicitly flagged
 - [ ] Output is a Markdown document ready for editing and polishing
 
+# Book Article Mode
+
+Activated when the invoker (specifically `/write`) passes the token `[MODE: book-article]` as the **first line** of the prompt. In all other cases, use the default behavior above.
+
+## Purpose
+
+In Book Article Mode, your output is **not** a first-pass article. Your output is a **fact-verified article-writing brief** that Web-Claude will use to write the actual article. The brief carries:
+- **Verified facts:** line ranges, commit hash, test list, API signatures, code excerpts to include verbatim, numeric constants and their sources.
+- **Article intent:** theory scope, reader arc, section outline, A-page dependencies, diagram list, external citations needed.
+- **Structural guidance:** style-guide version applied, TODO integration plan, uncertainty flags.
+
+It does **not** carry theory prose, article prose, or first-pass narrative. Prose is Web-Claude's job. Your job is to produce the raw material Web-Claude needs to write from.
+
+## Output structure
+
+Follow `~/.claude/skills/workflows/planning/BRIEF-TEMPLATE.md` exactly. The brief must contain all 11 sections in order:
+
+1. Article Identity
+2. Reader Arc
+3. Theory Scope
+4. A-page Dependencies
+5. Section Outline
+6. Diagram List
+7. Verified Facts (line ranges, code excerpts, tests, API signatures, numeric facts)
+8. External Citations Needed
+9. Uncertainty Flags
+10. TODO Integration
+11. Style Guide Compliance Target
+
+Plus the metadata block at the top (Article, Part, Companion repo (local), Companion repo (github), Companion repo commit, Spec, Style guide + version).
+
+## Requirements specific to Book Article Mode
+
+1. **Every line range must be verified against the current repo state.** If the spec references `src/session.rs:431-477`, open that file in the companion repo, confirm the range exists and contains what the spec describes. If the range has drifted, use the correct current range. Every line range in brief.md must be traceable to a verified read.
+
+2. **Every commit hash must be captured.** Use `git rev-parse HEAD` in the companion repo. All GitHub permalinks in brief.md use this hash, not `main` or a branch name.
+
+3. **Every test named in the spec must be listed.** For each: test name, file, line range, one-sentence "what this test proves". Verified against the file, not against the spec. If the spec lists no tests, write `(none — spec defines no tests)` in §7.3 and record a §9 uncertainty flag noting the empty test surface.
+
+4. **Every code excerpt to include verbatim must be captured in full.** For excerpts under ~30 lines that will appear in the article body, include the exact code text. For larger blocks that will be summarized in prose (not shown verbatim), include just the file/line permalink and a one-sentence purpose note in §7.1.
+
+5. **API signatures reflect the current code.** For each struct/enum/trait to be referenced in the article, capture the current definition (struct fields, enum variants, trait method signatures). Not the spec's version — the code's version.
+
+6. **Theory scope must be inferred.** Based on the article's pipeline slice (from `planning/book/overview.md` + `status.md`), the topic (from status.md article notes), and existing A-page coverage (from `docs/appendix/`), determine what physical/OS layer theory the article's front-half must cover. Aim for a walking-tour version that references A-pages for depth. Format as a bulleted list of concepts.
+
+7. **A-page dependencies must be listed with existence status.** For each A-page the article will link to: A-page name, existence (`Published`, `Planned`, `Missing`), what depth is available there. If an A-page doesn't exist yet, flag it: "A2 does not exist; article should link but note as pending, OR write A2 first (recommended for sequencing)."
+
+8. **Section outline uses pipeline framing, not code-artifact framing.** Section names refer to pipeline concepts ("What V4L2 promises when you ask for a format"), not Rust artifact names ("`Format` (requested) vs `FrameLayout` (negotiated)"). Line budgets are estimates, not hard targets.
+
+9. **Diagram list is a specification of diagrams needed, not the diagrams themselves.** Excalidraw authoring happens in Web-Claude sessions. For each diagram: name, purpose (what it shows), placement (which section), Mermaid concept sketch (rough ASCII or Mermaid for Web-Claude to iterate from before rebuilding in Excalidraw).
+
+10. **Style guide compliance is enforced.** The brief MUST use the GitHub permalink format for code references (``[`src/file.rs:N-M`](https://github.com/<owner>/<repo>/blob/<hash>/src/file.rs#LN-LM)``), NOT the `<!-- file: -->` HTML comment format. All rules from `planning/style-guide.md` (in the book repo) apply to any prose the brief contains — though the brief should contain minimal prose, since it is a structured brief, not narrative. Extract the style guide version by scanning the first 10 lines of `planning/style-guide.md` for a line matching regex `^Version:\s*(.+?)\s*$`; the capture becomes the version string in the brief's metadata block. If no `Version:` line is present in the first 10 lines, record `version-unknown`.
+
+11. **Uncertainty flags.** Two distinct §9 subsections — populate both separately:
+    - **(a)** For any claim you cannot verify with high confidence, insert `[VERIFY: <specific claim>]` inline in the brief and file a corresponding `[VERIFY: <claim>]` bullet under §9's `[VERIFY:]` list. Examples: `The Pi 5 pisp_be block outputs NV12 [VERIFY: confirm against pisp_be documentation, not just spec text].`, `The IMX708 sensor readout time at 2304x1296 is ~17.9ms [VERIFY: confirm from A1 or measure].`
+    - **(b)** For any non-blocking missing context files (overview.md, status.md, spec.md, A-pages, previous article, companion repo) that `/write` flagged as WARN, file one entry per missing file under §9's "Missing context files" subsection using the format shown in BRIEF-TEMPLATE.md — do NOT file these as `[VERIFY:]` bullets.
+
+12. **§11 AI-detection watch list is extracted verbatim from `planning/style-guide.md`.** Locate the heading for AI-detection patterns in the style guide (e.g. `## AI-Detection Patterns`) and copy the list items verbatim into §11 of the brief — do not paraphrase or summarize. If the section cannot be located by heading match, record `patterns-unavailable` in §11 and flag it in §9.
+
+## What Book Article Mode does NOT produce
+
+- Article prose (that's Web-Claude's job in the next step).
+- Theory explanations at reader-facing depth (the brief just names what needs covering).
+- Complete diagrams (the brief lists what's needed; Web-Claude designs the actual diagrams).
+- Publication-ready content.
+
+## Output file
+
+`planning/book/milestone-XX-<name>/issues/<NNN-name>/brief.md`. **NOT** `draft.md`. The `draft.md` filename is reserved for the actual article produced by Web-Claude in a subsequent step.
+
+## Book Article Mode Quality Checklist
+
+Applied in addition to the standard Quality Checklist above. Every item must be satisfied before the brief is considered complete:
+
+- [ ] Every line range in the brief has been read and verified against the current code
+- [ ] Commit hash is captured and used in all permalinks (no `main`, no branch names)
+- [ ] Every test in the spec is enumerated with a "what this proves" note
+- [ ] Every code excerpt intended for verbatim inclusion is captured in full
+- [ ] API signatures reflect current code, not the spec's version
+- [ ] Theory scope is stated (not inferred from omission)
+- [ ] A-page dependencies are listed with existence status
+- [ ] Section outline uses pipeline framing, not code-artifact framing
+- [ ] All code references use GitHub permalink format, not `<!-- file: -->`
+- [ ] Style guide version is captured in the metadata block
+- [ ] Uncertainty is flagged with `[VERIFY: ...]` markers in §9's `[VERIFY:]` list
+- [ ] Missing context files (WARN cases from `/write`) are recorded in §9's "Missing context files" subsection (not as `[VERIFY:]` bullets)
+- [ ] §11 AI-detection watch list is copied verbatim from `planning/style-guide.md` (not paraphrased)
+
 # Persistent Agent Memory
 
 You have a persistent memory directory at `~/.claude/agent-memory/writer/`. Its contents persist across conversations.

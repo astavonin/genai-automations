@@ -14,14 +14,26 @@ it, and what to include as evidence in the finding.
 
 Every criterion is confirmed by direct inspection of the companion repo.
 
-1. **Annotation present** — every code snippet has a `<!-- file: path:L10-L25 -->` annotation.
-   Confirm: mechanical check — present or absent on every snippet in the article.
-   Severity: **High** (without annotation, accuracy cannot be verified).
+**Article-wide commit hash:** `draft.md` MUST include a metadata block mirroring brief.md's `Companion repo commit` field. Permalink commit hashes are compared against this field. If `draft.md` lacks the metadata block, the annotation-hash check falls back to whichever commit hash appears in the first permalink of the article and flags it as a Scope 5.1 Medium finding.
+
+1. **Annotation present** — every code snippet has an accepted annotation. Two formats accepted:
+   - **(a) GitHub permalink line** immediately preceding the code block, in the form
+     ``[`src/file.rs:N-M`](https://github.com/<owner>/<repo>/blob/<commit-hash>/src/file.rs#LN-LM)``.
+     **REQUIRED** for all new articles. Legacy pre-Q3-2026 articles retain (b) as an option.
+   - **(b) `<!-- file: path:L10-L25 -->` HTML comment** — accepted for backward compatibility
+     with articles published before the format change, but should be updated when the
+     article is revised.
+
+   Confirm: mechanical check — one of (a) or (b) present on every snippet in the article.
+   If (a) is used, verify the commit hash matches the article-wide commit hash (see
+   Scope 5.1) and record the URL for Scope 1.2 confirmation.
+   Severity: **High** if neither format is present (accuracy cannot be verified).
 
 2. **Snippet accurate** — snippet content matches the exact lines at the cited path and
    line range in the companion repo.
    Confirm: read the file at `path:L10-L25`; compare character by character; quote any
    divergence.
+   For **permalink-annotated snippets**, extract the file path and line range from the URL — accept both `#LN-LM` (range) and `#LN` (single line); reject `#LN..LM` (double-dot form is not GitHub's canonical format). Parse `blob/<hash>/<path>#LN-LM` or `blob/<hash>/<path>#LN`; then read the file in the companion repo at the given path and range; comparison is unchanged. If the URL's commit hash differs from the article-wide commit hash, that is a Scope 5.1 (numbers consistent) finding as well.
    Severity: **High** (reader following wrong code is a direct harm).
 
 3. **Numbers match implementation** — every numeric constant, threshold, or measured value
@@ -114,6 +126,42 @@ Cite the article section heading and approximate location.
    Confirm: quote the heading pair.
    Severity: **Low**.
 
+7. **Language-neutrality** — every technical concept in the article is understandable to
+   a systems engineer at the audience baseline, regardless of their primary language
+   (C++, Rust, Zig, Go). The implementation section may use Rust as its concrete example,
+   but the reader should be able to follow the constraint being encoded, not just the
+   Rust encoding of it.
+   Confirm: identify sections where understanding requires Rust-specific knowledge that
+   isn't necessary to the constraint being explained. Common triggers: unexplained
+   lifetime parameters, GATs, macro syntax, `impl Trait` where the constraint would be
+   clearer in plain English.
+   Severity: **Medium** if a section is Rust-primary rather than concept-primary;
+   **High** if the article is unreadable for a C++ or Zig systems engineer at the
+   audience baseline.
+
+8. **Pipeline framing in section headers** — section headers name pipeline concepts, not
+   Rust artifacts. "What V4L2 promises when you ask for a format" is pipeline framing;
+   "`Format` (requested) vs `FrameLayout` (negotiated)" is code-artifact framing. Rust
+   artifact names may appear inside sections (as evidence, not identity), but should not
+   be the section's identity.
+   Confirm: quote the header; state whether it identifies a pipeline concept or a code
+   artifact.
+   Severity: **Medium** if pervasive; **Low** if occasional.
+
+9. **Style guide compliance** — the article follows the rules in `planning/style-guide.md`
+   (glass-to-glass repo).
+   Confirm: verify no em-dashes; verify AI-detection patterns are absent (no "not X, but Y"
+   chains, no parallel three-item lists with em-dash descriptions, no pre-announced
+   objection counts, no uniform paragraph length); verify no forbidden phrases
+   ("Furthermore", "Additionally", "It's worth noting", "Let's dive in"); verify GitHub
+   permalink format for code (see Scope 1.1); verify MkDocs footnote format for external
+   citations.
+   If `planning/style-guide.md` is absent from the book repo, treat this criterion as
+   not-applicable and flag it once in the review header — do not raise per-pattern
+   findings.
+   Severity: **Medium** per pattern violation; escalate to **High** if the pattern is
+   pervasive.
+
 ---
 
 ## Scope 4 — Completeness *(Agent 3)*
@@ -188,6 +236,9 @@ lists or free text in that section.
 - **Hardware and OS interface claims (2.3):** check the datasheet, kernel documentation (kernel.org/doc, man pages), or POSIX spec; cite document name, section, or URL. Severity: High.
 - **Protocol and wire format claims (2.4):** check the RFC or protocol specification; cite RFC number and section. Severity: High.
 - **Performance characteristic claims about external systems (2.5):** check official benchmarks, documentation, or published papers; cite source URL or paper reference. Severity: Medium unless presented as a hard guarantee, in which case High.
+- **Language-neutrality (3.7):** identify sections where understanding requires Rust-specific knowledge that isn't necessary to the constraint being explained (unexplained lifetime parameters, GATs, macro syntax, `impl Trait` where plain English would be clearer); quote the passage. Severity: Medium if a section is Rust-primary rather than concept-primary; High if the article is unreadable for a C++ or Zig systems engineer at the audience baseline.
+- **Pipeline framing in section headers (3.8):** section headers name pipeline concepts, not Rust artifacts; quote the header and state whether it identifies a pipeline concept or a code artifact. Severity: Medium if pervasive; Low if occasional.
+- **Style guide compliance (3.9):** verify article follows `planning/style-guide.md` rules — no em-dashes; no AI-detection patterns ("not X, but Y" chains, parallel three-item em-dash lists, pre-announced objection counts, uniform paragraph length); no forbidden phrases ("Furthermore", "Additionally", "It's worth noting", "Let's dive in"); GitHub permalink format for code; MkDocs footnote format for external citations. Severity: Medium per pattern violation, High if pervasive.
 
 ---
 
@@ -205,3 +256,6 @@ Used during aggregation to deduplicate Codex findings against Claude findings.
 | `hardware-os-accuracy` | Scope 2.3 — Hardware and OS interface claims |
 | `protocol-accuracy` | Scope 2.4 — Protocol and wire format claims |
 | `performance-claims` | Scope 2.5 — Performance characteristic claims |
+| `language-neutrality` | Scope 3.7 — Language-neutrality |
+| `pipeline-framing` | Scope 3.8 — Pipeline framing in section headers |
+| `style-guide` | Scope 3.9 — Style guide compliance |

@@ -7,6 +7,8 @@ description: Produce a coding specification for an article — scope, functional
 
 Produce a coding specification for the current article issue. The spec defines the **contract** for the implementation — what must be observable, not how to achieve it. It is the document that `/review-article` Pass 1 validates the implementation against.
 
+**This spec is a coding contract.** It defines what the CODE must do, not what the ARTICLE should say. Article-shape decisions (theory scope, reader arc, section outline, diagrams, language-neutrality) are handled at `/write` time via the article brief (`brief.md`). The spec must not include article scope, theory scope, or reader-facing content decisions.
+
 ## Agent
 
 **architecture-research-planner (opus)** — spec writing must be delegated to this agent. Never write or edit spec files inline with Write/Edit tools.
@@ -46,6 +48,7 @@ If clarification is needed, ask at most 2–3 questions, one at a time. Ask only
 - The in/out of scope boundary is genuinely ambiguous from the article notes
 - Whether a behaviour is testable without hardware is unclear (unit vs. integration boundary)
 - Whether a type is new or modifies an existing contract is unclear
+- **NOT** when the question is about the article rather than the code. Questions about article shape ("should this article cover theory X?", "what's the target length?", "what's the target audience depth?") are NOT spec-time questions. The writer agent handles those at `/write` time via the article brief. If a question surfaces here that is article-shaped rather than code-shaped, do not ask it; skip it and proceed. Do not record it as a spec deferral either — record it nowhere; it will re-surface at `/write` time if it matters.
 
 ### Step 3: Spawn architecture-research-planner
 
@@ -65,7 +68,9 @@ Pass to the agent:
 
 **Section rules to enforce:**
 
-- **Scope (§1):** Both lists must be explicit. Out of scope must name things a reader might reasonably expect to be included but aren't.
+- **Scope (§1):** Both lists must be explicit. **In Scope / Out of Scope describe what the CODE does and does not do.** "Reader" here means the reader of the coding contract (an implementer), not the reader of the article. Do not use Out of Scope to describe article-level content decisions (theory deferrals, appendix references, prose scope). Article-content decisions are made at `/write` time.
+  - Valid Out of Scope entry: `Multi-planar V4L2 buffers (V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) are not handled by this code.`
+  - INVALID Out of Scope entries (belong at `/write` time, not spec time): `Pixel format theory deferred to Appendix A1.`, `Historical context of V4L2 not covered in this article.`
 - **Functional Requirements (§2):** Observable outputs and side effects only. No implementation choices, no crate names, no "use X pattern." Each FR must be independently verifiable.
 - **Non-Functional Requirements (§3):** Hard constraints — safety flags, performance bounds, compile targets, dependency rules, runtime restrictions. Phrased as pass/fail, not aspirations.
 - **Public API Contract (§4):** Types and their invariants. No method signatures, no crate choices. State what the type guarantees, not how it does it.

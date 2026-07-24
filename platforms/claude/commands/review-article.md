@@ -59,9 +59,7 @@ All three must exist before launching any agents. Stop and report which is missi
 | Article | `planning/book/milestone-XX-<name>/issues/<NNN-name>/draft.md` |
 | Companion repo | See resolution rule below |
 
-`draft.md` is the canonical article filename regardless of content type. Fallback: the
-single `.md` file in the issue folder that is not `spec.md`, `analysis.md`, `design.md`,
-or `*-review.md`. If ambiguous, ask the user.
+`draft.md` is the canonical article filename. `/review-article` always targets `draft.md`. If `draft.md` is absent, error and stop — report the missing file. Do NOT fall back to `brief.md` (brief.md is the writer agent's fact-verified brief, not the article Web-Claude produces). If the article file has a non-standard name for a legitimate reason, the user must pass the path explicitly; the command does not scan for candidate files.
 
 **Companion repo resolution:**
 

@@ -20,7 +20,7 @@
 ## Markdown Writing
 
 - **Never add manual line breaks within paragraphs.** Do not wrap prose at a fixed column width. Let the Markdown renderer handle line wrapping. Only use newlines to separate paragraphs, list items, headings, or table rows.
-- **Do not number section headings in general docs (READMEs, architecture docs, guides, notes).** Write `## Overview`, not `## 1. Overview`. The only exceptions are docs generated from the `DESIGN-TEMPLATE.md` and `SPEC-TEMPLATE.md` templates, whose numbered sections (`## 1. Problem Statement` … `## 8. Open Questions`) are load-bearing — they are referenced by number in review gates and must not be renamed. For everything else, use unnumbered headings — the pattern in those two templates does not generalize.
+- **Do not number section headings in general docs (READMEs, architecture docs, guides, notes).** Write `## Overview`, not `## 1. Overview`. The only exceptions are docs generated from the `DESIGN-TEMPLATE.md`, `SPEC-TEMPLATE.md`, and `BRIEF-TEMPLATE.md` templates, whose numbered sections are load-bearing — they are referenced by number in review gates, writer-agent Book Article Mode requirements, and downstream consumers, and must not be renamed. For everything else, use unnumbered headings — the pattern in those three templates does not generalize.
 - **Ticket references must be clickable Markdown links, never bare sigils.** Whenever a doc mentions an Epic (`&N`), Milestone (`%N`), Issue (`#N`), or MR (`!N`), render it as `[&N](URL)` / `[%N](URL)` / `[#N](URL)` / `[!N](URL)` pointing at the tracker. Never write `&44` — write `[&44](URL)`. For lists, wrap each ticket separately (`[&44](URL), [&59](URL), [&60](URL)`); enclosing parens are optional prose punctuation. Applies to every Markdown output: planning files (`progress.md`, `status.md`, `overview.md`), design docs, analysis, review reports, article drafts, spec docs. **Exemptions** (bare sigils are correct in these contexts): (a) shell commands — `projctl load issue 44` uses a bare number; (b) commit messages — `Ref #<number>` format is fixed; (c) MR/PR description bodies posted to GitLab/GitHub, where the platform auto-links bare sigils and may rely on them for `Closes #N` automation; (d) fenced code blocks that quote CLI output verbatim (rewriting the sigils would misrepresent the output). Resolve unknown URLs via `projctl load <sigil>N` first (the output includes `web_url`); if the base URL is genuinely unavailable, ask the user rather than emitting a bare sigil in prose.
 
 ## Mermaid Diagrams
@@ -116,7 +116,7 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - `/review-article-fix-loop` - Full article review cycle: initial review → fix all High/Medium findings → re-review until APPROVED → final clean review + todos.md update + report; stops after report
 - `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
 - `/verify-docs` - Verify design doc integrity and consistency after Q&A resolution or review finding fixes — run before re-review (architecture-research-planner agent)
-- `/write` - Research a topic and produce a structured Markdown draft (writer agent)
+- `/write` - Research a topic and produce a structured Markdown draft (writer agent). In book-article mode (output path under `planning/book/`), produces a fact-verified `brief.md` per `BRIEF-TEMPLATE.md` instead of a first-pass draft — the actual article is written by Web-Claude in a subsequent step.
 - `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
 - `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent
 - `/tasks-sync` - Sync local planning task state with remote ticket system (push completions, discover epic children)
@@ -416,6 +416,7 @@ After writing certain files, always ask the user if they want to open the file w
 | Code review reports (`planning/**/issues/*/code-review.md`) | After Phase 5 review is written |
 | MR review YAML (`planning/<epic-slug>/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
 | Issue/Epic YAML files (any YAML created for `projctl create`) | After the YAML is written |
+| Article brief (`planning/book/**/issues/*/brief.md`) | After `/write` in book-article mode writes the brief |
 
 Ask exactly once per file, immediately after writing. Do not open automatically — always ask first. Ask the open-file question in isolation — do not combine it with a phase-advancement question or any other action prompt in the same message.
 
