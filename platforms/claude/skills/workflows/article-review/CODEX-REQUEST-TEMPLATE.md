@@ -7,12 +7,15 @@ compatibility: claude-code
 
 # Article Review — Codex Review-Request Template
 
-Write this document to `planning/reviews/<NNN-name>-article-codex-review.md` before
-launching agents. The `Output File` field controls where codex-flow writes its findings;
-the aggregation step reads from this exact path.
+Write this document to `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review-request.md`
+before launching agents. The `Output File` field controls where codex-flow writes its findings;
+the aggregation step reads from `article-codex-review.md` (Codex output) at the same issue path —
+not this request file.
 
 **`<NNN-name>`:** the folder name inside `issues/` (e.g., `issues/007-vector-tables/` → `007-vector-tables`).
-Example: `issues/007-vector-tables/` → `planning/reviews/007-vector-tables-article-codex-review.md`.
+Example: `issues/007-vector-tables/` → `planning/book/milestone-XX-<name>/issues/007-vector-tables/article-codex-review-request.md`.
+
+**Naming distinction:** `article-codex-review-request.md` is the input Codex reads; `article-codex-review.md` is the output Codex writes. They are different files. Write this template as the request; the aggregation step reads the output.
 
 **Repository field:** use the **article project root** (the repo containing `planning/`),
 NOT the companion code repo. This ensures `Output File` resolves under the repository.
@@ -24,7 +27,7 @@ Provide the companion code repo path in the Context section instead.
 **Repository:** <absolute path to article project root — the repo containing planning/>
 **Branch:** main
 **Review Scope:** article prose and companion repo source files cited via annotations
-**Output File:** planning/reviews/<NNN-name>-article-codex-review.md
+**Output File:** planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review.md
 **Date:** <today>
 
 ---

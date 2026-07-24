@@ -304,13 +304,19 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 ## Review Report Format
 
+**Review output path by review type:**
+- Design/code reviews → `issues/<NNN-name>/{design-review,code-review}.md` (under the active issue folder). See `/review-design` and `/review-code` for exact paths.
+- MR reviews → `planning/<epic-slug>/reviews/MR<N>-review.yaml`. Slug resolution: see `review-mr.md` Step 2b.
+
 **When invoked via `/review-mr` command (MR reviews):**
-- MUST write review to a YAML file: `planning/reviews/MR<number>-review.yaml`
+- MUST write review to a YAML file: `planning/<epic-slug>/reviews/MR<number>-review.yaml`
 
 **For `/review-design` and `/review-code` commands:**
 - Write the review report to the designated planning file (`design-review.md` or `code-review.md` under the active issue folder). The file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as the first non-empty line after the H1 title, within the first 20 lines. See the `Review File Status-Marker Convention` section under `Workflow Safety — New Behaviors` in CLAUDE.md for the full convention.
 
-**ALL reviews must use YAML format:**
+**Design/code reviews use Markdown with a `**Status:**` marker (see the design-review.md / code-review.md format).**
+
+**MR reviews use YAML format:**
 
 ```yaml
 mr_number: 134

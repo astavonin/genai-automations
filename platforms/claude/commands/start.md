@@ -146,18 +146,22 @@ Mapping rules:
 - `<feature>-design-review.md` → `issues/<NNN-feature>/design-review.md`
 - `<feature>-code-review.md` → `issues/<NNN-feature>/code-review.md`
 
-For each old `milestone-XX/reviews/` found:
-- MR YAML files (`MR*-review.yaml`) → `planning/reviews/`
-- Review-request and codex-review files → `planning/reviews/`
-- Per-issue design/code review reports → their `issues/<NNN-name>/` folder
+For each old `milestone-XX/reviews/` or top-level `planning/reviews/` found:
+- MR YAML files (`MR*-review.yaml`) → `planning/<epic-slug>/reviews/` (resolve epic via `projctl load mr <N>` → linked issue → epic)
+- MR-scoped intermediates (`MR<N>-review-request.md`, `MR<N>-codex-review.md`) → delete only if the corresponding final YAML (`MR<N>-review.yaml`) already exists and has non-zero size in the target `<epic-slug>/reviews/` folder. If the YAML is absent, preserve the intermediate for inspection.
+- Issue-scoped codex reviews (`<NNN>-<feature>-codex-review.md`, `<NNN>-<feature>-codex-impl-review.md`) → these are canonical published files, NOT intermediates. Move them to `issues/<NNN-name>/codex-review.md` — do NOT delete.
+- Per-issue design/code/codex review reports (prefix `<NNN>-`) → their `issues/<NNN-name>/` folder as `design-review.md` / `code-review.md` / `codex-review.md`
+- Retry variants (`-r2`, `-r3`, `-final`) → keep only the highest-N variant, rename to the canonical name above
+- Top-level codex-review files with no `<NNN>-` or `MR<N>-` prefix → prompt the user for target epic/issue folder, or preserve in `planning/reviews-orphan/` unchanged
+- `planning/reviews-orphan/` → preserve as-is; no migration needed or performed
 
 Migration commands (using plain `mv` — `planning/` is not git-tracked):
 ```bash
-mkdir -p planning/<goal>/milestone-XX/issues/<NNN-name>/
-mv planning/<goal>/milestone-XX/design/<feature>-design.md \
-   planning/<goal>/milestone-XX/issues/<NNN-name>/design.md
+mkdir -p planning/<epic-slug>/milestone-XX/issues/<NNN-name>/
+mv planning/<epic-slug>/milestone-XX/design/<feature>-design.md \
+   planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md
 # ... repeat for each file
-rmdir planning/<goal>/milestone-XX/design/   # only after all files moved
+rmdir planning/<epic-slug>/milestone-XX/design/   # only after all files moved
 ```
 
 Present the complete proposed move list and wait for explicit user confirmation before running any `mv` commands. After migration, continue to step 1.
@@ -198,12 +202,12 @@ If any stale MR entries are found, propose the exact edits and wait for explicit
 
 ### 3. Check active milestone status:
    ```bash
-   cat planning/<goal>/milestone-XX-<name>/status.md
+   cat planning/<epic-slug>/milestone-XX-<name>/status.md
    ```
 
 ### 4. List active issues if they exist:
    ```bash
-   ls planning/<goal>/milestone-XX-<name>/issues/
+   ls planning/<epic-slug>/milestone-XX-<name>/issues/
    ```
 
 ### 5. Display summary:

@@ -3,7 +3,7 @@
 **Repository:** `/absolute/path/to/repo`
 **Branch:** `feature/<branch-name>`
 **Review Scope:** `HEAD~1..HEAD`
-**Output File:** `planning/reviews/<name>-codex-review.md`
+**Output File:** `planning/<epic-slug>/reviews/<name>-codex-review.md`  *(MR-scoped)*  or  `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/codex-review.md`  *(issue-scoped)*
 **Date:** YYYY-MM-DD
 
 ---
@@ -12,7 +12,7 @@
 
 Brief description of what was changed and why.
 
-**Design doc:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` *(if applicable)*
+**Design doc:** `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/design.md` *(if applicable)*
 
 ---
 

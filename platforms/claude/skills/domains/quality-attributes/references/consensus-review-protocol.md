@@ -2,6 +2,8 @@
 
 A shared multi-agent review mechanism used by all `/review*` commands.
 
+> **Path convention:** All paths in this protocol are supplied by the invoking command per its own path convention (issue-scoped or MR-scoped). Do not inline any hardcoded `planning/reviews/` string in this protocol — use `<review-request-path>` and `<codex-output-path>` as placeholders for the paths the calling command provides. If the invoking command has not declared these paths, default to `<issue-folder>/codex-review-request.md` (input) and `<issue-folder>/codex-review.md` (output).
+
 ## How It Works
 
 Three focus-differentiated reviewer agents evaluate the subject in parallel. The full pipeline is Steps 0–H:
@@ -20,9 +22,9 @@ Three focus-differentiated reviewer agents evaluate the subject in parallel. The
 
 **This step must complete before Step A.** Write the Codex review request document from the
 template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and save it to
-`planning/reviews/<feature>-review-request.md`. Fill in all fields from the current review
+`<review-request-path>` (supplied by the invoking command). Fill in all fields from the current review
 context (repository, branch, scope, requirements, evidence, review focus). The `Output File`
-field must point to `planning/reviews/<feature>-codex-review.md`.
+field must point to `<codex-output-path>` (supplied by the invoking command).
 
 **⚠️ Heading format is validated literally by codex-flow.** The first line of the document MUST be:
 ```
@@ -44,7 +46,7 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
 - Three **reviewer (opus)** Agent calls (Steps B–D)
 - One `codex-flow` Bash call with `run_in_background: true`:
   ```bash
-  codex-flow review planning/reviews/<feature>-review-request.md
+  codex-flow review <review-request-path>
   ```
 - For **code and MR reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
 
@@ -139,14 +141,14 @@ Output: a deduplicated list of findings, each with:
 **Codex-skip handler:** If `codex-flow` was not launched in Step A for any reason:
 - Do NOT proceed to Steps F–H or write the review file.
 - Surface: `⚠️ Codex cross-check was not run. Review is incomplete. Launching Codex now.`
-- Run `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true`.
+- Run `codex-flow review <review-request-path>` with `run_in_background: true`.
 - Wait for completion, then continue with Step E aggregation below.
 
 Codex was launched in Step A (background Bash). Once it completes (you will be notified),
 read its output:
 
 ```bash
-cat planning/reviews/<feature>-codex-review.md
+cat <codex-output-path>
 ```
 
 **Cross-aggregate the results:**
@@ -233,7 +235,7 @@ If the set is empty, skip Step G entirely.
 
 For each finding, launch **2 independent reviewer (opus) agents** in parallel with the prompt below. The launching context (the main conversation running this protocol) MUST supply an absolute `Repository:` path — the reviewer agent has no reliable CWD inheritance, and relative `file:line` locations cannot be resolved without it.
 
-**How the main conversation obtains Repository:** Unified path for both `/review-code` and `/review-mr`: reuse the `Repository:` value already written into the Step 0 review-request document (`planning/reviews/<feature>-review-request.md`). If Step 0 was skipped, or the value is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface a warning to the user (`⚠️ Step G cannot run: Repository path unavailable. Findings requiring reverification will be skipped.`) and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Do not silently REFUTE-and-drop.
+**How the main conversation obtains Repository:** Unified path for both `/review-code` and `/review-mr`: reuse the `Repository:` value already written into the Step 0 review-request document (`<review-request-path>`). If Step 0 was skipped, or the value is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface a warning to the user (`⚠️ Step G cannot run: Repository path unavailable. Findings requiring reverification will be skipped.`) and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Do not silently REFUTE-and-drop.
 
 ```
 You are the skeptic verifying a specific code review finding. Your job is to REFUTE this finding — find evidence that it is NOT a genuine issue.
@@ -311,7 +313,7 @@ To keep signal high, instruct each agent to skip:
 - The aggregation (Steps B–C) is performed by the main conversation, not by a subagent
 - **Step 0 (write review request doc) must complete before Step A fires** — it is a prerequisite, not a Codex phase
 - **Step A is a single message** containing all Agent calls + the background `codex-flow` Bash call — never split across messages
-- Codex is invoked via `codex-flow review planning/reviews/<feature>-review-request.md` with `run_in_background: true` — never call `codex` directly
+- Codex is invoked via `codex-flow review <review-request-path>` with `run_in_background: true` — never call `codex` directly
 - Final report sections by review type:
   - **Code and MR reviews:** `## Findings` (consensus) → `## Reverified Findings` (Step G — holds surviving single-agent Claude and Codex-only findings) → `## Library Reuse Findings` → `## Common Library Promotion Candidates` (when present) → `## Test-coverage Findings` (Step F) → `## Manual Pass Findings` (Step H). See `~/.claude/skills/workflows/review-output-format/SKILL.md` for the authoritative section list.
   - **Design reviews:** Consensus findings → Codex-only findings → Single-agent findings. See `~/.claude/commands/review-design.md` for the authoritative template.

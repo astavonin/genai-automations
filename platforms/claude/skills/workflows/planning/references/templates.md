@@ -2,18 +2,19 @@
 
 ## Overview
 
-This template defines the planning structure and workflow for tracking long-term goals, milestones, and progress.
+This template defines the planning structure and workflow for tracking epics, milestones, and progress.
 
 ## Directory Structure
 
 ```
 planning/
 ├── progress.md                           # Active work only: current, last 3 merged, next steps
-├── reviews/                              # MR review YAMLs (projctl comment input; ephemeral)
-│   └── MR<N>-review.yaml
+├── reviews-orphan/                       # Fix reviews for unlinked work (uncommon; hand-managed)
 │
-├── <goal-name>/                          # One folder per long-term goal
-│   ├── overview.md                       # High-level milestone list
+├── <epic-slug>/                          # One folder per epic
+│   ├── overview.md                       # Epic summary + milestone roadmap
+│   ├── reviews/                          # External MR reviews touching this epic
+│   │   └── MR<N>-review.yaml             # Final published output only
 │   │
 │   ├── milestone-XX-<name>/              # One folder per milestone
 │   │   ├── status.md                     # Issue table with phase column + dependency diagram
@@ -23,12 +24,13 @@ planning/
 │   │           ├── analysis.md          # Research findings (Phase 1)
 │   │           ├── design.md            # Design proposal (Phase 2)
 │   │           ├── design-review.md     # Design review (Phase 3)
-│   │           └── code-review.md       # Code review (Phase 5)
+│   │           ├── code-review.md       # Code review (Phase 5)
+│   │           └── codex-review.md      # Codex review of our issue
 │   │
 │   └── milestone-ZZ-<name>/
 │       └── status.md
 │
-└── <another-goal>/
+└── <another-epic-slug>/
     └── overview.md
 ```
 
@@ -36,7 +38,7 @@ planning/
 
 ### `progress.md` (Root Level)
 
-**Purpose:** Track current active work across all goals
+**Purpose:** Track current active work across all epics
 **Updated:** Daily/frequently
 **Format:** Concise, task-focused
 
@@ -51,9 +53,9 @@ planning/
 
 ---
 
-### `<goal-name>/overview.md`
+### `<epic-slug>/overview.md`
 
-**Purpose:** High-level roadmap for the long-term goal
+**Purpose:** High-level roadmap for the epic
 **Updated:** When milestones added/completed
 **Format:** Milestone list with context
 
@@ -171,10 +173,10 @@ planning/
 cat planning/progress.md
 
 # Check active milestone status
-cat planning/<goal>/milestone-XX-<name>/status.md
+cat planning/<epic-slug>/milestone-XX-<name>/status.md
 
 # Check issue folders if they exist
-ls planning/<goal>/milestone-XX-<name>/issues/
+ls planning/<epic-slug>/milestone-XX-<name>/issues/
 ```
 
 ### 2. Research & Design Phase
@@ -182,14 +184,14 @@ ls planning/<goal>/milestone-XX-<name>/issues/
 **When starting a new feature/epic:**
 ```bash
 # Create issue directory (NNN = issue number, name = short slug)
-mkdir -p planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/
+mkdir -p planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/
 
 # Research phase (architecture-research-planner agent)
-# Output: planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/analysis.md
+# Output: planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/analysis.md
 # Contains: codebase analysis, diagrams, findings
 
 # Design phase
-# Output: planning/<goal>/milestone-XX-<name>/issues/<NNN-name>/design.md
+# Output: planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/design.md
 # Contains: approach, architecture, diagrams, alternatives
 ```
 
@@ -373,4 +375,4 @@ None
 3. **Navigate by issue:** find everything about #302 in `issues/302-verifier/`
 4. **Filenames inside issue folders are generic:** `design.md` not `verifier-design.md`
 5. **Tickets in tickets/:** YAML files for projctl create live in `tickets/`, not mixed with design artifacts
-6. **MR YAML files stay at planning/reviews/:** operational, ephemeral, cross-milestone
+6. **MR YAML files live at `planning/<epic-slug>/reviews/`:** operational, ephemeral, grouped by the epic the MR touches (never a top-level `planning/reviews/`)

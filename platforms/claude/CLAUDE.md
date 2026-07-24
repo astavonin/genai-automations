@@ -168,6 +168,8 @@ Every review file written by `/review-design` or `/review-code` MUST contain:
 
 as the **first non-empty line after the H1 title**, within the first 20 lines. Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED`. No emoji, no verb/noun mixing. Machine-readable via `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`.
 
+**YAML exemption:** MR review YAML files (`planning/<epic-slug>/reviews/MR<N>-review.yaml`) are exempt from this Status marker convention — they use YAML schema, not Markdown. Use the YAML `approval:` field instead, with the mapping: `approved` → APPROVED, `changes_requested` → CHANGES REQUESTED, `none` → (no gate check). The `head -20 | grep` gate check does not apply to MR review YAML files; they do not participate in the compaction gate.
+
 **Migration note:** This marker is NOT retrofitted to pre-existing review files. Reviews written before this convention was adopted do not have the canonical marker; gates fail-safe (skip compaction) for those files. Users on in-flight milestones may manually add the marker to opt in.
 
 ### Gate-Decision Log (§8.1)
@@ -226,8 +228,8 @@ timeout 30 projctl sync status
 **Step 2: Load Context**
 ```bash
 cat planning/progress.md
-cat planning/<goal>/milestone-XX/status.md
-ls planning/<goal>/milestone-XX/issues/
+cat planning/<epic-slug>/milestone-XX/status.md
+ls planning/<epic-slug>/milestone-XX/issues/
 ```
 
 **Step 2b: Load live ticket and MR states**
@@ -244,7 +246,7 @@ ls planning/<goal>/milestone-XX/issues/
 ### Phase 1: Research
 - Use architecture-research-planner agent
 - Investigate existing codebase patterns and architecture
-- Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
+- Output: `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/analysis.md`
 - After writing `analysis.md`, run the Ticket Constraint Validation step defined in `commands/research.md`. Phase 2 reads only the ACCEPTED/REVISED entries recorded under `## Ticket Constraints`; if the section is absent, no ticket restrictions have been validated for this issue.
 - Do not auto-advance to Phase 2 (/design). Wait for the user to explicitly invoke `/design`. Completing research does not license advancing to design.
 
@@ -252,7 +254,7 @@ ls planning/<goal>/milestone-XX/issues/
 - **Step 1 — Q&A (main conversation):** Before questioning, read `analysis.md ## Ticket Constraints` (if present) and treat only ACCEPTED and REVISED entries as active restrictions — do not question the user about DROPPED restrictions or ticket restrictions not listed there. Then read analysis + ticket; ask one question at a time with concrete options; write answers into `analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
 - **Constraint precedence:** `## Ticket Constraints` in `analysis.md` is the authoritative source for ticket-originated restrictions. Original ticket text is context only — a restriction not recorded under `## Ticket Constraints` is not a constraint. DROPPED entries are treated as absent.
 - **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
-- Output: `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
+- Output: `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 8 sections required; sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions
 - After writing the design file, print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
@@ -261,7 +263,7 @@ ls planning/<goal>/milestone-XX/issues/
 ### Phase 3: Design Review (CHECKPOINT 1)
 - Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
 - Before flagging a design for violating a ticket restriction, consult `analysis.md` `## Ticket Constraints`. If the section exists, only ACCEPTED and REVISED entries are enforceable — DROPPED entries and restrictions not listed must not be flagged. If the section is absent (research predates this convention, no ticket text was available in-session, or no ticket-originated restrictions were found), no ticket-originated restrictions are enforceable in this review — flag only design-quality issues.
-- **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
+- **Write review report to `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design-review.md`**
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file
 - Present a summary of the review outcome to the user
@@ -281,9 +283,9 @@ ls planning/<goal>/milestone-XX/issues/
 ### Phase 5: Code Review (CHECKPOINT 2)
 - Use reviewer agent with review checklist
 - Evaluate all 8 quality attributes
-- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
+- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
 - **Instruct the reviewer to run both mandatory passes from the checklist:** Test Quality Pass (per-test enumeration) and Cross-Site Consistency Pass (audit all invocation sites for every changed contract — signatures, build flags, interfaces, config values — plus behavioral extension tracing for every new failure outcome on unchanged signatures). AC verification does not substitute for these passes.
-- **Write review report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
+- **Write review report to `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
 - After writing, ask the user if they want to `open` the file
 - **Wait for the user to explicitly invoke `/verify` to proceed to Phase 6. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements (see Definitions) after a review summary are NOT authorization. If the user has not typed `/verify` or an equivalent explicit directive ("run verify", "proceed to Phase 6"), stop and ask.**
@@ -373,29 +375,35 @@ Reference: `~/.claude/skills/workflows/planning/`
 ```
 planning/
 ├── progress.md                      # Active work only: current issue, last 3 merged, next steps
-├── reviews/                         # Ephemeral operational files (MR YAMLs, review-request docs, Codex output)
-│   ├── MR<N>-review.yaml
-│   └── <feature>-review-request.md
-├── <goal>/
-│   ├── overview.md                  # Milestone roadmap for this goal
+├── reviews-orphan/                  # Fix reviews for unlinked work (uncommon; hand-managed)
+├── <epic-slug>/                     # One folder per epic (slug derived from epic title)
+│   ├── overview.md                  # Epic summary (About/Scope/Owner) + milestone roadmap
+│   ├── reviews/                     # External MR reviews touching this epic
+│   │   └── MR<N>-review.yaml        # Final published output only; intermediates deleted post-publication
 │   └── milestone-XX-<name>/
 │       ├── status.md                # Issue list with phase column + dependency diagram
 │       ├── tickets/                 # YAML files for projctl create
 │       └── issues/
-│           └── <NNN-name>/          # One folder per issue
+│           └── <NNN-name>/          # One folder per issue — all reviews live here
 │               ├── analysis.md      # Research output (Phase 1)
 │               ├── design.md        # Design doc (Phase 2)
-│               ├── design-review.md # Design review (Phase 3)
-│               └── code-review.md   # Code review (Phase 5)
+│               ├── design-review.md # Design review (Phase 3) — single file, always overwritten
+│               ├── code-review.md   # Code review (Phase 5) — single file, always overwritten
+│               └── codex-review.md  # Codex review of our issue — single file, always overwritten
 ```
+
+The `<epic-slug>/` folder is instantiated automatically by `/review-mr` on first use. Once created, `/research` and `/design` write into it. You do not need to create it by hand. See `OVERVIEW-TEMPLATE.md` "When to instantiate" for the exact rules.
 
 **Key principles:**
 - `progress.md` = what's active right now (≤ 30 lines; no backlog lists)
 - `status.md` = full milestone picture: all issues, phases, dependency order
-- `issues/<NNN-name>/` = everything for one issue in one place; filenames inside are generic (`design.md`, not `verifier-design.md`)
-- `planning/reviews/` = ephemeral operational files: MR review YAMLs (`projctl comment` input), Codex review-request docs, fix-review docs — not issue tracking artifacts
+- `issues/<NNN-name>/` = everything for one issue in one place, including all our own reviews (design/code/codex); filenames inside are generic (`design.md`, not `verifier-design.md`)
+- `<epic-slug>/reviews/` = external MR reviews (MRs we're reviewing but don't own the underlying issue for); one epic subfolder per set of MRs. Never a top-level `planning/reviews/` (exception: `planning/reviews-orphan/` is permitted — see below).
+- `reviews-orphan/` = fix reviews for work with no linked issue (hotfixes, sandbox experiments); hand-managed, not tracked in `progress.md`. No migration needed; `/start` leaves it in place.
+- **One final published output per review.** No `-r<N>`, `-final`, or `-v2` filename suffixes anywhere in the tree. Every review-writing command overwrites its canonical file in place; git history is the retry log. Intermediate working files (review-requests, Codex raw output) are deleted immediately after the final artifact is published. **Exception:** when `/codex-review` is invoked standalone by the user (not from a higher-level command), the codex-review output is the terminal artifact — no intermediate to delete. The review-request is left in place for re-invocation.
+- **`overview.md` doubles as a local epic cache.** For epics we don't actively work on but touch via external MR review, `overview.md` carries an "About" summary, "Scope" bullets, and "Owner" line sourced from `projctl load epic &N` so future readers have context without re-hitting GitLab. See `~/.claude/skills/workflows/planning/OVERVIEW-TEMPLATE.md` for the structure.
 
-**Old format migration:** If a milestone folder contains a flat `design/` or `reviews/` subdirectory, it uses the pre-migration layout. `/start` detects this automatically and proposes a migration to `issues/<NNN-name>/` before loading context. Never read from old paths — migrate first.
+**Old format migration:** If a milestone folder contains a flat `design/` or `reviews/` subdirectory, or if a top-level `planning/reviews/` exists, it uses the pre-migration layout. `/start` detects this automatically and proposes a migration to `issues/<NNN-name>/` (for issue-scoped reviews) or `<epic-slug>/reviews/` (for external MR reviews) before loading context. Never read from old paths — migrate first. `planning/reviews-orphan/` is exempt from migration — preserve it as-is.
 
 # Post-Write Actions
 
@@ -406,7 +414,7 @@ After writing certain files, always ask the user if they want to open the file w
 | Design docs (`planning/**/issues/*/design.md`) | After Phase 2 design doc is written |
 | Design review reports (`planning/**/issues/*/design-review.md`) | After Phase 3 review is written |
 | Code review reports (`planning/**/issues/*/code-review.md`) | After Phase 5 review is written |
-| MR review YAML (`planning/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
+| MR review YAML (`planning/<epic-slug>/reviews/MR*.yaml`) | After `/review-mr` YAML is written |
 | Issue/Epic YAML files (any YAML created for `projctl create`) | After the YAML is written |
 
 Ask exactly once per file, immediately after writing. Do not open automatically — always ask first. Ask the open-file question in isolation — do not combine it with a phase-advancement question or any other action prompt in the same message.

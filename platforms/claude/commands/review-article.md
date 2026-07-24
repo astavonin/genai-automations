@@ -139,11 +139,7 @@ shared skills that use the generic `<goal>/milestone-XX/` pattern.
 Read ~/.claude/skills/workflows/article-review/CODEX-REQUEST-TEMPLATE.md
 ```
 
-Write the populated document to `planning/reviews/<NNN-name>-article-codex-review.md`.
-The `Output File` field must match this path exactly. Use the **article project root**
-(the repo containing `planning/`) as `Repository` — not the companion code repo. Provide
-the companion repo path in the Context section. Copy Requirements bullets verbatim from
-`## Codex Review-Request Requirements` in SCOPES.md.
+Write the populated document to `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review-request.md` (this is the Codex **input** — not the review output). The `Output File` field in this document must point to `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review.md` (the Codex **output**, read in Step 3). Use the **article project root** (the repo containing `planning/`) as `Repository` — not the companion code repo. Provide the companion repo path in the Context section. Copy Requirements bullets verbatim from `## Codex Review-Request Requirements` in SCOPES.md.
 
 ### Step 2 — Hard gate + parallel launch
 
@@ -166,7 +162,7 @@ plus any High issues you observe in other scopes.
 
 Wait for all 3 agents to complete. Then wait for Codex (Monitor tool; fall back to
 polling the output file with 10-minute timeout). Read Codex output at
-`planning/reviews/<NNN-name>-article-codex-review.md`. If absent or empty, record
+`planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review.md`. If absent or empty, record
 `Codex: ✗ not run — no output written` in the review header.
 
 **Deduplication:** Two findings are duplicates when they cover the same criterion and

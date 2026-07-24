@@ -20,6 +20,20 @@ Read ~/.claude/skills/workflows/review-setup/SKILL.md
 
 ## Actions
 
+### Step 0: Resolve Linked Issue and Target Folder
+
+Every fix review lives inside the issue folder it belongs to. Resolve the issue up front so all subsequent writes go to the correct location.
+
+1. **Extract the linked issue** — parse `Ref #<N>` from the current branch's last commit, or from the branch name (`feature/<N>-*`, `fix/<N>-*`). If neither yields a number, prompt the user for the issue number. If the user replies "none" or "unlinked" (quick standalone fixes on `main`, hotfixes without tickets, sandbox experiments), set `<issue-folder>` = `planning/reviews-orphan/<slug>` where `<slug>` is derived from the branch name or a brief fix description; write the fix review there and surface a warning: "Orphan fix review — no linked issue. This file is hand-managed and not tracked in progress.md." Skip Step 0 sub-steps 2 and 3 (issue-folder resolution) and continue with Step 1 (Establish Fix Scope) — the orphan folder is your target. This path is uncommon; `/review-code` is the better choice for unlinked work with a full issue scope.
+2. **Resolve the issue folder** — `projctl load issue <N>` to confirm existence. Match the issue against `planning/*/milestone-*/issues/<N>-*/` on disk. If no matching folder exists, resolve epic (from `## Epic &<M>` in the issue output) and milestone locally, then bail with an actionable error — this command does not create issue folders; that's `/start`/`/research`'s job.
+3. **Set path variables** for the rest of the workflow:
+   - `<issue-folder>` = `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>`
+
+Confirm the resolved issue folder to the user in one line:
+```
+Issue #<N> — fix review will be written to <issue-folder>/fix-review.md
+```
+
 ### Step 1: Establish Fix Scope
 
 Identify exactly what changed. Use the narrowest scope that covers the fix:
@@ -50,11 +64,11 @@ Run the **Consensus Review Protocol** (Steps 0, A–H) from:
 - **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if not in the diff
 - **Full design doc** if one exists — pass the entire file
 
-**Step 0 (do first, before any agents):** Write `planning/reviews/<fix-description>-fix-review-request.md`
+**Step 0 (do first, before any agents):** Write `<issue-folder>/fix-review-request.md`
 from the review request template:
 - **Repository:** absolute path to the current repo
 - **Review Scope:** the fix diff range established in Step 1
-- **Output File:** `planning/reviews/<fix-description>-codex-fix-review.md`
+- **Output File:** `<issue-folder>/codex-fix-review.md`
 - **Requirements:** what the fix was supposed to solve (from Step 2)
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here
 - **Review Focus:** correctness, completeness, regressions, root cause, tests
@@ -73,7 +87,7 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
   - Instruction: **review the fix only** — do not flag pre-existing issues outside the diff
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
-  codex-flow review planning/reviews/<fix-description>-fix-review-request.md
+  codex-flow review <issue-folder>/fix-review-request.md
   ```
 
 Focus areas for a fix review:
@@ -89,8 +103,22 @@ Aggregate per protocol Steps B–H. Note: Step F (test-coverage agent) is option
 
 ### Step 4: Output
 
-**Write the report to `planning/reviews/<fix-description>-fix-review.md`** (use a short slug for `<fix-description>`, e.g. `tier-timeout-fix`).
+**Write the report to `<issue-folder>/fix-review.md`** — single canonical file per issue folder, overwritten on every re-run. No `<fix-description>-` prefix in the filename; git history preserves prior fix reviews for the same issue.
 After writing, ask the user if they want to `open <path>` the review file.
+
+### Step 4b: Delete intermediates
+
+The final `fix-review.md` is the published artifact. Delete the working files immediately after Step 4 writes the final report:
+
+```bash
+if test -s <issue-folder>/fix-review.md; then
+  rm -f <issue-folder>/fix-review-request.md <issue-folder>/codex-fix-review.md
+else
+  echo "⚠️  Final artifact not durably written — intermediates preserved for inspection"
+fi
+```
+
+Do NOT keep them "just in case" — the aggregated content lives in `fix-review.md`, and git history preserves prior Codex output if a future re-run needs a compare point.
 
 Output format (`review_type = Fix Review`, `fix_review_extras = yes`):
 ```

@@ -18,10 +18,11 @@ Planning directory structure and progress tracking workflow.
 ```
 planning/
 ├── progress.md                           # Active work only: current, last 3 merged, next steps
-├── reviews/                              # MR review YAMLs (projctl comment input; ephemeral)
-│   └── MR<N>-review.yaml
-├── <goal-name>/
-│   ├── overview.md                       # Milestone roadmap
+├── reviews-orphan/                       # Fix reviews for unlinked work (uncommon; hand-managed)
+├── <epic-slug>/
+│   ├── overview.md                       # Epic summary + milestone roadmap
+│   ├── reviews/                          # External MR reviews touching this epic
+│   │   └── MR<N>-review.yaml             # Final published output only
 │   └── milestone-XX-<name>/
 │       ├── status.md                     # Issue list with phase + dependency diagram
 │       ├── tickets/                      # YAML files for projctl create
@@ -30,7 +31,8 @@ planning/
 │               ├── analysis.md          # Research findings (Phase 1)
 │               ├── design.md            # Design proposal (Phase 2)
 │               ├── design-review.md     # Design review (Phase 3)
-│               └── code-review.md       # Code review (Phase 5)
+│               ├── code-review.md       # Code review (Phase 5)
+│               └── codex-review.md      # Codex review of our issue
 ```
 
 ## File Purposes
@@ -49,7 +51,7 @@ planning/
 **Style:** Brief bullet points
 
 ### overview.md
-**Purpose:** High-level roadmap for long-term goal
+**Purpose:** High-level roadmap for the epic
 **Updated:** When milestones added/completed
 
 **Contains:**
@@ -111,8 +113,8 @@ Do not invent new phase labels. If a transition is not listed here, leave the Ph
 
 ### Starting Work
 1. Read `planning/progress.md`
-2. Read `planning/<goal>/milestone-XX/status.md`
-3. Check `planning/<goal>/milestone-XX/issues/`
+2. Read `planning/<epic-slug>/milestone-XX/status.md`
+3. Check `planning/<epic-slug>/milestone-XX/issues/`
 4. Load live state for every active issue and open MR: `projctl load issue N` / `projctl load mr N`
 
 ### Research & Design
@@ -129,9 +131,9 @@ Do not invent new phase labels. If a transition is not listed here, leave the Ph
 **ALL project-related files go under `planning/`, never `/tmp` or other system directories.**
 
 This includes:
-- YAML input files for `projctl` (tickets, epics) → `planning/<goal>/milestone-XX/tickets/`
-- MR review YAMLs → `planning/reviews/MR<N>-review.yaml`
-- Design, analysis, review artifacts → `planning/<goal>/milestone-XX/issues/<NNN-name>/`
+- YAML input files for `projctl` (tickets, epics) → `planning/<epic-slug>/milestone-XX/tickets/`
+- MR review YAMLs → `planning/<epic-slug>/reviews/MR<N>-review.yaml` (grouped by the epic the MR touches; never at top level)
+- Design, analysis, review artifacts → `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/`
 
 `/tmp` is for throwaway system scratch only. If a file is related to the project — even if it is a draft pending user confirmation — it belongs in `planning/`.
 

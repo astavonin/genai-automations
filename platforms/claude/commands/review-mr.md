@@ -50,6 +50,24 @@ If load fails (MR does not exist, permissions error, network issue):
 - Report the specific error to the user
 - Stop and do not proceed
 
+### Step 2b: Resolve Epic and Instantiate Epic Folder
+
+Every MR review file lives under `planning/<epic-slug>/reviews/`. The epic slug must be resolved before writing any output.
+
+**Resolution chain:** MR → linked issue → epic → local slug.
+
+1. **Extract linked issue** from the Step 2 MR data. Parse `Ref #<N>` from the MR title; fall back to `<N>` from the source branch (`feature/<N>-*`, `fix/<N>-*`, etc.). If neither yields a number, prompt the user for the linked issue and do not proceed without one.
+2. **Load the issue and parse the epic:** `projctl load issue <linked_issue>` → extract the `## Epic &<N>: <title>` header line. If the issue has no epic, prompt the user for an epic number. If the user confirms there is no epic (personal repo, single-milestone project, OSS fork without epics), prompt for a manual folder slug (default: repo name in lowercase with `-` separators) and proceed with that slug as `<epic-slug>`. Skip `overview.md` instantiation in this case and note in Step 2b confirmation: `(no epic — using manual slug)`. Document this path as an explicit exception for epic-less projects.
+3. **Resolve the local slug.** List `planning/*/overview.md` and grep each with `grep -F "**Source:** [&<N>]"` (fixed-string match — plain `grep` misinterprets `[&44]` as a character class). If a match exists, reuse that folder's slug. If no `overview.md` match is found, also list `planning/*/` folders that lack an `overview.md` entirely — a folder without `overview.md` may already belong to this epic (partial migration state or manual creation). Present any such orphan folders to the user alongside the proposed new slug; let the user select an existing folder for backfill or confirm the new slug. Only after user confirmation derive a proposed slug — lowercase the epic title, replace whitespace with `-`, strip punctuation, truncate at 2–4 natural words — and create the folder. Do not create silently.
+4. **Instantiate or refresh the epic folder** per `~/.claude/skills/workflows/planning/OVERVIEW-TEMPLATE.md`:
+   - `mkdir -p planning/<epic-slug>/reviews`
+   - If `planning/<epic-slug>/overview.md` does not exist, run `projctl load epic &<N>` and create it (fresh instantiation). If it exists, read `**Last synced:**` — if the date is older than 30 days from today, re-run `projctl load epic &<N>` and update the header block (`Source`, `Owner`, `State`, `Last synced`); if less than 30 days old, skip the refresh. If `**Last synced:**` is absent, treat as `never` and refresh once (see `OVERVIEW-TEMPLATE.md` "Rules"). See the template for exact fill rules, especially the `## Scope` required-fill behavior.
+
+After this step, confirm the resolved epic and target path to the user in one line before proceeding:
+```
+Epic: <Title> [&<N>] (<slug>) — MR review will be written to planning/<epic-slug>/reviews/MR<mr_number>-review.yaml
+```
+
 ### Step 3: Gather Diff
 
 Use the source branch obtained from Step 2 (not `HEAD`, which may be on a different branch):
@@ -70,19 +88,19 @@ git diff origin/<target_branch>...origin/<source_branch>           # full diff f
 
 Before launching any agents, gather inline context to pass in agent prompts:
 - **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if it exists and is not in the diff; for Go, read interface definition files the changed package implements
-- **Full design doc** (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — the entire file, not just acceptance criteria
-- **Prior review:** if `planning/reviews/MR<number>-review.yaml` exists from a prior review cycle, read it. Instruct each agent: "A prior review exists. For each prior finding, verify whether it has been addressed. Re-raise unaddressed findings at their original severity."
+- **Full design doc** (`planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — the entire file, not just acceptance criteria
+- **Prior review:** if `planning/<epic-slug>/reviews/MR<number>-review.yaml` exists from a prior review cycle, read it. Instruct each agent: "A prior review exists. For each prior finding, verify whether it has been addressed. Re-raise unaddressed findings at their original severity."
 
 ### Step 4: Multi-Agent Consensus Review
 
 Run the **Consensus Review Protocol** (Steps 0, A–H) from:
 `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md`
 
-**Step 0 (do first, before any agents):** Write `planning/reviews/MR<number>-review-request.md`
+**Step 0 (do first, before any agents):** Write `planning/<epic-slug>/reviews/MR<number>-review-request.md`
 from the review request template:
 - **Repository:** absolute path to the current repo
 - **Review Scope:** `origin/<target_branch>...origin/<source_branch>`
-- **Output File:** `planning/reviews/MR<number>-codex-review.md`
+- **Output File:** `planning/<epic-slug>/reviews/MR<number>-codex-review.md`
 - **Requirements:** key requirements extracted from the MR description
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here. If unavailable, use `git diff --stat` as a fallback.
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
@@ -97,7 +115,7 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 - 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
-  codex-flow review planning/reviews/MR<number>-review-request.md
+  codex-flow review planning/<epic-slug>/reviews/MR<number>-review-request.md
   ```
 
 Aggregate once all five have returned per protocol Steps B–H:
@@ -105,7 +123,7 @@ Aggregate once all five have returned per protocol Steps B–H:
 - Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections)
 - Step G reverified findings: merge into the YAML findings list. Prefix the finding description with exactly `[Reverified] ` (bracketed literal, single trailing space) so downstream consumers can distinguish findings that survived the adversarial pass from consensus findings. This prefix is required, not optional.
 
-**Before launching Step G verifier agents:** reuse the `Repository:` absolute path already written into `planning/reviews/MR<number>-review-request.md` (Step 0) — this is the same value Codex used. If Step 0 was skipped or the `Repository:` field is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface the warning defined in protocol §Step G "How the main conversation obtains Repository" and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Supply the resolved path as the `Repository:` field in each verifier prompt.
+**Before launching Step G verifier agents:** reuse the `Repository:` absolute path already written into `planning/<epic-slug>/reviews/MR<number>-review-request.md` (Step 0) — this is the same value Codex used. If Step 0 was skipped or the `Repository:` field is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface the warning defined in protocol §Step G "How the main conversation obtains Repository" and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Supply the resolved path as the `Repository:` field in each verifier prompt.
 
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
@@ -120,10 +138,10 @@ GitLab will interpret these as real user mentions and send notifications.
 
 **5a. Generate YAML**
 
-Write the review to `planning/reviews/MR<number>-review.yaml` following the schema below.
+Write the review to `planning/<epic-slug>/reviews/MR<number>-review.yaml` following the schema below.
 Include ALL findings from the aggregation pipeline in this order: consensus findings first, then Step G `[Reverified]` survivors (single-agent Claude and Codex-only findings that both verifiers CONFIRMED — Step G rejects — REFUTED and unparseable-after-retry — MUST NOT appear in the YAML; rule 4 warnings surface unparseable-after-retry cases to the user, not the YAML), then Step F test-coverage-only findings. Do NOT prefix titles with `[Codex]` or any other source label — all findings appear identically regardless of origin; use only the `[Reverified]` description prefix defined in Step 4 for Step G survivors.
 
-**Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced.
+**Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced. **Target ~25–30 words; reach for 60 only when the chain is genuinely tangled.** Trim call-chain re-derivations, framework classification meta, and MR-description quotes. A reader scrolling eight findings drops off after two dense ones — brevity is a correctness concern, not a style preference.
 
 If this file already exists (re-review), it will be overwritten. Previous review output
 is not preserved. Copy the file manually before re-running if you need to keep it.
@@ -142,7 +160,20 @@ Before saving, parse and verify:
 If validation fails:
 - Report the specific validation errors to the user
 - Re-attempt YAML generation with corrected instructions
-- Do not proceed to Step 6 until validation passes
+- Do not proceed to Step 5c until validation passes
+
+**5c. Delete intermediates.** The YAML in `planning/<epic-slug>/reviews/MR<number>-review.yaml` is the final published artifact. The review-request and Codex raw-output files are working artifacts only. Delete them only after verifying the final YAML exists and has non-zero size:
+
+```bash
+if test -s planning/<epic-slug>/reviews/MR<number>-review.yaml; then
+  rm -f planning/<epic-slug>/reviews/MR<number>-review-request.md \
+        planning/<epic-slug>/reviews/MR<number>-codex-review.md
+else
+  echo "⚠️  Final artifact not durably written — intermediates preserved for inspection"
+fi
+```
+
+Do NOT keep them around "just in case" — git history in `planning/` preserves prior review-request content if the workflow is re-run, and Codex raw output was consumed by aggregation in Step 4. Only the final YAML persists.
 
 ### Step 6: Display Summary and Post Instructions
 
@@ -157,13 +188,13 @@ Ask the user if they want to `open <path>` the YAML file before displaying the p
 
 Then display:
 ```
-Review written to: planning/reviews/MR<number>-review.yaml
+Review written to: planning/<epic-slug>/reviews/MR<number>-review.yaml
 
 To preview (dry-run):
-  projctl comment planning/reviews/MR<number>-review.yaml --dry-run
+  projctl comment planning/<epic-slug>/reviews/MR<number>-review.yaml --dry-run
 
 To post inline comments to the MR:
-  projctl comment planning/reviews/MR<number>-review.yaml
+  projctl comment planning/<epic-slug>/reviews/MR<number>-review.yaml
 ```
 
 The command never posts automatically. Posting requires explicit user action.
@@ -209,7 +240,7 @@ approval: approved                      # "approved" | "changes_requested" | "no
 findings:
   - severity: Critical                  # REQUIRED: Critical | High | Medium | Low
     title: "Brief problem statement"    # REQUIRED: concise, specific
-    description: |                      # REQUIRED: what breaks and why it matters — 1-3 sentences max
+    description: |                      # REQUIRED: impact-first, 1–2 sentences (~25–30 words); reach for 60 only for tangled chains
       Short, plain statement of the problem and its impact.
     location: "path/to/file.cc:123"     # Single file:line (use this OR locations)
     locations:                          # Multiple files (use this OR location)
@@ -225,7 +256,9 @@ findings:
 - Be friendly: acknowledge the point before explaining or disagreeing. Short sentences, first person is fine.
 - Never blame: don't mention how a mistake happened ("I forgot", "this was left over", "accidentally"). Don't attribute problems to prior authors or external constraints. State what's wrong or what changed — nothing more.
 - Focus on the problem, not the person: describe what the code does, not what the author did or failed to do.
-- 1–3 sentences per finding description — state what breaks and what the impact is.
+- Description shape: lead with the impact in plain language — what breaks, for whom, when. Target 1–2 sentences (~25–30 words). Add mechanism as a second sentence only when it isn't obvious at the file:line. Reserve 60 words for genuinely tangled chains; do not fill the quota. Leave out framework/runtime classification, MR-description quote-backs, and chain restatement past two hops. If a finding doesn't fit the "X breaks when Y" shape (test-coverage gap, unclear naming, scope-creep question), drop the template — one plain sentence naming the concern is fine.
+- Bad (~50 words, mechanism-first, technical noise): "`~Server` calls `listener_thread.join()` on a default-constructed thread when `Buffer::allocate()` throws before `start_listener()`. The join throws inside an implicitly noexcept destructor, so `std::terminate` → SIGABRT. Supervisor still restarts and the log line fires first."
+- Good (~25 words, impact-first): "If allocation fails before the listener starts, `~Server` aborts instead of exiting cleanly. Supervisor still restarts, so no user-visible impact — but not the promised exit 1."
 - No passive-aggressive language: never "you should have", "obviously", "this ignores", "dangerously", "poorly".
 - Bad: "This function dangerously ignores the error return value." Good: "If the error return is ignored here, the caller proceeds with an invalid state."
 - **Unrelated / scope-creep changes → ask "why?", don't demand revert or split.** When a diff contains a change that looks unrelated to the MR's stated purpose (config value tweaks, block-list additions, dependency bumps, formatting sweeps, etc.), the default fix is NOT "revert" or "split into a separate commit/MR". First check whether the MR description already explains it — if it does, don't file the finding. If it doesn't, frame the finding as a question about intent and ask for a one-line rationale in the **MR description** (not the commit message — MR description is the review record; commit messages are not). Reserve "revert" only for changes that are clearly wrong (e.g., a value that breaks something) — and even then, phrase it as "confirm intent; if yes, document it; if no, revert." Severity for pure "why?" findings is Medium at most, usually Low.
