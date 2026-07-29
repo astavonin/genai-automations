@@ -17,6 +17,7 @@ class ImplementationRequest:
     constraints: list[str]
     verification: str
     on_device_verification: str | None
+    observed_failure_ledger: str | None
     context_files: list[str]
     raw_markdown: str
 

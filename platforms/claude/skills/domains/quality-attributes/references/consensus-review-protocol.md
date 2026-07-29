@@ -9,12 +9,12 @@ A shared multi-agent review mechanism used by all `/review*` commands.
 Three focus-differentiated reviewer agents evaluate the subject in parallel. The full pipeline is Steps 0–H:
 
 - **Step 0:** Write Codex review-request doc before any agents launch
-- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code and MR reviews only) launch simultaneously
-- **Steps B–D:** Claude consensus — findings need 2/3 agreement; non-exception single-agent findings route to Step G (code and MR reviews) or to the `## Single-Agent Findings` section (design reviews). Direct-inclusion exceptions (test-correctness → `## Test-coverage Findings`; cross-site → `## Manual Pass Findings`) apply in code/MR reviews only.
-- **Step E:** Codex cross-aggregate — Codex-only findings route to Step G (code and MR reviews) or to the `## Codex-Only Findings` section (design reviews)
-- **Step F:** Test-coverage agent (code and MR reviews only) — findings included directly, not filtered by consensus
-- **Step G:** Single-finding adversarial reverification (code and MR reviews only — skipped for design reviews) — 2 agents try to *refute* each single-agent/Codex-only finding with full-file context; include only if **both** verifiers return `VERDICT: CONFIRMED`; any REFUTED discards; unparseable verdicts are retried once, then discarded with a warning
-- **Step H:** Manual passes (code and MR reviews only) — Cross-Site Consistency Pass and Test Quality Pass completion check
+- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code, fix, and MR reviews only) launch simultaneously
+- **Steps B–D:** Claude consensus — findings need 2/3 agreement; non-exception single-agent findings route to Step G (code, fix, and MR reviews) or to the `## Single-Agent Findings` section (design reviews). Direct-inclusion exceptions (test-correctness → `## Test-coverage Findings`; cross-site → `## Manual Pass Findings`) apply in code, fix, and MR reviews only.
+- **Step E:** Codex cross-aggregate — Codex-only findings route to Step G (code, fix, and MR reviews) or to the `## Codex-Only Findings` section (design reviews)
+- **Step F:** Test-coverage agent (code, fix, and MR reviews only) — findings included directly, not filtered by consensus
+- **Step G:** Single-finding adversarial reverification (code, fix, and MR reviews only — skipped for design reviews) — 2 agents try to *refute* each single-agent/Codex-only finding with full-file context; include only if **both** verifiers return `VERDICT: CONFIRMED`; any REFUTED discards; unparseable verdicts are retried once, then discarded with a warning
+- **Step H:** Manual passes (code, fix, and MR reviews only) — Cross-Site Consistency Pass and Test Quality Pass completion check
 
 ## Protocol Steps
 
@@ -23,7 +23,10 @@ Three focus-differentiated reviewer agents evaluate the subject in parallel. The
 **This step must complete before Step A.** Write the Codex review request document from the
 template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and save it to
 `<review-request-path>` (supplied by the invoking command). Fill in all fields from the current review
-context (repository, branch, scope, requirements, evidence, review focus). The `Output File`
+context (repository, branch, scope, requirements, observed-failure ledger, evidence, review focus).
+The ledger section is validated by codex-flow and must not be left as the template placeholder:
+paste `<issue-folder>/observed-failures.md`, or state `No ledger exists for this work.` A design
+review has no diff and therefore never has a ledger — always the latter. The `Output File`
 field must point to `<codex-output-path>` (supplied by the invoking command).
 
 **⚠️ Heading format is validated literally by codex-flow.** The first line of the document MUST be:
@@ -48,7 +51,7 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
   ```bash
   codex-flow review <review-request-path>
   ```
-- For **code and MR reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
+- For **code, fix, and MR reviews only:** one test-coverage Agent call (Step F) — skip for design reviews
 
 Do not split these across separate messages. Codex is typically the slowest; starting it in the
 same batch as the Claude agents eliminates its wall-clock cost from the critical path.
@@ -105,17 +108,18 @@ describe the same root cause in the same code location (fuzzy match on concept, 
 
 **Inclusion rule:** include a finding only if **2 or more agents** flagged it.
 
-Do not discard single-agent findings — route them per review type (see "Non-exception single-agent findings by review type" below): Step G for code/MR reviews, or the `## Single-Agent Findings` section for design reviews.
+Do not discard single-agent findings — route them per review type (see "Non-exception single-agent findings by review type" below): Step G for code/fix/MR reviews, or the `## Single-Agent Findings` section for design reviews.
 
 **Exception — single-agent findings that bypass Step G and go directly to the final report:**
-- **Test-correctness findings** (name/assertion alignment, vacuous assertions, missing negative paths, bare sleeps): include directly. These are observable facts; a reverifier would confirm the same fact. Routing: code/MR reviews → `## Test-coverage Findings` section (merged alongside Step F output). Not applicable to design reviews (no tests to evaluate).
-- **Cross-site consistency findings** (build flag mismatches across Makefile/CI jobs, function signature mismatches across declarations/overrides/mocks, config value mismatches across consumers): include directly. These are enumerable facts, not judgment calls. Routing: code/MR reviews → `## Manual Pass Findings` section (merged alongside Step H output). Not applicable to design reviews (no code artifacts to cross-check).
+- **Test-correctness findings** (name/assertion alignment, vacuous assertions, missing negative paths, bare sleeps): include directly. These are observable facts; a reverifier would confirm the same fact. Routing: code/fix/MR reviews → `## Test-coverage Findings` section (merged alongside Step F output). Not applicable to design reviews (no tests to evaluate).
+- **Observed-failure regression findings** (missing ledger entry, unresolved entry, missing regression test, symptom-mismatched test, invalid waiver): include directly. These are enumerable facts about the diff and the ledger, not judgment calls about the code — a Step G reverifier reading only the changed source would find nothing wrong with the code itself and default to REFUTED, discarding a correct finding. Routing: code/fix/MR reviews → `## Test-coverage Findings` section. Not applicable to design reviews.
+- **Cross-site consistency findings** (build flag mismatches across Makefile/CI jobs, function signature mismatches across declarations/overrides/mocks, config value mismatches across consumers): include directly. These are enumerable facts, not judgment calls. Routing: code/fix/MR reviews → `## Manual Pass Findings` section (merged alongside Step H output). Not applicable to design reviews (no code artifacts to cross-check).
 
-Both exception categories are code/MR-review-only by construction — their triggers presuppose code or tests that a design doc does not contain.
+All three exception categories are code/fix/MR-review-only by construction — their triggers presuppose code or tests that a design doc does not contain.
 
 **Non-exception single-agent findings by review type:**
-- Code/MR reviews → **Step G** reverification (adversarial)
-- Design reviews → included directly in the design review's `## Single-Agent Findings` section (no reverification — Step G is code/MR-only)
+- Code, fix, and MR reviews → **Step G** reverification (adversarial)
+- Design reviews → included directly in the design review's `## Single-Agent Findings` section (no reverification — Step G does not run for design reviews)
 
 ### Step C: Aggregate — Severity Consensus
 
@@ -144,8 +148,26 @@ Output: a deduplicated list of findings, each with:
 - Run `codex-flow review <review-request-path>` with `run_in_background: true`.
 - Wait for completion, then continue with Step E aggregation below.
 
-Codex was launched in Step A (background Bash). Once it completes (you will be notified),
-read its output:
+**Codex-failure handler:** Launching `codex-flow` is not the same as Codex running. It is launched with `run_in_background: true`, so the Bash tool reports success for the *launch* — a request that `codex-flow` then rejects produces a non-zero exit, a message on stderr, and **no output file at all**. Read the completion notification's exit code; do not treat launch success as run success.
+
+Before aggregating, confirm the output exists and is non-empty:
+
+```bash
+test -s <codex-output-path> && echo "codex output present" || echo "CODEX FAILED — no output"
+```
+
+If the output is missing or empty, **stop**. Do not proceed to Steps F–H, do not write the review file, and do not aggregate three agents as though this were a 3+1 consensus — silently downgrading the protocol is the failure mode this handler exists to prevent. Surface:
+
+```
+⚠️  Codex cross-check failed — review is incomplete
+    exit: <exit code from the background Bash notification>
+    stderr: <the error line codex-flow printed>
+    recovery: fix the review request and re-run `codex-flow review <review-request-path>`
+```
+
+The most common cause is a rejected review request: `codex-flow` validates required sections and refuses the whole run if one is missing or left as a template placeholder. `Observed-Failure Ledger` is the newest such section — a request written from a stale template or from memory will lack it. Fix the request document, then re-run. Annotating `Codex: ✗ not run` and continuing is **not** an acceptable resolution for any review type; that annotation exists for the case where Codex is genuinely unavailable, not for a request you can repair. Design reviews are the likeliest to hit this — they have no diff, so their request needs the explicit `No ledger exists for this work.` line.
+
+Once Codex has completed successfully, read its output:
 
 ```bash
 cat <codex-output-path>
@@ -161,19 +183,19 @@ cat <codex-output-path>
 
 Two findings refer to the same issue if they describe the same root cause at the same code location (fuzzy match on concept, not wording).
 
-**Note on naming:** "Codex-only working set" is an intermediate bucket used during aggregation — it is NOT a final report section. For code/MR reviews it feeds Step G; for design reviews it feeds the `## Codex-Only Findings` section of the design report. Do not conflate this working-set label with the final section name.
+**Note on naming:** "Codex-only working set" is an intermediate bucket used during aggregation — it is NOT a final report section. For code/fix/MR reviews it feeds Step G; for design reviews it feeds the `## Codex-Only Findings` section of the design report. Do not conflate this working-set label with the final section name.
 
 After Step E, the working set contains:
 1. Consensus findings (with corroboration tags where applicable)
 2. Codex-only working set — routed per review type:
-   - Code/MR reviews → Step G reverification (adversarial); survivors land in `## Reverified Findings`
-   - Design reviews → included directly in the `## Codex-Only Findings` section (no reverification — Step G is code/MR-only)
+   - Code, fix, and MR reviews → Step G reverification (adversarial); survivors land in `## Reverified Findings`. **Exception:** Codex-only observed-failure regression findings (missing ledger entry, unresolved entry, missing or symptom-mismatched regression test, invalid waiver) bypass Step G and go directly to `## Test-coverage Findings` — same rationale as the Step B exception: a reverifier reading only the changed source finds nothing wrong with the code and defaults to REFUTED, discarding a correct finding.
+   - Design reviews → included directly in the `## Codex-Only Findings` section (no reverification — Step G does not run for design reviews)
 
 For design reviews, Step E is the last aggregation step: after this, the report is assembled from consensus findings, Codex-only findings, and single-agent findings (per Step B non-exception routing). Steps F, G, and H are skipped for design reviews.
 
-For code/MR reviews, the full report is assembled after Steps F–H complete.
+For code/fix/MR reviews, the full report is assembled after Steps F–H complete.
 
-### Step F: Test-Coverage and Pitfalls Agent (code and MR reviews only — skip for design reviews)
+### Step F: Test-Coverage and Pitfalls Agent (code, fix, and MR reviews only — skip for design reviews)
 
 A dedicated **reviewer (opus)** agent runs in parallel with Step A, focused exclusively on test
 quality. It does **not** participate in the 3-agent consensus (Steps B–C) — its output is
@@ -189,6 +211,7 @@ Do NOT report on code correctness, security, or architecture — those are cover
 
 Read ~/.claude/skills/domains/testing/SKILL.md for the testing rules.
 Read ~/.claude/skills/domains/testing/references/advanced-testing.md for anti-patterns.
+Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md for the Test Quality Pass — item 8 below depends on its Step 3, so read it even if a copy was also passed inline.
 
 If a design doc exists (passed inline below), read it. For each acceptance criterion listed, verify that at least one test explicitly covers it. Report any acceptance criterion with no corresponding test as a High finding titled "No test for acceptance criterion: <criterion text>".
 
@@ -207,7 +230,11 @@ Evaluate the subject under review for:
 6. Name/assertion alignment — enumerate EVERY test function by name. For each one: does the test name describe the same scenario and outcome that the assertions actually verify? A mismatch (e.g. name says "rollback sets rollbackDetected" but body never asserts error_code == "rollbackDetected") is a test correctness bug. Rate as High.
 7. Per-function negative coverage — for every public function or method that has at least one test: verify at least one negative/failure test exists for each distinct failure mode. Treat a mode as distinct when it reaches a different validation rule, guard branch, dependency failure, invariant, or recovery behavior; do not invent null, wrong-type, or other categories the language or boundary cannot represent. Safety invariants (e.g. "action must NOT fire when ID mismatches") require an explicit negative test asserting the action was NOT taken. Rate missing safety-invariant tests as High, other missing failure tests as Medium.
 
-Rate each finding: Critical (no tests for public API), High (significant gap or safety-invariant violation), Medium (anti-pattern, missing edge case), Low (minor improvement).
+8. Observed-failure regression coverage — run **Test Quality Pass Step 3 of the review checklist provided inline above**, in full. It carries the criteria, the severity table, and the review-type carve-outs; use it verbatim rather than improvising severities. Two points it depends on you getting right:
+   - **An absent ledger is not an exemption.** In a code or fix review, "no ledger exists" is itself the defect condition — row 1 of Step 3's table, High — whenever the diff shows evidence of an observed failure (a bug-ticket reference, a `fix:`/`hotfix` branch or commit, a CI-config or script change following a red pipeline, an analysis doc describing an incident). Only in an **MR review** does an absent ledger mean the check does not apply, because external MRs have no issue folder.
+   - **If a ledger was passed to you inline, evaluate every entry.** A `covered`, `waived`, or `out-of-scope` entry is resolved; `open` is not.
+
+Rate each finding: Critical (no tests for public API), High (significant gap or safety-invariant violation), Medium (anti-pattern, missing edge case), Low (minor improvement). For observed-failure findings use item 8's table instead of this line — it carries Medium rows this scale does not.
 Output a raw list: title, severity, description, location.
 ```
 
@@ -219,9 +246,9 @@ Output a raw list: title, severity, description, location.
 | Claude consensus only | Include as-is |
 | Test-coverage agent only | Include under **`## Test-coverage Findings`** (separate section — matches the SKILL.md template heading exactly) |
 
-### Step G: Single-Finding Adversarial Reverification (code and MR reviews only)
+### Step G: Single-Finding Adversarial Reverification (code, fix, and MR reviews only)
 
-**Applicability.** Step G runs only for `/review-code` and `/review-mr`. It does **not** run for `/review-design`. Design-review routing for single-agent Claude findings and Codex-only findings is handled at Step B and Step E respectively — see those sections. This section describes code/MR-review behavior only.
+**Applicability.** Step G runs for `/review-code`, `/review-fix`, and `/review-mr`. It does **not** run for `/review-design`. Design-review routing for single-agent Claude findings and Codex-only findings is handled at Step B and Step E respectively — see those sections. This section describes code/fix/MR-review behavior only.
 
 After Steps B–F complete, collect all findings that require reverification:
 - Single-agent Claude findings **not** covered by the direct-inclusion exceptions in Step B
@@ -286,7 +313,7 @@ Run all reverification agents for all findings in a single parallel batch — do
 
 **Reporting.** Findings that survive Step G are prefixed with `[Reverified]` in their description when written to any downstream output. This prefix is machine-recognizable and required, not optional — the previous soft "(reverified) note" convention was ambiguous and drifted.
 
-### Step H: Manual Passes (code and MR reviews only — always required after Steps B–G)
+### Step H: Manual Passes (code, fix, and MR reviews only — always required after Steps B–G)
 
 After all agent and Codex outputs are aggregated, the **main reviewer** must manually complete both enumeration passes. These cannot be delegated to agents — they require deliberate cross-file auditing that agents perform inconsistently.
 
@@ -315,6 +342,6 @@ To keep signal high, instruct each agent to skip:
 - **Step A is a single message** containing all Agent calls + the background `codex-flow` Bash call — never split across messages
 - Codex is invoked via `codex-flow review <review-request-path>` with `run_in_background: true` — never call `codex` directly
 - Final report sections by review type:
-  - **Code and MR reviews:** `## Findings` (consensus) → `## Reverified Findings` (Step G — holds surviving single-agent Claude and Codex-only findings) → `## Library Reuse Findings` → `## Common Library Promotion Candidates` (when present) → `## Test-coverage Findings` (Step F) → `## Manual Pass Findings` (Step H). See `~/.claude/skills/workflows/review-output-format/SKILL.md` for the authoritative section list.
+  - **Code, fix, and MR reviews:** `## Findings` (consensus) → `## Reverified Findings` (Step G — holds surviving single-agent Claude and Codex-only findings) → `## Library Reuse Findings` → `## Common Library Promotion Candidates` (when present) → `## Test-coverage Findings` (Step F) → `## Manual Pass Findings` (Step H). See `~/.claude/skills/workflows/review-output-format/SKILL.md` for the authoritative section list.
   - **Design reviews:** Consensus findings → Codex-only findings → Single-agent findings. See `~/.claude/commands/review-design.md` for the authoritative template.
-  - Note: code/MR reviews do not emit a separate `## Codex-Only Findings` section — Codex-only findings route through Step G and land in `## Reverified Findings` on survival, discarded otherwise.
+  - Note: code/fix/MR reviews do not emit a separate `## Codex-Only Findings` section — Codex-only findings route through Step G and land in `## Reverified Findings` on survival, discarded otherwise.

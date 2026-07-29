@@ -43,6 +43,23 @@ Produce a concrete fix recommendation:
 - Any related issues to watch for
 - Edge cases the fix must handle
 
+### Phase 7: Regression Test Specification (mandatory)
+
+Every failure you diagnose actually happened, which makes it an **observed failure**. The fix is only half the deliverable — specify the test that will catch this failure if it returns.
+
+```
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
+Specify, concretely enough that the coder or devops-engineer agent can implement it without re-deriving your investigation:
+- **Level** — unit or integration, with the reason (default to integration; see the fragment's selection table)
+- **Location** — the exact test file that should own it, and whether it exists or must be created
+- **Precondition** — the setup that reproduces the failure: inputs, env vars, config, component wiring, fake or stub behaviour
+- **Assertion** — the concrete expected value, error type, code, or state that fails today and passes after the fix
+- **Name** — behaviour-and-outcome, never the incident (`test_deploy_fails_fast_on_unset_version`, not `test_ci_fix`)
+
+If you believe the failure genuinely cannot be tested, say so explicitly and name which of the four waiver categories from the fragment applies — do not silently omit this section. The waiver decision belongs to the user, not to you.
+
 ## Output Format
 
 ```markdown
@@ -61,6 +78,17 @@ Produce a concrete fix recommendation:
 ## Fix Recommendation
 <Specific, actionable description of what to change and why>
 
+## Regression Test
+**Level:** <unit | integration> — <why this level>
+**Location:** `path/to/test_file` (<exists | must be created>)
+**Name:** `<behaviour_and_outcome_test_name>`
+**Precondition:** <setup that reproduces the failure>
+**Assertion:** <concrete value, error type, code, or state asserted>
+**Expected red/green:** fails before the fix with <observed symptom>; passes after
+**CI-level guard:** <only when the pipeline structure itself was at fault — the validator, lint rule, or smoke job that makes the pipeline fail on regression; omit otherwise>
+
+<If untestable: state "Waiver candidate — category <N>: <reason>" instead, and explain what compensating control should be added.>
+
 ## Related Risks
 <Any adjacent issues, edge cases, or things to verify after the fix>
 ```
@@ -72,6 +100,8 @@ Produce a concrete fix recommendation:
 - Do NOT form hypotheses before gathering evidence
 - Do NOT skip hypothesis testing — verify before concluding
 - Do NOT ignore recent changes in the codebase — they are often the cause
+- Do NOT omit the Regression Test section — a diagnosis with no test specification is an incomplete handoff
+- Do NOT decide a failure is untestable on your own — surface it as a waiver candidate for the user to approve
 
 ## Tools Usage
 
@@ -88,6 +118,8 @@ Before finalizing any diagnosis:
 3. Fix recommendation targets the root cause, not just the symptom
 4. No fix implementation was included — handoff only (to coder or devops-engineer)
 5. Exact file paths and line numbers are provided for the fix location
+6. A Regression Test section is present, names a specific test file and assertion, and would actually have caught this failure — or explicitly flags a waiver candidate with its category
+7. The specified test level is justified against the selection table, not defaulted to unit out of convenience
 
 # Persistent Agent Memory
 

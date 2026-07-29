@@ -146,6 +146,21 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - Prefer table-driven tests where appropriate (especially in Go)
 - **Input guard completeness:** for every allowlist/blocklist/range check you write, cover all distinct categories of unsafe input with negative tests — not just one representative. A guard that blocks `"` but not `\` or `;` is incomplete even if a test exists.
 
+### Fixing an Observed Failure
+
+When your task is to fix a failure that actually happened, the fix and a test reproducing it are **one deliverable**:
+
+```
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
+Check its trigger list and selection table rather than working from memory. Then:
+
+- Write the test **first**, run it against the unfixed code, and confirm it fails for the observed reason before you apply the fix
+- Report red/green outcomes honestly — never claim a red result you did not observe. Where reverting the fix is impracticable, say so and give a falsifiability argument instead
+- Record the entry in `<issue-folder>/observed-failures.md`. Callers are required to give you this path; if one did not, say so explicitly in your report rather than skipping the ledger silently — a missing entry fails the downstream gate
+- Never land the fix and defer the test. If you believe it cannot be tested, stop and report that with a reason — the waiver decision belongs to the user
+
 ## Code Review
 - When you review code, provide reference on the Guidelines sections with URL if available.
 
@@ -196,6 +211,7 @@ Before finalizing any implementation, actively verify:
 ## Quality Checks
 
 - [ ] Unit tests cover at least 80% of new codebase
+- [ ] If the work fixed an observed failure: a regression test reproducing it is included, at the right level, with red/green evidence recorded
 - [ ] Code follows language-specific style guidelines (C++ Core Guidelines, PEP 8, Rust API Guidelines, Go conventions, Zig Style Guide)
 - [ ] All unit tests pass successfully
 - [ ] Linters pass without errors (clang-tidy, pylint/flake8, clippy, golint, zig fmt)

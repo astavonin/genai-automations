@@ -70,7 +70,9 @@ Each behavioral-correctness test must:
 
 ## Regression, Lifecycle, And Compatibility Coverage
 
-- Add a deterministic regression test for each fixed behavioral bug when practical.
+- Add a deterministic regression test for every failure that actually occurred — a red CI job, an on-device or deployment failure, a runtime crash, a manual-testing defect, a bug report, a flake, or a review finding confirmed to reproduce. The fix and the test are one deliverable; treat any failure that actually executed as in scope when unsure.
+- Default to integration coverage for those tests: observed failures are usually composition failures a mocked unit test cannot catch. Prove the test fails against the unfixed code before applying the fix.
+- Never decide on your own that a failure is impractical to test — say so and name why. (When reviewing, ledger status and waiver semantics are in `skills/domains/code-quality/references/code-review-checklist.md` and `CODEX.md` pass 4.)
 - Isolate environment variables, current directory, process-global state, ports, files, random seeds, and time.
 - Test explicit and omitted cleanup, repeated shutdown, cancellation, timeout, worker failure, backpressure, queue saturation, resource exhaustion, and partial I/O where applicable.
 - Test promised compatibility with persisted data, wire formats, configuration, clients, and public interfaces from supported earlier versions.

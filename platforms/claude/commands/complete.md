@@ -20,6 +20,7 @@ Before running this command:
 - ✅ Code review approved
 - ✅ All verification checks passed
 - ✅ On-device verification: either passed locally, or passing CI/HIL device evidence is recorded (from /verify Step 7c)
+- ✅ Observed-failure regression coverage: every entry in the issue folder's `observed-failures.md` (path per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`) is resolved — covered, waived with user approval, or justified as out-of-scope (from `/verify` Steps 6a–6d, or from `/review-fix`'s Step F gate for hotfixes that never entered Phase 6)
 - ✅ User confirms issue is complete
 - ✅ User handled git commits (Phase 7)
 

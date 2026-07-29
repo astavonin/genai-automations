@@ -28,7 +28,15 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 
 ## Actions
 
-**Preamble:** Initialize `iteration = 0` before Step 1. This counter is set exactly once at command start and is never reset mid-run.
+**Preamble:** Initialize `iteration = 0` before Step 0. This counter is set exactly once at command start and is never reset mid-run.
+
+### Step 0: Resolve the issue folder
+
+```
+Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
+```
+
+Resolve `<issue-folder>` once and echo it. Every later step reuses this exact string — Step 1's review pre-reads the ledger from it, and Step 2 passes it to the coder. Re-deriving it per step is what produces silent ledger misses.
 
 ### Step 1: Initial review
 
@@ -50,9 +58,11 @@ Invoke **coder agent** with:
 - The full list of findings selected above
 - The full design doc if one exists (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`)
 - The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`)
+- **The resolved `<issue-folder>` path** (resolved in Step 0 above) — the coder writes the ledger only when given this path, and the Step 3 re-review flags a missing ledger entry as High, so omitting it deadlocks the loop
 - Instruction: fix all listed findings in one pass; flag explicitly any finding that cannot be addressed; apply these test requirements:
   - **Critical and High findings (mandatory):** every fix for a Critical or High finding must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
   - **Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
+  - **Findings confirmed to reproduce (observed-failure trigger 6):** for any finding describing incorrect runtime behaviour that you confirm reproduces, append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md`. The next review pass checks for it and rates its absence High.
 
 **If the coder agent flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 

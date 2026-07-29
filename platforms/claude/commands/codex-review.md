@@ -41,6 +41,7 @@ Every iteration overwrites in place. If the reviewer or the user needs to compar
    - Output File — pick from the path convention above based on scope
    - Requirements (one or more bullets)
    - Constraints (one or more bullets)
+   - Observed-Failure Ledger (contents of `<issue-folder>/observed-failures.md`, or `No ledger exists for this work.`)
    - Evidence (bash commands + exit codes)
    - Review Focus (one or more bullets)
 4. Write the completed document to the scope-appropriate `*-review-request.md` path (never top-level `planning/reviews/`).

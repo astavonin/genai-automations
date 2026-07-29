@@ -1,6 +1,6 @@
 ---
 name: review-output-format
-description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Codex-only findings for code/MR reviews route through Step G and land in Reverified (there is no separate Codex-Only section). Not used for design reviews (different structure).
+description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Codex-only findings for code, fix, and MR reviews route through Step G and land in Reverified (there is no separate Codex-Only section). Not used for design reviews (different structure).
 allowed-tools: Bash
 compatibility: claude-code
 metadata:
@@ -51,7 +51,7 @@ Markdown report template for **code reviews** and **fix reviews**. Design review
 
 ## Reverified Findings
 
-Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted only by code reviews (`/review-code`) and MR reviews (`/review-mr`); design reviews skip Step G and have no Reverified Findings section.
+Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted by code reviews (`/review-code`), fix reviews (`/review-fix`), and MR reviews (`/review-mr`); design reviews skip Step G and have no Reverified Findings section.
 
 - **V1** [severity] [Reverified] Description...
 
@@ -90,7 +90,7 @@ A candidate qualifies when ALL are true: domain-neutral, self-contained, stable 
 
 ## Test-coverage Findings
 
-<!-- Omit this section for fix reviews unless the fix touches test files -->
+<!-- Always include for fix reviews — this is where the observed-failure regression gate reports. Write "None." if Step F returned nothing. Omitting it because the fix touched no test file would discard the exact finding the gate exists to produce. -->
 
 Findings from the Step F test-coverage agent not already present in the consensus section. Reviewers MUST check:
 - **New code without dedicated test file** — flag as `High` if missing
@@ -105,7 +105,7 @@ Severity guidance: `High` = security/data integrity/resource management; `Medium
 
 ## Manual Pass Findings
 
-<!-- Omit this section for fix reviews -->
+<!-- Always include, including for fix reviews — they run Steps B–H. -->
 
 Findings from the Step H manual passes (Cross-Site Consistency Pass and Test Quality Pass). Include even if 0 — write "None."
 
@@ -125,3 +125,5 @@ IDs are prefixed by severity: `C` = Critical, `H` = High, `M` = Medium, `L` = Lo
 - ✅ **Approve:** Zero Critical, zero High, and zero Medium findings
 - ⚠️ **Request Changes:** One or more High or Medium findings — fix and re-review
 - ❌ **Reject:** One or more Critical findings — redesign needed
+
+**Fix reviews use a different bar** — zero Critical and zero High, defined in `review-fix.md` → Assessment. Its scope is one fix, not a whole feature, and its regression severities are all raised to High to compensate. When `review_type = Fix Review`, that command's thresholds govern.

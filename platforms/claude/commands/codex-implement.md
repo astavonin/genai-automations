@@ -67,6 +67,18 @@ block, and writes a standardised output artifact.
 Read the output file printed by `codex-flow` (`<design-stem>.implementation-output.md`).
 Display the summary, files changed, verification results, and any open issues to the user.
 
+### Step 5: Resolve the observed-failure ledger
+
+If this implementation fixed a failure that actually happened, the ledger entry `/diagnose` or `/ci-debug` wrote is still `**Status:** open` — Codex returns JSON, not planning files, so nothing has discharged it. Left open, `/verify` Step 6d blocks with "add the regression test" for a test that already exists.
+
+```
+Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
+```
+
+Resolve `<issue-folder>`, and for each entry in `<issue-folder>/observed-failures.md` that this run addressed: replace `**Status:** open` with `**Status:** covered` (edit the line in place — a second Status line makes the entry malformed) and fill `**Test:**` and `**Evidence:**` from Codex's `verification_results`. If Codex reported `"Regression test: BLOCKED — ..."` in `open_issues`, leave the entry `open` and surface that blocker to the user.
+
+Before Step 3 runs, if this work fixes a failure that actually occurred, paste the entries from `<issue-folder>/observed-failures.md` into the design doc's §3 `**Observed-Failure Ledger:**` field. `codex-flow implement` is given only the design document — it never sees the issue folder — so an omitted ledger reads to Codex as new work and the required regression test is silently skipped.
+
 ## Notes
 
 - The design document must follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — `codex-flow` parses the `Implementation Context` section for Repository, Functional Requirements, Non-Functional Requirements, Constraints, Verification, and Context Files.

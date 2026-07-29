@@ -11,7 +11,12 @@ from typing import Callable
 import pytest
 
 from codex_flow.progress import PROGRESS_MARKER, ProgressConfig, repository_state_key
-from codex_flow.runner import DISABLED_EXTERNAL_TOOL_FEATURES, run_implementation, run_review
+from codex_flow.runner import (
+    DEFAULT_CODEX_MODEL,
+    DISABLED_EXTERNAL_TOOL_FEATURES,
+    run_implementation,
+    run_review,
+)
 
 
 class _FakeProcess:
@@ -110,6 +115,10 @@ def _write_review_request(path: Path, repository: Path) -> None:
 pytest tests/test_sync.py
 ```
 
+## Observed-Failure Ledger
+
+No ledger exists for this work.
+
 ## Review Focus
 
 - correctness
@@ -134,7 +143,7 @@ def test_run_implementation_writes_standardized_output(
         assert "--ignore-user-config" not in command
         assert "--ignore-rules" not in command
         assert "--model" in command
-        assert command[command.index("--model") + 1] == "gpt-5.4"
+        assert command[command.index("--model") + 1] == DEFAULT_CODEX_MODEL
         assert _config_values(command) == ["model_reasoning_effort=xhigh"]
         assert _disabled_features(command) == list(DISABLED_EXTERNAL_TOOL_FEATURES)
         assert "--dangerously-bypass-approvals-and-sandbox" in command
@@ -185,7 +194,7 @@ def test_run_review_uses_read_only_and_only_writes_output(
         assert "--ignore-user-config" in command
         assert "--ignore-rules" in command
         assert "--model" in command
-        assert command[command.index("--model") + 1] == "gpt-5.4"
+        assert command[command.index("--model") + 1] == DEFAULT_CODEX_MODEL
         assert _config_values(command) == [
             "model_reasoning_effort=xhigh",
             "approval_policy=never",

@@ -82,6 +82,8 @@ Failure indicators (what to check if verification does not pass):
 **Context Files:**
 - `path/to/file`
 
+**Observed-Failure Ledger:** *(Include when this work fixes a failure that actually happened — a red CI job, an on-device or deployment failure, a runtime crash, a manual-testing defect, a bug report, a flake, or a review finding confirmed to reproduce. Paste the entries from `<issue-folder>/observed-failures.md` inside a `~~~markdown` fence — unfenced, their `## <date>` headings would end this section. `codex-flow implement` runs from this document and never sees the issue folder, so an omitted ledger reads to it as new work and the required regression test is skipped silently. Omit the field entirely when no failure was observed. Placed after Context Files because the On-Device Verification field absorbs everything up to it.)*
+
 ---
 
 ## 4. Architecture Overview

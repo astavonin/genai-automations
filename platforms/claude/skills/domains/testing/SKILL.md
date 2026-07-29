@@ -63,6 +63,17 @@ Every public function or method that can fail MUST have at least one test per di
 
 A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
 
+### Observed Failure Regression Coverage (mandatory)
+The section above covers failure modes you **anticipate**. This one covers failures that **actually happened**.
+
+Every observed failure produces two deliverables: the fix, and a test that reproduces the failure. A fix without a covering test is incomplete work — it does not pass `/verify` and is not approvable in `/review-code` or `/review-fix`. The only alternative is a user-approved waiver in one of five narrow categories.
+
+`~/.claude/skills/workflows/regression-test/SKILL.md` is the single source of truth: trigger list, unit-vs-integration selection table, red/green evidence format, the on-disk ledger, review severities, and the waiver schema. Read it when fixing any failure that occurred rather than working from a summary.
+
+Two points that interact with rules elsewhere in this file:
+- **Default to integration.** Observed failures are usually composition failures: the units worked, their interaction did not. A unit test that mocks the exact boundary the bug crossed re-encodes the bug's assumption instead of catching it.
+- **Flaky tests.** "Delete flaky tests immediately" (below) removes the symptom; it does not discharge this rule. Delete the non-deterministic test, then add a deterministic test of the underlying race or record a category-4 waiver whose compensating control is an invariant assertion.
+
 ### Composition Failure Coverage (mandatory when a dependency gains a new failure mode)
 When a component you call gains a new failure mode — such as a new null or empty return, error value, exception, rejected async result, or enum variant — the test file owning the *caller* must add a test that:
 1. Simulates the dependency returning or raising the new failure through a fake, stub, configured return value, or equivalent project-native test hook
@@ -127,7 +138,8 @@ Focus on meaningful coverage: a covered line is not a tested behavior.
 3. Keep tests simple and readable
 4. Test edge cases and error conditions
 5. Unit tests: fast, isolated, no I/O; integration tests: real deps, tagged separately
-6. Maintain tests as you maintain code; delete flaky tests immediately
+6. Maintain tests as you maintain code; delete flaky tests immediately — then cover the underlying race per item 7
+7. Every failure you actually observed gets a test that reproduces it — usually integration, proven red before the fix
 
 ## Test Doubles
 

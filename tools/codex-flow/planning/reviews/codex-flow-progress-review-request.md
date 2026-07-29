@@ -21,6 +21,10 @@
 - Do not modify repository files during review except the requested `Output File`.
 - Keep changes scoped to codex-flow progress reporting, runtime invocation, docs, and tests.
 
+## Observed-Failure Ledger
+
+No ledger exists for this work.
+
 ## Evidence
 
 ```bash

@@ -34,7 +34,7 @@ Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
 Only proceed when the gate passes.
 
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
-2. Run the **Consensus Review Protocol** (Steps 0, A–E; skip Step F, Step G, and Step H — all three are code/MR-only) against the design document
+2. Run the **Consensus Review Protocol** (Steps 0, A–E; skip Step F, Step G, and Step H — all three are code/fix/MR-only) against the design document
 
    ```
    Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md

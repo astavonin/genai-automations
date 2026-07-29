@@ -110,6 +110,52 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    - Check existing functionality still works
    - Verify no breaking changes
 
+   **Observed-failure regression coverage (HARD GATE).** Run this whole block; a mechanical `PASS` on the first sub-step does not end it.
+
+   ```
+   Read ~/.claude/skills/workflows/regression-test/SKILL.md
+   ```
+
+   **Step 6a — Resolve the issue folder, then run the ledger gate.**
+
+   ```
+   Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
+   ```
+
+   Resolve `<issue-folder>` by that procedure and assign the **resolved** path to `ISSUE_FOLDER` before running the fragment's Hard Gate snippet. Do not run the snippet with the placeholder still in it. It guards two ways — an unset or empty `ISSUE_FOLDER` aborts on `${ISSUE_FOLDER:?}`, and a `<...>` placeholder prints `BLOCKER: placeholder left in path` — and **an aborted gate is not a gate that ran**: resolve the path and run it again. Then check the `ledger:` line the snippet echoes and confirm it is the path `/diagnose` or `/ci-debug` wrote to.
+
+   **Step 6b — Handle an `N/A` result.** `N/A` means no file was found at the path printed above — which is a resolution mismatch as often as a genuine absence. Rule that out mechanically before believing it: run `find "$(git rev-parse --show-toplevel)/planning" -name observed-failures.md`. Adopt a hit **only if its path corroborates this work's identity** (the issue number, or the orphan slug) — a ledger belonging to different work is not yours, and binding to it would report another issue's entries as this one's verdict. If a corroborating ledger exists, re-run Step 6a against it; otherwise the `N/A` stands and you continue below. Then ask explicitly: **did anything fail during this work that a test does not now guard?** Consult the fragment's What Counts as an Observed Failure list; do not work from memory of it. If the answer is yes, the missing ledger entry is itself the defect: write it, resolve it, and re-run Step 6a. Only a genuine no lets you continue to Step 7 — record it as a one-line note in the `/verify` output and in the `progress.md` entry written by the Planning State Update step below.
+
+   **Step 6c — Verify each resolved entry is real, not just marked.** A `PASS` confirms every entry carries exactly one terminal status, not that the work behind it happened. Check **every** resolved entry, every run — there is no on-disk record of what a previous `/verify` confirmed, so "already checked" is a memory claim and this gate exists precisely to not depend on one. Ledgers hold a handful of short entries; the cost is trivial. For each `covered` entry confirm all four:
+   - The test asserts the **actual observed symptom**, not a proxy or a nearby happy path
+   - Its level matches the fragment's selection table — a unit test mocking the exact boundary the bug crossed does not count
+   - The `**Evidence:**` field records red/green, or carries a falsifiability argument where red/green was impracticable
+   - It would have caught the failure that was diagnosed
+   - **The file named in `**Test:**` still exists** — `test -f` it, or grep the test name. Nothing else checks this, so a fix that reverts an earlier fix and deletes its test leaves that entry reading `covered` forever. When coverage is genuinely withdrawn, edit the entry's `Status` in place to `out-of-scope` with the reason; append-only governs entries, not the fields inside one.
+
+   For each `waived` entry, confirm the category genuinely holds and a compensating control is named. For each `out-of-scope` entry, confirm the stated reason holds — "nothing assertable changed" is false the moment the fix altered behaviour.
+
+   **If `<issue-folder>` is under `planning/reviews-orphan/`, `PASS` proves less than it looks.** That folder is one per long-lived branch, not one per incident, so several unticketed hotfixes share a ledger. A `PASS` there means *the entries present* are resolved — it cannot tell you this fix got an entry at all, because a missing entry is indistinguishable from a fix that needed none. Treat an orphan `PASS` the way Step 6b treats `N/A`: ask explicitly whether anything failed during this work, and confirm an entry exists naming *this* symptom before accepting it.
+
+   **Step 6d — On failure, BLOCK:**
+
+   ```
+   ✗ BLOCKER: observed failure not covered by a test
+       failure: <one-line description of what was observed>
+       entry:   <ledger entry, or "no ledger entry exists">
+       recovery: <keyed to the blocker kind — the gate names which one>
+                 still open / no Status line  → add the regression test, or ask the user
+                                                to approve a waiver and record it
+                 N Status lines (malformed)   → keep exactly one; edit it in place
+                 unrecognized Status value    → use open | covered | waived | out-of-scope
+                 unclosed code fence          → indent pasted output four spaces instead
+                 covered but no Test:         → name the test, or change the status
+                 waived but no <field>        → the user supplies category and approval;
+                                                you may not self-approve
+   ```
+
+   Verification is **incomplete** while this blocker stands. Do not update planning state, do not report a full pass, and do not proceed to `/complete`. A waiver requires the user's explicit approval — never self-waive, and apply the approval test in the fragment's Waiver section rather than treating assent as approval.
+
 7. **On-device verification:**
 
    **Step 7-pre — Determine scope from analysis.md:**
@@ -139,6 +185,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - ✅ Zero test failures
 - ✅ Zero static analysis errors
 - ✅ No breaking changes (or properly documented)
+- ✅ Every entry in `<issue-folder>/observed-failures.md` is resolved — covered by a test that asserts its actual symptom, waived with user approval, or justified as out-of-scope; and no observed failure is missing an entry
 - ✅ Build passes
 - ✅ On-device verification passed locally, or passing CI/HIL device evidence is recorded when no local device is available
 
@@ -149,9 +196,10 @@ If any check fails:
 2. **Clangd findings:** Fix missing implementations or logic bugs before running tests
 3. **Test failures:** Debug and fix the failing tests
 4. **Static analysis issues:** Address security or code quality concerns
-5. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
-6. Re-run verification from step 1 (linters)
-7. Do NOT proceed to completion until all checks pass
+5. **Missing regression coverage:** Write the test specified by the diagnosis, confirm it fails against the unfixed code, then record it in the ledger and re-run Step 6a. If the failure is genuinely untestable, ask the user to approve a waiver — do not proceed on your own judgement.
+6. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
+7. Re-run verification from step 1 (linters)
+8. Do NOT proceed to completion until all checks pass
 
 ## Execution Order is Critical
 
@@ -160,7 +208,7 @@ If any check fails:
 2. Clangd analysis — C++ only (catch missing impls and type bugs)
 3. Tests (verify correctness)
 4. Static analysis (security/quality)
-5. Regression check
+5. Regression check — no regressions introduced, plus the observed-failure ledger gate (Steps 6a–6d)
 
 Do NOT run tests before linters and clangd pass. This ensures clean code before verification.
 

@@ -42,6 +42,7 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
    Read ~/.claude/skills/domains/architecture/SKILL.md
    Read ~/.claude/skills/domains/quality-attributes/SKILL.md
    Read ~/.claude/skills/domains/quality-attributes/references/review-checklist.md
+   Read ~/.claude/skills/workflows/regression-test/SKILL.md
    ```
 
 6. Read command definitions for active workflow phases:
@@ -50,6 +51,8 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
    Read ~/.claude/commands/review-design.md
    Read ~/.claude/commands/review-code.md
    Read ~/.claude/commands/implement.md
+   Read ~/.claude/commands/verify.md
+   Read ~/.claude/commands/review-fix.md
    ```
 
 ## Output
@@ -66,6 +69,7 @@ Provide a concise confirmation summary covering:
   - NEVER update progress.md without explicit user confirmation
   - ALL implementations require design review BEFORE code
   - ALL code requires code review AFTER implementation
+  - ALL fixes for observed failures require a regression test in the same change
 - **Agent assignments**:
   - `architecture-research-planner` (opus) → research, architecture, documentation
   - `coder` (sonnet) → implementation (C++, Go, Rust, Python)

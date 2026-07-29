@@ -102,6 +102,7 @@ from the review request template:
 - **Review Scope:** `origin/<target_branch>...origin/<source_branch>`
 - **Output File:** `planning/<epic-slug>/reviews/MR<number>-codex-review.md`
 - **Requirements:** key requirements extracted from the MR description
+- **Observed-Failure Ledger:** the literal line `No ledger exists for this work — external MR.` External MRs have no issue folder, so there is nothing to paste. Stating it explicitly stops Codex from reporting a missing ledger entry as High against an author who has no mechanism to record one.
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here. If unavailable, use `git diff --stat` as a fallback.
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 
@@ -111,8 +112,8 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 (`test_coverage = yes`)
 
 **Step A (single message):** Launch simultaneously:
-- 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below)
-- 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review
+- 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below). Add the same MR carve-out given to the Step F agent below: **no issue folder and no `observed-failures.md` ledger exists for an external MR** — skip the ledger and waiver checkboxes in Test Quality Pass Step 3, and raise any missing regression test as a question to the author rather than a blocker.
+- 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review and the review checklist inline (its Test Quality Pass Step 3 is what prompt item 8 runs). Add one instruction: **this is an external MR with no issue folder and no `observed-failures.md` ledger.** Step 3's ledger and waiver checks do not apply; if the MR fixes a failure that occurred and ships no regression test, raise it as a question to the author, not as a blocker citing a waiver they have no mechanism to record.
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
   codex-flow review planning/<epic-slug>/reviews/MR<number>-review-request.md

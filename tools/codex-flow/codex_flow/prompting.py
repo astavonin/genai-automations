@@ -139,6 +139,21 @@ def build_implementation_prompt(request: ImplementationRequest) -> str:
     else:
         odv_blocks.append(_ODV_ABSENT_PROMPT)
 
+    if request.observed_failure_ledger is not None:
+        odv_blocks.append(
+            "Observed-Failure Ledger from design doc — this work fixes a failure that actually"
+            " happened. Every entry whose **Status:** is `open` requires a regression test in"
+            " this implementation; see the Observed-Failure Regression Test section of the"
+            " bundled guidance. Report a blocker rather than omitting one:\n"
+            + request.observed_failure_ledger
+        )
+    else:
+        odv_blocks.append(
+            "Observed-Failure Ledger: absent from the design doc. Treat this as new work rather"
+            " than a fix for a failure that already occurred. If the design nonetheless describes"
+            " repairing an observed failure, the regression test is still required."
+        )
+
     return "\n\n".join(
         [
             "You are running codex-flow in implementation mode.",

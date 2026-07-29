@@ -22,7 +22,7 @@ Phase 2: Design             → Create design proposal
 Phase 3: Design Review      → reviewer agent (MANDATORY CHECKPOINT)
 Phase 4: Implementation     → coder or devops-engineer agent
 Phase 5: Code Review        → reviewer agent (MANDATORY CHECKPOINT)
-Phase 6: Verification       → Run linters, tests, and static analysis
+Phase 6: Verification       → Run linters, tests, static analysis, and the observed-failure ledger gate
 Phase 7: Commit             → User handles git commits
 Phase 8: Completion         → Update progress tracking → Backup planning
 ```

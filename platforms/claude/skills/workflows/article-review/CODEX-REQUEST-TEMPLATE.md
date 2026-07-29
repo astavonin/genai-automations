@@ -66,6 +66,16 @@ Do not use numbered lists or prose — codex-flow requires bullet format.
 
 ---
 
+## Observed-Failure Ledger
+
+No ledger exists for this work — article review.
+
+<!-- Required by codex-flow's review-request parser. An article review has no code diff and
+     therefore no observed-failure ledger; state that explicitly rather than omitting the
+     section, which the parser rejects. -->
+
+---
+
 ## Evidence
 
 ```bash

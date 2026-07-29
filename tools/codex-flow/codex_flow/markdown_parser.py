@@ -12,6 +12,7 @@ FIELD_PATTERN = re.compile(r"^\*\*(?P<name>[^*]+):\*\*\s*(?P<value>.*)$")
 HEADING_PATTERN = re.compile(r"^(?P<level>#+)\s+(?P<title>.+?)\s*$")
 
 _ODV_FIELD_NAME = "On-Device Verification"
+_LEDGER_FIELD_NAME = "Observed-Failure Ledger"
 _ODV_TERMINATOR = "Context Files"
 
 
@@ -28,10 +29,13 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
     repository = _require_absolute_path(_extract_field(section, "Repository"), "Repository")
 
     functional_requirements = _extract_bullets_after_field(section, "Functional Requirements")
-    non_functional_requirements = _extract_bullets_after_field(section, "Non-Functional Requirements")
+    non_functional_requirements = _extract_bullets_after_field(
+        section, "Non-Functional Requirements"
+    )
     constraints = _extract_bullets_after_field(section, "Constraints")
     verification = _extract_code_block_after_field(section, "Verification")
     on_device_verification = _extract_on_device_verification(section)
+    observed_failure_ledger = _extract_field_block(section, _LEDGER_FIELD_NAME)
     context_files = _extract_bullets_after_field(section, "Context Files")
 
     if not functional_requirements and not non_functional_requirements:
@@ -49,9 +53,17 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
         constraints=constraints,
         verification=verification.strip(),
         on_device_verification=on_device_verification,
+        observed_failure_ledger=observed_failure_ledger,
         context_files=context_files,
         raw_markdown=text,
     )
+
+
+# Lines that are template scaffolding rather than ledger content: fence delimiters, horizontal
+# rules, HTML comments, and the ledger's own H1. Stripped before the section is judged non-empty.
+_LEDGER_SCAFFOLDING = re.compile(r"^(~~~|```|-{3,}|<!--.*|#\s+Observed Failures\b.*)$")
+# The one sentence that may stand in for a ledger, with the documented suffixes.
+_LEDGER_ABSENT = re.compile(r"^No ledger exists for this work\.?( — .+)?$", re.IGNORECASE)
 
 
 def parse_review_request(request_path: Path) -> ReviewRequest:
@@ -88,6 +100,34 @@ def parse_review_request(request_path: Path) -> ReviewRequest:
     if not review_focus:
         raise ValidationError("Review request must include at least one Review Focus item.")
 
+    # Codex sees only this document, so an omitted ledger is indistinguishable from a fix with
+    # no observed failure. Left unvalidated, that silently turns a user-approved waiver into a
+    # High finding no coder can clear. Require an explicit statement either way.
+    #
+    # Catch the missing-section error so absent and present-but-empty both produce the
+    # actionable message; _extract_section's generic "Missing required section" tells the
+    # author nothing about what to write.
+    ledger_lines = _extract_ledger_section(lines)
+    # Positive-form check. A negative one ("not empty, not the placeholder") let the template's
+    # own scaffolding through — a lone `---` separator, the explanatory prose around the fence,
+    # an HTML comment, or an unresolved `<issue-folder>` path all read as content while saying
+    # nothing. Require the section to be one of the two things it is allowed to be.
+    ledger_body = "\n".join(
+        line
+        for line in ledger_lines
+        if line.strip() and not _LEDGER_SCAFFOLDING.match(line.strip())
+    )
+    states_no_ledger = _LEDGER_ABSENT.match(ledger_body.strip())
+    carries_entries = "**Status:**" in ledger_body or ledger_body.lstrip().startswith("## ")
+    if not (states_no_ledger or carries_entries):
+        raise ValidationError(
+            "Review request must include a filled-in Observed-Failure Ledger section — "
+            "paste the ledger inside the ~~~markdown fence (it must carry its entries, each "
+            "with a **Status:** line), or state 'No ledger exists for this work.' (append "
+            "' — external MR.' for an MR we do not own, or ' — article review.' for an "
+            "article review)."
+        )
+
     request = ReviewRequest(
         request_path=request_path.resolve(),
         repository=repository,
@@ -108,6 +148,38 @@ def parse_review_request(request_path: Path) -> ReviewRequest:
     return request
 
 
+def _extract_ledger_section(lines: list[str]) -> list[str]:
+    """Collect the Observed-Failure Ledger body, fence-aware.
+
+    The generic section extractor stops at the next level-2 heading. The ledger is the one
+    section whose payload legitimately *contains* level-2 headings — its entries are
+    `## <date> <symptom>` — so a pasted ledger would be truncated at its first entry and read
+    as empty. Track fences and only treat an unfenced `## ` as the section terminator. Returns
+    an empty list when the section is absent, so the caller can raise one actionable error for
+    both the absent and the unfilled case.
+    """
+    found = False
+    fenced = False
+    collected: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("~~~") or stripped.startswith("```"):
+            if found:
+                fenced = not fenced
+                collected.append(line)
+                continue
+        match = HEADING_PATTERN.match(line)
+        if match and len(match.group("level")) == 2 and not fenced:
+            if found:
+                break
+            if _normalize_heading(match.group("title")) == "Observed-Failure Ledger":
+                found = True
+                continue
+        if found:
+            collected.append(line)
+    return collected
+
+
 def _read_text(path: Path) -> str:
     if not path.exists():
         raise ValidationError(f"Request file not found: {path}")
@@ -123,11 +195,25 @@ def _find_first_heading(lines: list[str]) -> str:
 
 
 def _extract_section(lines: list[str], heading: str) -> list[str]:
+    """Collect a level-2 section's body, ignoring headings inside fenced blocks.
+
+    Fence awareness matters because a section may legitimately contain pasted Markdown whose
+    own `## ` lines are content, not structure — an observed-failure ledger is the case that
+    forced this. In Markdown a `## ` inside a fence was never a heading, so honouring fences
+    is the correct reading rather than a special case.
+    """
     found = False
+    fenced = False
     collected: list[str] = []
     for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("~~~") or stripped.startswith("```"):
+            fenced = not fenced
+            if found:
+                collected.append(line)
+                continue
         match = HEADING_PATTERN.match(line)
-        if match and len(match.group("level")) == 2:
+        if match and len(match.group("level")) == 2 and not fenced:
             title = _normalize_heading(match.group("title"))
             if found:
                 break
@@ -239,6 +325,42 @@ def _require_absolute_path(value: str, field_name: str) -> Path:
 def _normalize_heading(title: str) -> str:
     normalized = title.strip()
     return re.sub(r"^\d+(?:\.\d+)*\.\s+", "", normalized)
+
+
+def _extract_field_block(lines: list[str], name: str) -> str | None:
+    """Collect a bold field and its continuation lines, up to the next bold field.
+
+    Used for the optional Observed-Failure Ledger field in a design doc's Implementation
+    Context. Returns None when absent or empty, so an implementation request written before
+    the field existed still parses — the same optional-field discipline as On-Device
+    Verification.
+    """
+    collected: list[str] = []
+    found = False
+    fenced = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("~~~") or stripped.startswith("```"):
+            fenced = not fenced
+            if found:
+                collected.append(line)
+            continue
+        match = FIELD_PATTERN.match(line)
+        if match and not fenced:
+            if found:
+                break
+            if match.group("name").strip() == name:
+                found = True
+                value = match.group("value").strip()
+                if value:
+                    collected.append(value)
+                continue
+        if found:
+            collected.append(line)
+    if not found:
+        return None
+    body = "\n".join(collected).strip()
+    return body or None
 
 
 def _extract_on_device_verification(lines: list[str]) -> str | None:

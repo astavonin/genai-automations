@@ -17,6 +17,7 @@ Implement the approved design following the chosen agent's expertise.
 - languages/* (language-specific guidelines)
 - domains/code-quality (code quality standards)
 - domains/testing (testing strategies)
+- workflows/regression-test (when the work fixes an observed failure)
 
 ## File Overwrite Convention
 
@@ -129,6 +130,20 @@ fi
    - Cover all public API paths
    - Cover edge cases: empty input, null/None, boundary values, error paths
    - **Cover behavioral correctness scenarios** — any path where incorrect runtime behavior is possible (wrong output, silent invalid-input acceptance, liveness violations, security bypass) requires an explicit test. See `~/.claude/skills/domains/testing/SKILL.md` → Behavioral Correctness.
+3a. **Regression test for observed failures (mandatory deliverable):**
+
+   ```
+   Read ~/.claude/skills/workflows/regression-test/SKILL.md
+   ```
+
+   Check the fragment's **What Counts as an Observed Failure** list against this work — do not work from memory of it. Note trigger 6: a review finding confirmed to reproduce counts, including findings fixed inside `/review-code-fix-loop`. If any trigger matches, the fix and its regression test are **one deliverable**:
+
+   - Pass the debugger's **Regression Test** specification verbatim into the coder or devops-engineer agent prompt, with explicit instruction that it is a required deliverable and not a follow-up
+   - Write the test **before** the fix, run it red, apply the fix, run it green
+   - **Record the outcome in the ledger.** Use the issue-folder path handed over by `/diagnose` or `/ci-debug` if one was given; otherwise resolve it with `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md` — the same path `planning/<goal>/milestone-XX/issues/<NNN-name>/` refers to elsewhere in this file. In `<issue-folder>/observed-failures.md`, **replace** the entry's `**Status:** open` line with `**Status:** covered` (edit in place — a second Status line makes the entry malformed) and fill `**Test:**` and `**Evidence:**`. Create the entry if none exists. The ledger is what `/verify` and the review commands read; an unrecorded fix fails the gate no matter how good the test is.
+   - Do not report implementation complete with the fix landed and the test or ledger entry deferred
+   - If the failure is genuinely untestable, stop and surface the waiver category to the user for explicit approval — never self-waive and never silently skip
+
 4. Verify build passes after each change
 5. Follow language-specific style guides:
    - C++: C++ Core Guidelines
@@ -143,6 +158,7 @@ fi
 Implementation complete with:
 - Production code
 - Comprehensive unit tests
+- Regression test with recorded red/green evidence, when the work fixed an observed failure
 - Passing build
 - Applied formatting
 

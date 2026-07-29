@@ -160,8 +160,14 @@ plus any High issues you observe in other scopes.
 
 Wait for all 3 agents to complete. Then wait for Codex (Monitor tool; fall back to
 polling the output file with 10-minute timeout). Read Codex output at
-`planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review.md`. If absent or empty, record
-`Codex: ✗ not run — no output written` in the review header.
+`planning/book/milestone-XX-<name>/issues/<NNN-name>/article-codex-review.md`. If absent or empty,
+apply the **Codex-failure handler** from
+`~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` → Step E:
+read the exit code from the background Bash notification before deciding. A **repairable**
+failure — most often a rejected review request, since `codex-flow` validates required sections
+and refuses the whole run if one is missing — must be fixed and re-run, not annotated away.
+Only when Codex is genuinely unavailable do you record
+`Codex: ✗ not run — no output written` in the review header and continue with Claude-only findings.
 
 **Deduplication:** Two findings are duplicates when they cover the same criterion and
 the same location. Use the Codex label → scope criterion mapping table in SCOPES.md.

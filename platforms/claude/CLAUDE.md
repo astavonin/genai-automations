@@ -62,6 +62,18 @@ Reference: `~/.claude/skills/domains/testing/`
 - 80%+ coverage for critical business logic; 100% for public APIs
 - Test edge cases: empty input, null values, boundary conditions, error paths
 
+## Observed Failures Always Get a Test
+
+**Any failure that actually happened produces two deliverables, not one: the fix, and a test that reproduces the failure.**
+
+`~/.claude/skills/workflows/regression-test/SKILL.md` is the single source of truth — trigger list, unit-vs-integration selection table, red/green evidence format, ledger, review severities, waiver schema. Read it when fixing any failure that occurred; do not work from the summary below.
+
+- **Default to integration.** Observed failures are usually composition failures — the units worked, their interaction did not. A unit test that mocks the exact boundary the bug crossed re-encodes the bug's assumption instead of catching it.
+- **Prove it red first.** Never report a red/green result that was not actually observed.
+- **A green re-run is not the test.** "CI passes now" or "the device works now" proves the fix worked once, not that the failure is guarded.
+- **The trigger is a file, not a memory.** `/diagnose` and `/ci-debug` record each failure in `<issue-folder>/observed-failures.md`; `/implement` resolves the entry; `/verify` Steps 6a–6d and the review commands read it. An unrecorded fix fails the gate no matter how good the test is.
+- **Hard gate:** `/verify` blocks and the review commands flag High on an unresolved entry. The only alternative is a user-approved waiver in one of five narrow categories — never self-waive, and assent to a waiver you proposed is not approval.
+
 ## Architecture & Design
 
 Reference: `~/.claude/skills/domains/architecture/`
@@ -148,13 +160,14 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
+- **ALL fixes for observed failures require a regression test in the same change** — see "Observed Failures Always Get a Test" above. `/verify` Steps 6a–6d are a hard gate; the fix and the test are one deliverable, never a fix now and a test later.
 - **NEVER use `isolation: "worktree"` when invoking coder or devops-engineer agents** — this strands all changes in a throw-away branch. Omit the `isolation` parameter for all implementation agents so changes land directly in the user's working branch.
 - **Review files MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** — machine-readable, no emoji. Pre-existing reviews without this marker cause gates to skip (fail-safe). See §4 below.
 - **Auto-compaction fires at three phase boundaries** without a prompt: `/start` (unconditional), `/implement` (gated), `/complete` (gated). Always followed by a `✓ Compacted at <phase>` confirmation line.
 
 ## Definitions
 
-**Conversational acknowledgements (never authorization):** "ok", "looks good", "sounds right", "go ahead", "lgtm", "ready", "next one", "let's continue", and equivalent affirmations. None of these phrases count as authorization for a phase transition, regardless of context or phase.
+**Conversational acknowledgements (never authorization):** "ok", "looks good", "sounds right", "go ahead", "lgtm", "ready", "next one", "let's continue", and equivalent affirmations. None of these phrases count as authorization for a phase transition **or for a regression-test waiver**, regardless of context or phase.
 
 ## Workflow Safety — New Behaviors (workflow-safety milestone)
 
@@ -276,6 +289,7 @@ ls planning/<epic-slug>/milestone-XX/issues/
 - Use coder agent (code) OR devops-engineer agent (CI/CD)
 - Follow approved design
 - Include comprehensive unit tests
+- **If the work fixes an observed failure, the regression test is a mandatory deliverable of this phase** — write it first, run it red, then fix. See "Observed Failures Always Get a Test".
 - Verify build passes
 - Apply formatting
 - Do not auto-invoke `/review-code`. Wait for the user to type `/review-code` or an equivalent explicit directive (e.g., "review the code", "run code review"). Conversational acknowledgements (see Definitions) are NOT authorization; if unclear, stop and ask.
@@ -299,6 +313,7 @@ ls planning/<epic-slug>/milestone-XX/issues/
 - Run integration tests (if applicable)
 - Run static analysis (zero errors)
 - Verify no regressions
+- **Observed-failure regression gate (Steps 6a–6d):** every entry in `<issue-folder>/observed-failures.md` is resolved, and no failure that occurred is missing an entry. An unresolved or absent entry is a BLOCKER — do not update planning state or proceed to `/complete`.
 - All checks must pass
 - Do not auto-propose commit messages or auto-run `git commit` after `/verify` completes. Wait for an explicit user-initiated directive to commit (e.g., "commit this", "create the commit", "please commit"). Conversational acknowledgements (see Definitions) after a verify success are NOT authorization to propose or run a commit — the two-part test from Critical Rules applies even though there is no `/commit` slash command.
 
@@ -389,8 +404,11 @@ planning/
 │               ├── design.md        # Design doc (Phase 2)
 │               ├── design-review.md # Design review (Phase 3) — single file, always overwritten
 │               ├── code-review.md   # Code review (Phase 5) — single file, always overwritten
-│               └── codex-review.md  # Codex review of our issue — single file, always overwritten
+│               ├── codex-review.md  # Codex review of our issue — single file, always overwritten
+│               └── observed-failures.md  # Append-only ledger of failures that actually occurred + how each is covered
 ```
+
+`observed-failures.md` also appears at `planning/reviews-orphan/<slug>/` for unlinked hotfixes. It is **exempt from the one-final-output convention** — it is an append-only ledger, never overwritten or consolidated, so each failure keeps its own entry and resolution.
 
 The `<epic-slug>/` folder is instantiated automatically by `/review-mr` on first use. Once created, `/research` and `/design` write into it. You do not need to create it by hand. See `OVERVIEW-TEMPLATE.md` "When to instantiate" for the exact rules.
 

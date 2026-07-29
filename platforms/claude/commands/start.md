@@ -210,10 +210,16 @@ If any stale MR entries are found, propose the exact edits and wait for explicit
    ls planning/<epic-slug>/milestone-XX-<name>/issues/
    ```
 
+### 4b. Surface unresolved observed failures:
+   ```bash
+   find "$(git rev-parse --show-toplevel)/planning" -name observed-failures.md
+   ```
+   For each ledger found, set `ISSUE_FOLDER` to its **parent directory** and run the gate snippet from `~/.claude/skills/workflows/regression-test/SKILL.md` → Hard Gate. The snippet appends `/observed-failures.md` itself, so passing the ledger path directly yields a false `N/A`. Any entry reported as still `open` is a failure that was diagnosed but never covered by a test. List these under Blockers in the summary — between `/diagnose` writing an entry and `/verify` reading it, nothing else surfaces them, and work can otherwise reach `/mr` with the gate never having run.
+
 ### 5. Display summary:
    - Current active milestone/epic
    - Tasks in progress (with verified states)
-   - Blockers
+   - Blockers — including any unresolved observed-failure ledger entries from step 4b
    - Next steps
 
 **Next step:** Do not auto-invoke `/research`. Wait for the user to type `/research` or an equivalent explicit directive. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.

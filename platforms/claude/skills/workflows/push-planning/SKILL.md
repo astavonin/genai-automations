@@ -23,6 +23,8 @@ Current callers (commands with custom column updates that don't fit the standard
 - `/mr` — after MR number written to progress.md and status.md (sets MR column + Phase simultaneously)
 - `/verify` — after verification passes and planning state updated (Notes-only append, no Phase change)
 - `/review-mr` — after MR review YAML written and progress.md updated
+- `/diagnose` — after the observed-failure ledger entry is written (no Phase change; the ledger must survive a machine switch to anchor the gate later)
+- `/ci-debug` — same, after Phase 5 writes the ledger
 
 ## Steps
 

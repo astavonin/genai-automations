@@ -107,7 +107,7 @@ For **design-review findings**, no test requirements apply — the fix is a doc 
   ```
 
 Invoke the appropriate agent:
-- Code review: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only, explicitly passing the test requirements above
+- Code review: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only, explicitly passing the test requirements above and the resolved `<issue-folder>` path (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). If the finding describes incorrect runtime behaviour that the coder confirms reproduces, it must append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md` — observed-failure trigger 6. Without the path the coder cannot write it and the finding cannot clear re-review.
 - Design review: declare "I'll use architecture-research-planner agent to fix [finding ID]…" and invoke architecture-research-planner scoped to this finding only; instruct it not to add new items to `## 8. Open Questions` and not to modify the `**Revision:**` or `**Status:**` header fields — if it cannot address a finding, it must flag it explicitly rather than declining silently
 
 After applying any design-review fix (agent-driven or confirmed manual), set `design_modified = true`.

@@ -22,6 +22,14 @@ The user provides a failure description, e.g.:
 
 Optionally attach: log output, stack trace, error message, or relevant file paths.
 
+## Setup
+
+Every failure reaching this command already happened, so the observed-failure regression rule applies to whatever fix comes out of it:
+
+```
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
 ## Workflow
 
 ### Step 1: Claude Debugger Investigation
@@ -29,7 +37,7 @@ Optionally attach: log output, stack trace, error message, or relevant file path
 Invoke the **debugger** agent with:
 - Full failure description and any provided logs/traces
 - Relevant project context (current working directory, recent changes)
-- Instruction to follow the 6-phase process and produce the standard output format
+- Instruction to follow the 7-phase process and produce the standard output format, **including the mandatory Regression Test section** (Phase 7)
 
 ### Step 2: Codex Cross-Model Verification
 
@@ -37,7 +45,7 @@ After the Claude debugger produces its diagnosis, run Codex independently:
 
 ```bash
 ~/.claude/scripts/codex-pipe \
-  --prompt "Debug this failure. Identify root cause and propose a fix:\n\n<failure description and context>" \
+  --prompt "Debug this failure. Identify root cause, propose a fix, and specify the regression test (unit or integration, with test file, precondition, and assertion) that would catch this failure if it returns:\n\n<failure description and context>" \
   --output /tmp/codex-diagnose.txt \
   <relevant-file-if-applicable>
 ```
@@ -62,18 +70,45 @@ Compare Claude debugger diagnosis with Codex proposal:
 | Claude-only diagnosis | Present with confidence level noted |
 | Codex-only finding | Present separately as **"Codex alternative hypothesis"** — different model, worth considering |
 | Disagree on root cause | Present both hypotheses with supporting evidence — let user decide |
+| Differ on regression test level (unit vs integration) | Prefer the integration specification — see the selection table in the regression-test fragment |
 
 ### Step 4: Present Diagnosis
 
 Output to the user:
 - **Root cause** (with confidence: confirmed / likely / hypothesis)
 - **Fix recommendation** (with corroboration status)
+- **Regression test** (mandatory) — level, test file, precondition, assertion, and name, taken from the debugger's Phase 7 output and reconciled with Codex's proposal. If the debugger flagged a waiver candidate, present the category and the proposed compensating control, and state plainly that a waiver needs the user's explicit approval.
 - **Codex alternative** (if different)
 - **Next step**: hand off to `/implement` (coder agent) or `/verify` as appropriate
 
+### Step 5: Record the Failure in the Ledger (mandatory)
+
+The gate downstream reads a file, not this conversation — sessions compact and `/verify` may run days later. First resolve where the file goes:
+
+```
+Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
+```
+
+Resolve `<issue-folder>` by that procedure (including the orphan fallback for unlinked fixes) and echo the resolved path. Then append one entry per root cause to `<issue-folder>/observed-failures.md`, creating the file and its orphan folder if absent, using the entry format in the regression-test fragment:
+- Fill `Observed in`, `Root cause`, and `Test` from the Regression Test specification
+- Write `**Status:** open` — the entry is recorded, not yet resolved. `/implement` replaces this line when the fix lands. Do not copy the template's `<open | covered | ...>` placeholder literally.
+
+Then push the ledger to backup so it survives a machine switch — a ledger that exists only locally cannot anchor a gate that fires days later:
+
+```
+Read ~/.claude/skills/workflows/push-planning/SKILL.md
+```
+
+### Step 6: Carry the Test into the Handoff
+
+The regression test is part of the fix, not a follow-up. When handing off:
+- Pass the full Regression Test specification to `/implement` alongside the fix recommendation
+- State explicitly that the fix and the test are one deliverable — `/verify` blocks on an unresolved ledger entry
+- Do not file the test as a separate ticket, TODO, or "nice to have later"
+
 ## Notes
 
-- The diagnose command investigates — it does NOT implement fixes
-- After diagnosis, use `/implement` to apply the fix
+- The diagnose command investigates — it does NOT implement fixes or write the test
+- After diagnosis, use `/implement` to apply the fix **and** the specified regression test
 - For CI/CD-specific failures, prefer `/ci-debug` which has pipeline-specific tooling
-- Re-running `/diagnose` on the same issue after a failed fix attempt is expected and encouraged
+- Re-running `/diagnose` on the same issue after a failed fix attempt is expected and encouraged. When this happens, check whether the earlier fix shipped a regression test — a recurrence that a prior test should have caught means the test asserted a proxy rather than the real symptom, and fixing the test is part of this round's work.

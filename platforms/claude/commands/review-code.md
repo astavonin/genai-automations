@@ -25,11 +25,14 @@ Typical files to pre-read:
 - All source files changed on the branch (`.h`, `.cc`, `.cpp`, `.py`, `.go`, `.rs`, `.sh`, etc.) — use `git diff origin/master...HEAD --name-only` to enumerate them
 - **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if it exists and is not already in the diff; for Go, read the interface definition files the changed package implements
 - **Full design doc** (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — pass the entire file, not just the acceptance criteria section
+- **The observed-failure ledger** (`<issue-folder>/observed-failures.md`, resolved per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`) if one exists — mandatory when present. Agents are instructed to validate its entries and waivers but may not Read it themselves; without it inline they will report a valid, user-approved waiver as a missing test, producing a finding no coder can fix. If it does not exist, say so explicitly in the prompt rather than omitting the topic.
 - The review checklist
 
 **Prior review:** If `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md` exists from a previous review cycle, read it. Include it in every agent prompt with the instruction: "A prior review exists. For each finding previously marked CHANGES REQUESTED or REJECTED, verify whether it has been addressed in the current implementation. Re-raise unaddressed findings at their original severity; note addressed ones explicitly."
 
 **Evidence for Codex:** Before writing the Step 0 review-request document, run the project's build and test commands and capture their output (exit codes + last 40 lines). Populate the Evidence section with this data. If the build or tests fail, note this prominently — Codex must factor it into its assessment.
+
+**Ledger for Codex:** Populate the review-request's `## Observed-Failure Ledger` section with the contents of `<issue-folder>/observed-failures.md` **inside the template's `~~~markdown` fence** — a pasted ledger's own `## <date>` entry headings would otherwise end the section and read as empty — or the literal `No ledger exists for this work.` Codex sees only this document — omitting the section makes it flag user-approved waivers as missing tests.
 
 ## Status Marker Convention
 
@@ -51,6 +54,7 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
    (`test_coverage = yes`)
 
    - **Launch simultaneously:** 3 focus-differentiated Claude reviewer agents + test-coverage agent (Step F) + Codex (Step E) in parallel — see protocol for agent focus assignments
+   - **Every Claude agent prompt must include** the pre-read files above (including the ledger) and the review checklist — the checklist carries Test Quality Pass Step 3 and its severity table, so no separate paste is needed. See the Observed-Failure Regression Requirement section below.
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding adversarial reverification) → Step H (manual passes)
    - **Before launching Step G verifier agents:** reuse the `Repository:` value from the Step 0 Codex review-request document if one was written (same value Codex used); otherwise obtain it by running `pwd` in the main conversation's shell. Supply this path as the `Repository:` field in each verifier prompt (see protocol §Step G "How the main conversation obtains Repository"). Without it, relative `file:line` locations cannot be resolved and Step G findings will be silently REFUTED-and-discarded.
@@ -94,6 +98,16 @@ Additional cross-cutting checks applied by all agents:
 ```
 Read ~/.claude/skills/workflows/behavioral-bug-test/SKILL.md
 ```
+
+## Observed-Failure Regression Requirement
+
+If any part of the diff fixes a failure that actually happened, a test reproducing it must be in the diff and recorded in the issue folder's ledger.
+
+```
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
+Applicability and the trigger list live in that fragment — do not work from a paraphrase. Instruct **all** agents (the 3 consensus reviewers and the Step F test-coverage agent) to run the checklist's Test Quality Pass Step 3, which carries the criteria and the severity table inline. An absent ledger is not an exemption: when the diff shows evidence of an observed failure, a missing entry is itself a High finding.
 
 ## Assessment
 

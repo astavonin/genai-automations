@@ -30,11 +30,21 @@ What must not change:
 
 ---
 
+## Observed-Failure Ledger
+
+Contents of `<issue-folder>/observed-failures.md`, pasted verbatim — or the literal line `No ledger exists for this work.` when there is none, or `No ledger exists for this work — external MR.` for an MR we do not own. Codex receives only this document, so without this section it cannot distinguish an unguarded fix from a correctly waived one, and will flag a user-approved waiver as a missing test.
+
+~~~markdown
+# (paste ledger here, or: No ledger exists for this work.)
+~~~
+
+An entry whose `**Status:**` is `covered`, `waived`, or `out-of-scope` is resolved. `open` is not. A recorded, user-approved waiver is a valid resolution — do not report it as a missing test. The outer fence uses `~~~` so a pasted ledger containing its own ``` blocks does not terminate it early.
+
+---
+
 ## Evidence
 
-Verification run before this review.
-**This section MUST contain a non-empty fenced code block — codex-flow will reject the request otherwise.**
-For design-only reviews with no commands to run, use the placeholder below as-is.
+Verification run before this review. **This section MUST contain a non-empty fenced code block — codex-flow will reject the request otherwise.** For design-only reviews with no commands to run, use the placeholder below as-is.
 
 ```bash
 # commands + exit codes

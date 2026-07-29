@@ -92,18 +92,36 @@ When working on DevOps tasks:
 - Offer alternatives when there are meaningful trade-offs
 - Include example commands showing how to use what you've created
 
+## Fixing an Observed Failure
+
+When your task is to fix a failure that actually happened — a red CI job, a broken deploy, a container that will not start, a script failing on a real runner — the fix and a test reproducing it are **one deliverable**:
+
+```
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
+Read its trigger list, selection table, and out-of-scope clauses rather than working from memory. Domain notes for CI and infrastructure work:
+
+- These failures are almost always composition failures — unset env vars, wrong image tag, job ordering, cache keys, build flags, startup sequence — so the selection table routes them to integration coverage.
+- When the pipeline's own structure was at fault, a **CI-level guard** (config validator, lint rule, or smoke job) is a valid regression test. Name the job and what makes it fail, and record it in the ledger's `**Test:**` field so the gate recognises it.
+- Failures where nothing assertable changed — a yanked action version bumped, an expired token — are out of scope. Record them in the ledger as `**Status:** out-of-scope` with the reason; do not omit them and do not manufacture a vacuous test.
+
+Never land the fix and defer the guard. If you believe it cannot be tested, stop and report that with a reason — the waiver decision belongs to the user.
+
 ## Self-Verification Before Output
 
 Before finalizing any DevOps configuration, actively verify:
 1. Configurations are complete and syntactically valid (no placeholder values left)
 2. Secrets are not hardcoded — proper secret management is used
 3. A developer can run this locally with the same result as CI (local-CI parity)
-4. All Quality Checks below are satisfied
+4. If this fixes an observed failure, a regression guard is included — not a green re-run offered as proof
+5. All Quality Checks below are satisfied
 
 ## Quality Checks
 
 - [ ] Can a developer run this locally with minimal setup?
 - [ ] Does this work the same way in CI?
+- [ ] If fixing an observed failure: is there a test or CI-level guard that fails on regression?
 - [ ] Are resources used efficiently?
 - [ ] Are there proper error handling and helpful error messages?
 - [ ] Is the configuration properly documented?

@@ -119,6 +119,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Integration tests are tagged/marked to run separately
 - [ ] No flaky tests (non-deterministic assertions, bare sleeps)
 - [ ] **Behavioral bug findings require a `Required test:` line** — any finding that identifies incorrect runtime behavior (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `**Required test:**` line describing: what precondition/input triggers the bug and what outcome the test asserts. Quality findings (naming, observability, performance, maintainability) with no wrong-output consequence are exempt.
+- [ ] **Observed failures are covered by a regression test** — if the diff fixes a failure that actually happened, a test reproducing it MUST be in the diff and recorded in the issue folder's `observed-failures.md` ledger. Full verification, severities, and the `/review-mr` carve-out are in Test Quality Pass Step 3 below — do not rate this item without reading it.
 
 **Test correctness — answer all four:**
 - [ ] **Assertion specificity:** Assertions check concrete values or behavior, not vacuous checks (`assert result is not None`, `assert called_once()` with no argument verification). Each assertion should fail if the implementation returns a wrong-but-non-null value.
@@ -193,6 +194,33 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 - [ ] Safety invariants have explicit negative tests — e.g. "action must NOT fire when ID mismatches" requires a test that asserts the action was not taken, not just that no exception was raised.
 - [ ] Error path tests assert the specific error type, code, or message — not just that "some error occurred".
 - [ ] Integration tests cover cancellation, timeout, and partial-completion paths, not just the happy path.
+
+**Step 3 — Observed-failure regression coverage:**
+
+**If this is an MR review (`/review-mr`):** there is no issue folder and no ledger. Skip the first and fifth checkboxes entirely, and raise a missing regression test as a **question to the author**, never as a blocker citing a waiver they have no mechanism to record. The rest of this step still applies.
+
+Determine whether the diff fixes a failure that actually happened. Evidence: a `Ref #N` on a bug ticket, `fix:`/`hotfix` in the branch or commit message, an `observed-failures.md` ledger in the issue folder, a CI-config or script change following a red pipeline, a design/analysis doc describing an incident, or **a prior review report in the issue folder carrying a Critical or High finding that describes incorrect runtime behaviour** (trigger 6 — this is the evidence for findings fixed inside `/review-code-fix-loop` and `/review-iterate`, which have no bug ticket and no `fix:` branch). If the rule applies, verify all five:
+- [ ] **A ledger entry exists** in `<issue-folder>/observed-failures.md` for the failure, and its `**Status:**` is resolved — `covered`, `waived`, or `out-of-scope`. `open` means recorded but not yet resolved and does **not** satisfy the gate.
+- [ ] **A test reproducing the observed failure is present in this diff** — not deferred, not filed as a follow-up ticket.
+- [ ] **The test asserts the actual symptom,** not a proxy or an adjacent happy path. Ask: would this test have caught the reported failure? A passing test that would not have caught it is worse than none — it manufactures false confidence.
+- [ ] **The level matches the failure.** Composition failures (env vars, startup order, config load, component interaction, CI structure) need integration coverage. A unit test that mocks the exact boundary the bug crossed re-encodes the bug's assumption.
+- [ ] **Any waiver or out-of-scope entry is valid** — the category genuinely holds, cheaper reproduction paths were considered, and a compensating control was added. An invalid one returns that entry to "test required".
+
+Severities:
+
+| Condition | Severity |
+|---|---|
+| Observed failure with no ledger entry | High |
+| Ledger entry still `Status: open` (no test, no waiver) | High |
+| Ledger entry with two `Status:` lines, or none | High |
+| Test present but asserts a proxy rather than the observed symptom | High |
+| Unit test mocking the boundary the bug crossed, and that boundary **is** the root cause | High |
+| Unit test mocking a boundary the bug crossed that is not the root cause | Medium |
+| Waiver whose category does not hold, or with no compensating control | High |
+| `Status: out-of-scope` whose stated reason does not hold | High |
+| Evidence field missing on a `covered` entry | Medium |
+
+In `/review-fix` every row above is High. This table is copied from `~/.claude/skills/workflows/regression-test/SKILL.md` → Review Severities, which remains authoritative for edits.
 
 **Reporting:** Cite every gap by test name and criterion. Do not aggregate into a single "tests need improvement" finding.
 

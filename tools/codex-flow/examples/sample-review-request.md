@@ -34,6 +34,12 @@ helper and its tests. The review should focus on correctness and regression risk
 
 ---
 
+## Observed-Failure Ledger
+
+No ledger exists for this work.
+
+---
+
 ## Evidence
 
 ```bash
