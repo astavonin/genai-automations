@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -887,3 +888,27 @@ pytest
     parsed = parse_implementation_request(request)
 
     assert parsed.observed_failure_ledger is None
+
+
+def test_missing_request_error_names_the_directory_it_resolved_against(tmp_path: Path) -> None:
+    """A not-found error must say what the path was resolved against.
+
+    Relative request paths are supported and normal. When one does not resolve, the missing
+    piece is always the working directory — codex-flow may be running somewhere the caller did
+    not choose, and the path can look perfectly correct relative to the repo root. Naming the
+    directory turns a two-step diagnosis into a one-step one.
+    """
+    import os
+
+    with pytest.raises(ValidationError, match=re.escape(os.getcwd())):
+        parse_review_request(Path("planning/nope/review.md"))
+
+
+def test_absolute_missing_request_error_stays_unambiguous(tmp_path: Path) -> None:
+    """An absolute path needs no cwd context — it would only add noise."""
+    missing = tmp_path / "nope.md"
+
+    with pytest.raises(ValidationError, match="Request file not found") as exc:
+        parse_review_request(missing)
+
+    assert "resolved against" not in str(exc.value)

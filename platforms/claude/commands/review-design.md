@@ -34,7 +34,7 @@ Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
 Only proceed when the gate passes.
 
 1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
-2. Run the **Consensus Review Protocol** (Steps 0, A–E; skip Step F, Step G, and Step H — all three are code/fix/MR-only) against the design document
+2. Run the **Consensus Review Protocol** (Steps 0, A–E and **Step G**; skip Step F and Step H — those two are code/fix/MR-only) against the design document. Step G uses its **design-review verifier variant**; single-agent and Codex-only findings are adversarially reverified before they reach the report.
 
    ```
    Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
@@ -43,8 +43,9 @@ Only proceed when the gate passes.
 
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel — skip Step F (no code or tests to evaluate)
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate). Step G is NOT run for design reviews — single-agent Claude findings and Codex-only findings are included in the report directly (see protocol §Step G "Applicability" for rationale)
-   - **Each agent prompt must include the full "Design-Level Constraint" section below** — paste it verbatim before the review checklist so agents know what to flag and what to skip
+   - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → **Step G** (adversarial reverification, design criteria). Single-agent Claude findings and Codex-only findings are reverified 2-of-2; survivors land in `## Reverified Findings`, and nothing unreverified reaches the report. Skip Steps F and H.
+   - **Each agent prompt must include the full "Design-Level Constraint" section below** — paste it verbatim before the review checklist so agents know what to flag and what to skip. **This applies to the Step G verifiers too**, not only the three primary reviewers: a verifier without the flag list and the Ticket Constraint Guardrail applies different scope rules than the reviewer whose finding it is adjudicating.
+   - **Before launching Step G verifiers**, resolve absolute paths for `design.md`, its sibling `analysis.md` (pass `none` only if the file genuinely does not exist), and the repository root via the Step 0 review-request `Repository:` value or `pwd`. Relative paths do not resolve in a verifier agent, and the failure is silent — both verifiers fail their reads, both return REFUTED, and rule 3 discards every finding with no warning. If any path cannot be resolved, do not launch: surface the Step G warning and treat all eligible findings as discarded-with-warning.
 3. Format consolidated findings as a markdown review report (see Output Format below)
 4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 
@@ -124,6 +125,7 @@ Produce a markdown report:
 **Subject:** <feature name>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable
 
 ## Findings (<N total — consensus of 3 reviewers>)
 
@@ -139,27 +141,21 @@ Produce a markdown report:
 ### Low
 - **L1** [attribute] Description...
 
-## Codex-Only Findings
+## Reverified Findings
 
-Findings raised by Codex not present in Claude consensus. Write "None." if empty. Design reviews do not run Step G, so these findings are included without adversarial reverification.
+Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification — both verifiers returned `VERDICT: CONFIRMED`. These carry the same weight as consensus findings and count toward the assessment. Include even if 0 — write "None."
 
-- **X1** [severity] Description...
-
-## Single-Agent Findings
-
-Findings raised by only 1 of the 3 Claude reviewers (and not covered by Step B's direct-inclusion exceptions for test-correctness or cross-site consistency). Design reviews do not run Step G, so these are included without adversarial reverification — treat them as lower-confidence than the consensus findings above. Write "None." if empty.
-
-- **S1** [severity] Description...
+- **V1** [severity] [Reverified] Description...
 
 ## Recommendation
 <rationale and required actions — concept level only; no implementation specifics>
 ```
 
-IDs are prefixed by severity for the main Findings section (C = Critical, H = High, M = Medium, L = Low), by `X` for Codex-Only Findings, and by `S` for Single-Agent Findings. Number sequentially within each section (e.g., `S1`, `S2`). IDs are stable within a review session.
+IDs are prefixed by severity for the main Findings section (C = Critical, H = High, M = Medium, L = Low) and by `V` for Reverified Findings. Number sequentially within each section (e.g., `V1`, `V2`). IDs are stable within a review session.
 
 ## Assessment
 
-- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings → proceed to implementation
+- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings **across `## Findings` and `## Reverified Findings` combined** — reverified findings carry the same weight, so an approval that ignores them is wrong → proceed to implementation
 - ⚠️ **Request Changes:** One or more High or Medium findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → return to Phase 2
 

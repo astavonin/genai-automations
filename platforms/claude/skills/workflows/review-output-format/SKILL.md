@@ -1,6 +1,6 @@
 ---
 name: review-output-format
-description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Codex-only findings for code, fix, and MR reviews route through Step G and land in Reverified (there is no separate Codex-Only section). Not used for design reviews (different structure).
+description: Shared fragment — markdown output format template for code review and fix review reports. Includes findings structure, Reverified, Library Reuse, Test-coverage, Manual Pass, Assessment, and ID conventions. Codex-only findings route through Step G in every review type this protocol covers and land in Reverified (there is no separate Codex-Only section). Not used for design reviews (different structure).
 allowed-tools: Bash
 compatibility: claude-code
 metadata:
@@ -51,7 +51,7 @@ Markdown report template for **code reviews** and **fix reviews**. Design review
 
 ## Reverified Findings
 
-Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted by code reviews (`/review-code`), fix reviews (`/review-fix`), and MR reviews (`/review-mr`); design reviews skip Step G and have no Reverified Findings section.
+Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted by code, fix, and MR reviews. Design reviews also run Step G and carry an equivalent section — see the template in `~/.claude/commands/review-design.md`, which is authoritative for that report shape.
 
 - **V1** [severity] [Reverified] Description...
 

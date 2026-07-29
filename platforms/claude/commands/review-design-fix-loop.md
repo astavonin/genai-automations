@@ -71,6 +71,9 @@ Invoke **architecture-research-planner agent** with:
 - The analysis doc (`analysis.md`) if it exists — for original decision context
 - The full list of findings selected above
 - Instruction: apply all fixes to `design.md` in one pass; stay at the architectural level; validate any Mermaid diagrams that are added or modified; do not insert RESOLVED markers or finding IDs into the design doc; do NOT add new items to `## 8. Open Questions` — if something cannot be resolved architecturally while applying fixes, flag it as an unaddressable finding instead; flag explicitly any finding that cannot be addressed; do not modify the `**Revision:**` or `**Status:**` header fields — these are managed by the command outside the agent invocation
+- **Instruction — resolve by subtraction where subtraction is the honest fix:** rewriting or deleting text is a valid way to resolve a finding, not a lesser one. Reach for it first when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — the cause is usually text that should not be there, and adding a clarification on top leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite it when the finding reports that existing text is wrong, unclear, or duplicated. Before deleting a section, check for inbound cross-references and update them in the same pass — an orphaned reference trips `/verify-docs` on the next step.
+
+  This is not licence to skip a finding: every selected finding must still be resolved or explicitly flagged unaddressable. It changes *how* you may resolve it, not *whether*. Without it every confirmed finding becomes an append, and the document only ever grows.
 
 **After the agent completes, set `design_modified = true`.**
 
@@ -159,7 +162,10 @@ Output:
 ```
 Design review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Design doc: [before] → [after] lines ([+/-N])
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md
 ```
+
+The line-count delta is one `wc -l` before Step 2 and one after the last fix pass. It enforces nothing, but it makes growth visible on every run — the two length rules already in this config (`DESIGN-TEMPLATE.md`'s "3–5 sentences max" and the architecture agent's "keep documentation concise") are both unmeasured, and both are routinely exceeded. A number you see beats a preference you don't.
 
 Stop. Do not proceed to `/implement` automatically.

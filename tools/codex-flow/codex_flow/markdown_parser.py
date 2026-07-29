@@ -182,7 +182,12 @@ def _extract_ledger_section(lines: list[str]) -> list[str]:
 
 def _read_text(path: Path) -> str:
     if not path.exists():
-        raise ValidationError(f"Request file not found: {path}")
+        # For a relative path the missing piece is always the working directory: codex-flow may
+        # be running somewhere the caller did not choose, and the path can look entirely correct
+        # relative to the repo root. Absolute paths need no such context, so do not add noise.
+        if path.is_absolute():
+            raise ValidationError(f"Request file not found: {path}")
+        raise ValidationError(f"Request file not found: {path} (resolved against {Path.cwd()})")
     return path.read_text(encoding="utf-8")
 
 
