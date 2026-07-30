@@ -270,6 +270,7 @@ findings:
 - Every finding must have at least one location; findings without locations are skipped
 - Line ranges (`123-145`) are supported; only start line is used for inline posting
 - **Always use a specific line number from the diff.** If no exact line is known, omit `location`/`locations` entirely — the tool will fall back to a general MR note. Never use `:1` as a placeholder; GitLab returns HTTP 500 for inline comments on lines not present in the diff.
+- **The `description` names a symbol.** The `location:` line number is exempt from the file+symbol rule because GitLab anchors inline comments to diff lines, but that exemption covers the field only — a finding whose description identifies nothing but a line number is unactionable once the branch moves. See `~/.claude/CLAUDE.md` → Markdown Writing → code references.
 - Use `null` for optional fields with no value (not empty string)
 - Use `|` for multi-line strings (description, fix)
 - Order findings by severity: Critical → High → Medium → Low
@@ -315,9 +316,9 @@ findings:
   - severity: Medium
     title: "Missing unit test for invalidation during in-flight read"
     description: |
-      No test covers invalidation called while a read is pending.
+      No test covers `CacheManager::invalidate()` called while a read is pending.
       The scenario exists in the integration test but not in isolation.
-    location: "tests/cache/test_cache_manager.cc:1"
+    location: "tests/cache/test_cache_manager.cc:142"
     fix: "Add a unit test that calls invalidate() concurrently with a pending read."
     guideline: null
 

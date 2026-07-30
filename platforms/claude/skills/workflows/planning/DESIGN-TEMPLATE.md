@@ -80,7 +80,10 @@ Failure indicators (what to check if verification does not pass):
 **CI integration:** *(how CI triggers on-device verification when no local device is available — e.g., `DEVICE_IP` env var, a runner label/tag, a dedicated CI job name, or a webhook trigger. Omit with a one-line note if CI device testing is not configured for this project.)*
 
 **Context Files:**
-- `path/to/file`
+
+*Bare repo-relative paths only, one per bullet — no symbol, no line number, no backticks required. `codex-flow implement` parses these bullets and loads each file, silently skipping any entry that does not resolve as a path, so `` `path` → `symbol()` `` or a pinned `<hash>:path:line` here yields zero context files with no warning. Name symbols in §5 Detailed Design prose instead, where the citation rule applies normally.*
+
+- path/to/file
 
 **Observed-Failure Ledger:** *(Include when this work fixes a failure that actually happened — a red CI job, an on-device or deployment failure, a runtime crash, a manual-testing defect, a bug report, a flake, or a review finding confirmed to reproduce. Paste the entries from `<issue-folder>/observed-failures.md` inside a `~~~markdown` fence — unfenced, their `## <date>` headings would end this section. `codex-flow implement` runs from this document and never sees the issue folder, so an omitted ledger reads to it as new work and the required regression test is skipped silently. Omit the field entirely when no failure was observed. Placed after Context Files because the On-Device Verification field absorbs everything up to it.)*
 

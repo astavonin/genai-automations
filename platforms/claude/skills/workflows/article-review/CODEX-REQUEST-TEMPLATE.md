@@ -39,8 +39,7 @@ Code and factual accuracy review for article: <article title>.
 **Companion code repo:** <absolute path to companion repo>
 **Article:** planning/book/milestone-XX-<name>/issues/<NNN-name>/draft.md
 
-The article references companion repo source files via `<!-- file: path:L10-L25 -->`
-annotations and makes factual claims about external libraries, APIs, language semantics,
+The article references companion repo source files by GitHub permalink (`blob/<hash>/<path>#LN-LM`), or by the legacy `<!-- file: path:L10-L25 -->` comment in already-published drafts. It also makes factual claims about external libraries, APIs, language semantics,
 hardware/OS/protocol behaviour, and specifications. Verify only the items in Review Focus.
 Do NOT assess prose quality, structure, audience calibration, completeness, or consistency.
 
@@ -63,6 +62,7 @@ Do not use numbered lists or prose — codex-flow requires bullet format.
 - For factual claims: cite the authoritative source (URL, spec section, RFC, version). A finding without a cited source is invalid.
 - Do not flag prose style, structure, audience calibration, completeness, or consistency.
 - Scope 1.1 (annotation present) is a mechanical check handled by Agent 1 — skip it.
+- Cite companion-repo code as `<short-hash>:path:line` using the article-wide commit hash from the draft's metadata block, or as file + symbol. A bare `path:line` is not a durable locator. Reference the article itself by section, never by line. This review runs with `--ignore-user-config --ignore-rules`, so this line is the only channel carrying the rule into it.
 
 ---
 

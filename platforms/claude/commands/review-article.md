@@ -100,8 +100,7 @@ Record both lists. Pass them to Agent 3 verbatim as completeness context. Set th
 ### 3. Enumerate and pre-read files
 
 Extract type names and behaviour identifiers from the spec. Locate corresponding source
-files in the companion repo. Collect files referenced via `<!-- file: path:L10-L25 -->`
-annotations. Deduplicate.
+files in the companion repo. Collect files referenced by either annotation form — a GitHub permalink (`blob/<hash>/<path>#LN-LM`, the required form per `SCOPES.md` Scope 1.1) or the legacy `<!-- file: path:L10-L25 -->` comment. Collecting only the comment form leaves a correctly permalinked article with no pre-read source, and agents must not call Read themselves. Deduplicate.
 
 Pre-read in the main conversation before launching any agents (pass inline; agents must
 not call Read themselves):
@@ -209,10 +208,10 @@ Write `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`:
 
 - **A1** [High | Medium | Low]
   Agents: <Claude agents only — Codex is a finder, not a voter>
-  Location: `<file:line or article section>`
+  Location: `<article section, or companion-repo <short-hash>:path:line using the article-wide commit hash>`
   Votes: <N of 3>
   Evidence: <what was found vs what is expected>
-  Confirmation: `<file:line read to verify>`
+  Confirmation: `<short-hash>:<path>:<line>` — read to verify
 
 ## Facts Accuracy
 
@@ -239,7 +238,7 @@ Write `planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md`:
 *(Populated from `planning/book/todos.md` scan — not from agent consensus.)*
 
 **Type A — Inline placeholders still present:**
-- `TODO[ID]` — *description from todos.md* — placeholder at `<article section / line>` *(High — publication blocker)*
+- `TODO[ID]` — *description from todos.md* — placeholder at `<article section heading>` *(High — publication blocker)*
 
 **Type B — Resolution TODOs this article should close:**
 - `TODO[ID]` — *description* — covered ✓ / not covered ✗ *(Medium if not covered)*

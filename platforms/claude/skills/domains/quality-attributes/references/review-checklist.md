@@ -324,7 +324,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 ## Tips for Effective Reviews
 
 1. **Be Thorough**: Check all quality attributes, not just obvious issues
-2. **Be Specific**: Provide file paths, line numbers, and concrete examples
+2. **Be Specific**: Provide file paths, symbol names, and concrete examples. A line number may accompany a symbol but never replaces it — see `~/.claude/CLAUDE.md` → Markdown Writing → code references. MR review YAML `location:` is exempt (the diff is immutable at review time)
 3. **Be Constructive**: Focus on improvement, not criticism
 4. **Be Practical**: Balance ideal solutions with pragmatic progress
 5. **Be Consistent**: Apply same standards across all reviews
@@ -416,7 +416,7 @@ findings:
 - `severity` - One of: `Critical`, `High`, `Medium`, `Low`
 - `title` - Brief, specific problem statement
 - `description` - Technical explanation (WHY it's an issue)
-- `location` - Single file path with line number(s)
+- `location` - Single file path with line number(s). The `location:` **value** is exempt from the file+symbol rule: GitLab anchors inline comments to diff lines and returns HTTP 500 for lines absent from the diff. The exemption is scoped to this field — the `description` still names a symbol
 - `locations` - Use instead of `location` for multiple files (list)
 - `fix` - Concrete recommendation (optional but recommended)
 - `guideline` - Standards reference (optional, use `null` if none)

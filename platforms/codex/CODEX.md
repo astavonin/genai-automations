@@ -101,6 +101,10 @@ For every code review, run these mandatory failure passes:
 
 For code review findings, lead with defects and risks. If a finding identifies incorrect runtime behavior, include a `Required test:` line describing the triggering input or precondition and the asserted outcome.
 
+Locate every finding by **file and symbol** (`src/pipeline/pipeline.cc` → `process_frame()`), or a quoted distinctive token where no symbol exists. A `file:line` value may accompany the symbol in your own report; it may never be the only locator. A line number is durable only pinned to a pushed commit, as `<short-hash>:path:line`.
+
+A further restriction applies to references *into* a design, analysis, or planning document: cite those by section number and finding ID, never by line, because each fix round rewrites them. One carve-out where a bare line is required: an MR review YAML `location:` value, which the platform anchors to diff lines. Article-review findings are not a carve-out — they cite companion-repo code by the pinned `<short-hash>:path:line` form, using the article-wide commit hash.
+
 ## Implementation Discipline
 
 Before coding, clarify requirements, constraints, performance expectations, and the relevant project patterns. Start from a small design or implementation outline, then make focused edits and verify each meaningful step.

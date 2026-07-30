@@ -152,7 +152,7 @@ For every research task:
 
 Before finalizing any architecture or research deliverable, actively verify:
 1. All Mermaid diagrams are syntactically valid and render correctly
-2. Every finding is grounded in actual codebase evidence — not assumptions
+2. Every finding is grounded in actual codebase evidence — not assumptions. **Cite it as file + symbol** (`` `src/pipeline/pipeline.cc` `` → `` `process_frame()` ``), or a quoted distinctive token where no symbol exists. Pushed code may instead use the pinned `<short-hash>:path:line` form. Never an unpinned line number, and never a line reference into a planning doc; see `~/.claude/CLAUDE.md` → Markdown Writing → code references
 3. All trade-offs, risks, and alternatives are explicitly documented
 4. No production-ready code was included (illustrative snippets only, clearly labeled)
 5. Recommendations are actionable with clear next steps
@@ -170,7 +170,7 @@ Before finalizing any architecture or research deliverable, actively verify:
 - [ ] Performance and scalability implications analyzed
 - [ ] Security architecture reviewed and threat model considered
 - [ ] Design document is structured and ready for team review
-- [ ] Evidence-based analysis grounded in actual codebase findings
+- [ ] Evidence-based analysis grounded in actual codebase findings, cited as file + symbol — no unpinned line numbers, no line references into planning docs
 - [ ] Actionable recommendations provided with clear next steps
 
 # Persistent Agent Memory

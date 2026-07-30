@@ -105,6 +105,7 @@ Pass to the agent:
   - "On-device scope detected but device procedures are unknown — include an On-Device Verification stub block in Section 3 with every field (entry point, build test package, deploy, verify, expected outcome, failure indicators) explicitly marked TBD; add an open question in Section 8 requiring resolution before implementation"
   - "No on-device scope — omit On-Device Verification with a one-line note"
 - For post-review fixes: the review report and the enumerated findings to address
+- The citation form stated under `## Output` below — file + symbol for code being designed, bare repo-relative paths in `**Context Files:**`, and no line reference into any planning doc
 
 The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 8 sections required; sections 7–8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note containing `on-device scope: NO`.
 
@@ -149,9 +150,12 @@ Increment the pass counter (starts at 0).
 - Trade-offs and alternatives
 - Open questions
 
+**Citation form:** every code reference is **file + symbol**, or a quoted distinctive token where no symbol exists. Code *being designed* has no commit yet, so it can only be named by file and symbol. Pre-existing code the design points at in §5 prose is usually already pushed and may use the pinned `<short-hash>:path:line` form. `**Context Files:**` is the exception: those bullets are machine-consumed and take bare repo-relative paths only — a symbol or a pinned locator there yields zero context files with no warning. See `DESIGN-TEMPLATE.md`. Never reference `analysis.md` or any other planning doc by line; use `§N.M` and finding IDs. State this in the agent prompt at Step 4.
+
 **After writing (only after Step 5 gate passes — all open questions resolved):**
-1. Print a short summary in the conversation — 3–6 bullet points covering: chosen approach, key architectural decisions with rationale, significant trade-offs accepted. This is conversational output only; do not write it to any file.
-2. Ask the user if they want to `open <path>` the design file.
+1. **Run `/verify-docs` unconditionally.** Step 5 runs it only on the branch where open questions were found, so a design that is clean on the first pass would otherwise never be checked — and this command is the one that instructs the agent on citation form, so it must also be the one that verifies it. Fix any blockers, then re-run. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface them and pause for the user.
+2. Print a short summary in the conversation — 3–6 bullet points covering: chosen approach, key architectural decisions with rationale, significant trade-offs accepted. This is conversational output only; do not write it to any file.
+3. Ask the user if they want to `open <path>` the design file.
 
 **Planning checkpoint** (`new_phase = design 📝`, `progress_line = - design complete — design.md written, awaiting review`, `escalation = standard`; if the issue is not yet in the Active section, add a minimal entry first):
 ```

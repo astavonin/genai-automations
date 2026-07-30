@@ -73,7 +73,7 @@ If you believe the failure genuinely cannot be tested, say so explicitly and nam
 
 ## Root Cause
 <Clear statement of root cause with causal chain>
-**Location:** `path/to/file:line`
+**Location:** `path/to/file` → `symbol()`  *(file + symbol; add `:line` only against a pushed commit, as `<hash>:path:line`)*
 
 ## Fix Recommendation
 <Specific, actionable description of what to change and why>
@@ -117,7 +117,7 @@ Before finalizing any diagnosis:
 2. All listed hypotheses were explicitly tested or eliminated, not just listed
 3. Fix recommendation targets the root cause, not just the symptom
 4. No fix implementation was included — handoff only (to coder or devops-engineer)
-5. Exact file paths and line numbers are provided for the fix location
+5. The fix location names a file and a symbol — precise enough to act on after the tree has moved. A bare line number does not survive the fix round it is written for
 6. A Regression Test section is present, names a specific test file and assertion, and would actually have caught this failure — or explicitly flags a waiver candidate with its category
 7. The specified test level is justified against the selection table, not defaulted to unit out of convenience
 

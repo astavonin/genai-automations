@@ -269,8 +269,8 @@ The launching context MUST supply these, and every path MUST be **absolute** —
 
 | Review type | `Location` means | Paths to supply | Read budget |
 |---|---|---|---|
-| code, fix, MR | `file:line` in the diff | `Repository:` | the Location file, plus ≤3 files the description names |
-| design | a section of the design doc | `Design doc:`, `Analysis doc:` (or `none`), `Repository:` | the design doc in full, the analysis doc, plus project docs the design cites and existence checks under Repository |
+| code, fix, MR | file + symbol in the diff; `:line` may follow, but the symbol is what the verifier resolves | `Repository:` | the Location file, plus ≤3 files the description names |
+| design | a section of the design doc, cited as `§N.M` — never a line number, since each fix round rewrites the doc | `Design doc:`, `Analysis doc:` (or `none`), `Repository:` | the design doc in full, the analysis doc, plus project docs the design cites and existence checks under Repository |
 
 **Obtaining the paths.** Reuse the `Repository:` value from the Step 0 review-request document; otherwise run `pwd` in the main conversation's shell. For design reviews, resolve `design.md` and its sibling `analysis.md` to absolute paths, and pass `analysis.md` whenever the file exists — it carries `## Ticket Constraints` and `## Clarifications`, which are refutation evidence the verifier cannot reach otherwise.
 
@@ -287,7 +287,7 @@ Finding:
   Title: [title]
   Severity: [severity]
   Description: [description]
-  Location: [file:line, or design-doc section]
+  Location: [file + symbol, or design-doc §N.M]
   Repository: [absolute path to repo root]
   [design only] Design doc: [absolute path]   Analysis doc: [absolute path, or "none"]
 
@@ -350,7 +350,7 @@ Evaluate the outcome using the ordered rules below. Rules 1 and 2 gate the Unpar
 4. **Any `Unparseable` remains after retry** → **Discard** and emit warning:
    ```
    ⚠️ Step G verifier failed twice for finding: <title>
-       Location: <file:line, or design-doc section>
+       Location: <file + symbol, or design-doc §N.M>
        Action: discarded (unable to reverify).
    ```
 5. **Both `VERDICT: CONFIRMED`** → **Include** as ✓ Reverified.

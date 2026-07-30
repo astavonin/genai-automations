@@ -218,7 +218,7 @@ Output path: planning/book/milestone-XX-<name>/issues/<NNN-name>/draft.md
 
 A Markdown draft document at `planning/drafts/<topic-slug>.md` (or user-specified path) containing:
 - Overview and background
-- Key concepts with code snippets (file path + line numbers)
+- Key concepts with code snippets, each anchored to its source (pinned `<short-hash>:path:line` for pushed code, file + symbol otherwise)
 - Mermaid diagrams derived from actual code
 - Design decisions and trade-offs
 - Open questions flagged with `<!-- TODO: ... -->` (author-managed, no ID; distinct from tracked `<!-- TODO[ID] -->` markers used in book articles)

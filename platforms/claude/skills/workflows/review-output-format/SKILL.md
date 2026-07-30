@@ -82,7 +82,7 @@ A candidate qualifies when ALL are true: domain-neutral, self-contained, stable 
 
 ```
 **Candidate:** <function or class name>
-**Location:** <file path and line range>
+**Location:** <file → symbol; a line range only pinned as `<short-hash>:path:line`>
 **Rationale:** <one sentence — what generic problem it solves>
 **Reuse signal:** <list the subprojects or contexts that would benefit>
 **Suggested home:** <proposed module/package path in the common library>

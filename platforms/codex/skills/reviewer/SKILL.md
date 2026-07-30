@@ -54,7 +54,7 @@ Use:
 
 - Findings first.
 - Separate confirmed issues from open questions.
-- Cite the affected file and section or line for every confirmed finding.
+- Cite the affected file and symbol, or the document section, for every confirmed finding. A line number may accompany a symbol but never stands alone, and never points into a design, analysis, or review document — each fix round rewrites those and the number stops resolving.
 - For command/workflow docs, check that each required field appears in the request contract, validation rules, and examples/templates.
 - For hard invariants, check that enforcement is named explicitly.
 - Prefer specific recommendations over generic criticism.

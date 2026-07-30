@@ -40,6 +40,8 @@ Investigate existing codebase patterns and architecture using the architecture-r
 - Integration points
 - Dependency analysis
 
+**Citation form:** every code reference is **file + symbol** (`` `src/pipeline/pipeline.cc` `` → `` `process_frame()` ``), or a quoted distinctive token where no symbol exists. A line number is valid only pinned to a pushed commit, as `<short-hash>:path:line`. `analysis.md` is written once and never revisited, so an unpinned line number in it rots for the life of the issue without anyone noticing.
+
 **After writing:** Ask the user if they want to `open <path>` the analysis file.
 
 ## Ticket Constraint Validation

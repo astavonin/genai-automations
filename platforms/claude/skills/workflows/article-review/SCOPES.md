@@ -38,13 +38,13 @@ Every criterion is confirmed by direct inspection of the companion repo.
 
 3. **Numbers match implementation** — every numeric constant, threshold, or measured value
    cited in prose matches the companion repo.
-   Confirm: grep for the value in the companion repo; cite `file:line`.
+   Confirm: grep for the value in the companion repo; cite `<short-hash>:path:line` using the article-wide commit hash.
    Severity: **High**.
 
 4. **Diagrams accurate** — diagrams must not contradict the companion repo or the spec.
    Accuracy requirement depends on diagram abstraction level:
    - *Code-level diagrams* (show structs, call flows, memory layout, or execution paths
-     with code-level constructs): confirm by tracing the code path; cite `file:line`;
+     with code-level constructs): confirm by tracing the code path; cite `<short-hash>:path:line`;
      describe the actual structure and where the diagram diverges. Severity: **High** if
      contradicts code; **Low** if omits detail.
    - *Higher-level diagrams* (system architecture, conceptual model, protocol overview at
@@ -63,7 +63,7 @@ RFC number). Findings without a cited source are invalid.
 1. **External library API claims** — description of a library's API, return values, error
    conditions, or semantics.
    Confirm: check the library's official documentation or source code.
-   Cite: URL or `file:line` in the library source; note the library version.
+   Cite: URL, or a pinned `<short-hash>:path:line` in the library source; note the library version.
    Severity: **High**.
 
 2. **Language semantics claims** — claims about language behaviour: ownership, memory
@@ -229,9 +229,9 @@ review-request document. codex-flow requires `- ` bullet format; do not use numb
 lists or free text in that section.
 
 - **Snippet accurate (1.2):** snippet content matches the exact lines at the cited `path:L10-L25` in the companion repo; compare character by character and quote any divergence. Severity: High.
-- **Numbers match implementation (1.3):** every numeric constant, threshold, or measured value cited in prose matches the companion repo; grep for the value and cite file:line. Severity: High.
-- **Diagrams accurate (1.4):** code-level diagrams must match actual runtime structure/flow (trace code path, cite file:line); higher-level diagrams must not contradict any fact in the companion repo or spec. Severity: High if factually wrong, Low if merely simplified.
-- **External library API claims (2.1):** check the library's official documentation or source code; cite URL or file:line plus library version. Severity: High.
+- **Numbers match implementation (1.3):** every numeric constant, threshold, or measured value cited in prose matches the companion repo; grep for the value and cite `<short-hash>:path:line`. Severity: High.
+- **Diagrams accurate (1.4):** code-level diagrams must match actual runtime structure/flow (trace code path, cite `<short-hash>:path:line`); higher-level diagrams must not contradict any fact in the companion repo or spec. Severity: High if factually wrong, Low if merely simplified.
+- **External library API claims (2.1):** check the library's official documentation or source code; cite URL or a pinned `<short-hash>:path:line`, plus library version. Severity: High.
 - **Language semantics claims (2.2):** check the language specification or authoritative reference (Rust Reference, C++ Standard, Go spec, POSIX, etc.); cite document name and section number. Severity: High.
 - **Hardware and OS interface claims (2.3):** check the datasheet, kernel documentation (kernel.org/doc, man pages), or POSIX spec; cite document name, section, or URL. Severity: High.
 - **Protocol and wire format claims (2.4):** check the RFC or protocol specification; cite RFC number and section. Severity: High.

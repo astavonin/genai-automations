@@ -61,7 +61,7 @@ Invoke **writer (opus)** with:
 - The full `spec.md` content (for accuracy and completeness context)
 - Companion repo source files that were pre-read during the review (pass inline; the writer must not call Read itself)
 - The full list of findings selected above
-- Instruction: apply all fixes to `draft.md` in one pass; preserve all `<!-- file: path:L10-L25 -->` annotations and `<!-- TODO[ID] -->` markers — do not remove or reformat them; fix prose, code accuracy, completeness, and consistency issues as stated in each finding; do not add new `<!-- TODO[ID] -->` markers unless a finding explicitly requires it; flag explicitly any finding that cannot be addressed; do not make changes beyond the scope of the listed findings
+- Instruction: apply all fixes to `draft.md` in one pass; preserve all source annotations in either form — GitHub permalinks and legacy `<!-- file: path:L10-L25 -->` comments — and all `<!-- TODO[ID] -->` markers — do not remove or reformat them; fix prose, code accuracy, completeness, and consistency issues as stated in each finding; do not add new `<!-- TODO[ID] -->` markers unless a finding explicitly requires it; flag explicitly any finding that cannot be addressed; do not make changes beyond the scope of the listed findings
 
 **If the writer flags any finding as unaddressable:** delete the snapshot, run the review-planning-update fragment (which includes push):
 ```bash
@@ -98,7 +98,7 @@ Compare the dropped IDs against the finding list; for any ID drop that was NOT e
 awk '
   /^```/{
     if (in_block) { in_block=0; prev_nonblank="" }
-    else { if (prev_nonblank !~ /<!--.*file:/) print NR": code block missing annotation"; in_block=1 }
+    else { if (prev_nonblank !~ /<!--.*file:/ && prev_nonblank !~ /\/blob\/[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]+\//) print NR": code block missing annotation"; in_block=1 }
     next
   }
   /^[[:space:]]*$/ { next }
@@ -106,7 +106,9 @@ awk '
 ' /path/to/draft.md
 ```
 
-If any line is printed, add to the combined writer prompt: "The following code blocks are missing their `<!-- file: path:L10-L25 -->` annotation — add the annotation on the line immediately before each fence: [paste awk output]".
+The predicate accepts either annotation form — the `<!-- file: ... -->` HTML comment, and the GitHub permalink of `SCOPES.md` → Scope 1.1 form (a), detected by `/blob/<hash>/` with at least seven hex characters, so a branch permalink such as `/blob/dev/` is not mistaken for a pinned one. Seven explicit character classes rather than `{7,}` because mawk ignores interval quantifiers. Recognising only the comment form would report every block of a correctly permalinked article as unannotated, and then ask the writer to add the unpinned form on top.
+
+If any line is printed, add to the combined writer prompt: "The following code blocks are missing their source annotation — add a GitHub permalink (`SCOPES.md` Scope 1.1 form (a), using the article-wide commit hash) on the line immediately before each fence: [paste awk output]".
 
 After each writer re-invocation, re-run both checks. If either check still fails and the shared budget is exhausted, surface a blocker including the last diagnostic output:
 

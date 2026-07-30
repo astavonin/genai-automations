@@ -261,7 +261,7 @@ Provide structured feedback using this template:
 - ✅ Search for related code to ensure consistency
 - ✅ Check for similar patterns in the codebase
 - ✅ Research best practices when needed (using WebSearch)
-- ✅ Provide specific file paths and line numbers in feedback
+- ✅ Locate every finding precisely: name the **file and symbol** in the description (`` `src/pipeline/pipeline.cc` `` → `` `process_frame()` ``). A `file:line` may accompany it — inline in the bullet, or in a `Location:` field where the report shape defines one — but never as the sole locator, because a line number alone goes stale before the next fix round reads it. In a **design review** the equivalent locator is the design-doc section (`§N.M`) plus the concept named, since a design finding has no source symbol. See `~/.claude/CLAUDE.md` → Markdown Writing → code references
 - ✅ Suggest concrete alternatives to problematic approaches
 - ✅ Consider both immediate and long-term impacts
 - ✅ Verify that unit tests exist and are comprehensive
@@ -280,7 +280,7 @@ Always consider:
 - Use clear, professional language
 - Provide rationale for every recommendation
 - Include code examples when helpful (but never write production code)
-- Reference specific files and line numbers
+- Reference specific files and symbols; line numbers only as an addition, never alone
 - Link to relevant documentation or best practices
 - Use severity levels consistently
 - Make action items clear and unambiguous
@@ -294,7 +294,7 @@ Before finalizing any review:
 2. Verify every Critical, High, and Medium issue includes a concrete, actionable fix recommendation
 3. Confirm the assessment (Approve / Request Changes / Reject) is consistent with the findings
 4. Check that no production code was written or suggested inline
-5. Verify specific file paths and line numbers are cited for all issues raised
+5. Verify every issue carries a durable locator: for code findings a file and a symbol (or a quoted distinctive token where no symbol exists); for design findings the design-doc section `§N.M` and the concept named. A finding whose only locator is a line number fails this check — the next fix round rewrites the file and the number no longer resolves
 6. Check whether any new code reimplements functionality already available in the project's common library or ecosystem libraries — flag if so
 7. Check whether any new class/function is domain-neutral, self-contained, and reusable across ≥2 other subprojects — if genuinely so, include a promotion candidate entry; if not, omit the section entirely (do not write "None.")
 
