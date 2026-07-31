@@ -1,3 +1,33 @@
+## Writing Rules
+
+**This section is guidance for the writer. Do not copy it into the design doc** — a `## Writing Rules` heading in a `design.md` is a `/verify-docs` blocker, in the same class as a stray `RESOLVED` marker.
+
+**One statement per fact.** A fact belongs in exactly one place. When you find an argument stated twice, delete the copy — do not relocate it. Relocating inflates: measured on a real compaction pass, moving five arguments out of Detailed Design cost 1,215 words there and added 1,031 to Trade-offs, because the Pros/Cons form is more verbose than the inline sentence it replaced. Never expand an inline paragraph into a Pros/Cons block while moving it.
+
+**Dedup direction: keep the statement at the point of decision, delete the restatement.** Deleting the decision-point copy and keeping the summary strips the fact from where a reader needs it — on one pass a build-cache limit and a CI credential variable survived only in Trade-offs, gone from the two Detailed Design subsections that depended on them.
+
+**No self-history.** A design doc describes the design, not its own editing. Cut "previously", "this was changed to", "as noted above", revision narration, and reviewer-round references. One exception: a note explaining a load-bearing numbering gap stays (e.g. "the requirement numbering is non-contiguous — no requirement carries FR-9 or FR-10"), because without it a reader reads the gap as a missing requirement.
+
+**No defensive register.** The rule and its detector list live in `~/.claude/agents/architecture-research-planner.md` → Prose Register. A non-zero register count blocks in `/verify-docs`; the detector list is non-exhaustive, so zero is necessary, not sufficient.
+
+**Length: a target and a ceiling per section.** Run the tool — it prints both, plus your delta and a verdict per row:
+
+```bash
+bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+```
+
+- `ok` — at or under the section's target.
+- `over-target` — past the target. Advisory. Discharge it with one line of justification naming what the extra words buy.
+- `OVER-CEILING` — past the ceiling the tool prints on that row, or past the whole-document ceiling on the `TOTAL` row. **This blocks in `/verify-docs`.** Ceilings exist only for Detailed Design, Test Requirements, and the document total; other sections show `-` and can only read `over-target`.
+
+The tool owns every number, so nothing here can drift from it. Each target is that section's median and each ceiling its p75, measured across the design documents on this machine after canonicalising headings by content — so a document using the older 7-section numbering is scored against the same slots. Sample sizes differ per section and are smallest for Test Requirements; roughly half the existing corpus already meets each target, and about a quarter is over a ceiling.
+
+Prose words means words outside fenced blocks and headings, plus table cell text at half weight. `wc -l` is meaningless here: the repo bans manual line wrapping, so one paragraph is one line and a 400-word addition to an existing paragraph shows a delta of zero. Table cells count at half because tabulating genuinely compresses — but excluding them outright let a section go from 5,021 words to zero by wrapping each line in pipes, with no word removed.
+
+Sections whose content is itself the completeness argument are never compressed: derivation and closure tables with evidence, audit assertion lists, contract tables, named implementation invariants, Trade-offs Pros/Cons blocks, Mermaid diagrams, and template-mandated command blocks. Most are fenced blocks, which do not count at all, or table rows, which count at half. Use a table because the content is tabular, not to move prose out of measurement.
+
+---
+
 # Design — <Feature Name>
 
 **Goal:** `<goal-folder-name>`

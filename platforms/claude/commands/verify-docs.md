@@ -51,6 +51,16 @@ Read each file. Focus on:
 - `docs/` — architecture / user-facing docs
 - `planning/**/issues/*/` — design documents and review reports (check status marker consistency)
 
+**Both scans in Step 2 take paths, so pass the `docs/` files explicitly** — `citation-scan.sh` takes a folder and `doc-metrics.sh` takes files, and neither receives this list unless you hand it over. A `docs/` file edited by a code-review fix otherwise reaches the gate and is read by a human but measured by nothing:
+
+```bash
+# For each tracked .md outside planning/ from the list above:
+bash ~/.claude/scripts/doc-metrics.sh docs/architecture.md   # read the REGISTER line only
+bash ~/.claude/scripts/citation-scan.sh docs                 # a folder, not a file
+```
+
+Their word counts have no targets — only a `design.md` does — so the register count and the citation form are what apply here.
+
 ### Step 2 — Run consistency sweep
 
 Use **architecture-research-planner agent** to read all modified files together and check:
@@ -58,6 +68,7 @@ Use **architecture-research-planner agent** to read all modified files together 
 **Stale placeholder scan:**
 - Remaining `TBD`, `TODO`, `exact path TBD`, `TBD in #NNN` that the Q&A session was supposed to resolve
 - `OPEN` status on Q&A / open-items table rows that were resolved in prose but not updated in their table cell
+- **A `## Writing Rules` heading in a `design.md`** — that section is guidance in `DESIGN-TEMPLATE.md` and was copied into the output instead of applied. Always a blocker; strip it.
 - **Review-process tracking artifacts** — inline `RESOLVED` markers (`**H1 RESOLVED — ...**`, `**L2 RESOLVED**`, `(M3 RESOLVED)`, `— M4 RESOLVED.`, `H6 RESOLVED block`, etc.) anywhere in design or user-facing docs. These are always blockers: resolution is tracked in the review report and review-request doc, not in design content. The architecture-research-planner must strip them when applying fixes.
 
 **Citation form scan.** The scan lists **candidates**; you decide. It resolves the two exemptions it can see mechanically (fenced blocks, hash-pinned permalinks) and cannot see the rest, so every hit is triaged against the full exemption list in `~/.claude/CLAUDE.md` → Markdown Writing → code references before it becomes a blocker.
@@ -77,6 +88,35 @@ bash ~/.claude/scripts/citation-scan.sh "<issue-folder>"
 **Triage each hit by hand — the scan cannot see these:** a hit is **not** a defect when the citation names a symbol and the line number merely accompanies it, nor when it is an annotation form permitted by `BRIEF-TEMPLATE.md` §7. A hit **is** a defect when the line number stands alone as the only locator. Article-review findings are not exempt: they cite companion-repo code by the pinned form, so an unpinned companion-repo line in `article-review.md` is a blocker.
 
 Two known limits, so a clean result is not over-read. A word of seven-to-forty hex characters (`defaced:src/x.cc:88`) reads as a hash and passes — the scan never contacts git, so pushed-ness is unverified. And `.md` targets outside `planning/` (a real source file named `README.md:12`) report as planning-doc refs.
+
+**Prose metrics scan.** Resolve the planning-doc paths from `<issue-folder>` directly — never from a caller-supplied modified-file list, because `git diff` never lists a planning doc and a scan that inherits Step 1's git list scans nothing and reports `Clean`. Files under `docs/` are the exception: they are tracked, so they come from Step 1's git list and are passed explicitly (see the end of Step 1).
+
+Two invocations, because the two counters have different scopes:
+
+```bash
+# Words, ceiling AND register. Only design.md is gated on length.
+# `if` rather than `&&`: a bare && makes the whole line exit 1 when the file is absent,
+# which the exit contract below then reads as a blocker. An issue folder legitimately has
+# no design.md before Phase 2.
+if [ -f "<issue-folder>/design.md" ]; then
+    bash ~/.claude/scripts/doc-metrics.sh "<issue-folder>/design.md"
+fi
+
+# Register only. Named explicitly rather than globbed: a glob re-measures design.md and
+# pulls in review reports, whose finding IDs and reviewer prose are not the fix agent's to
+# rewrite. Skip any that is absent.
+bash ~/.claude/scripts/doc-metrics.sh "<issue-folder>/analysis.md"
+```
+
+**Exit contract, identical to the citation scan.** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result: a missing file, an unsubstituted placeholder, NUL bytes, a missing or failing `awk`, an `awk` that produced no table, or an unclosed fence. That last one matters most — everything after an unclosed fence is invisible to the count, so a zero register total there would be a lie. Exit `127` means `sync-configs.sh install` has not run. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
+
+Read three things from the output. The first two are mechanical; only the third needs judgement:
+
+- **`REGISTER: N hit(s)` must be 0 — blocks.** The tool names the section, the token, and a word window for each. The detector list is non-exhaustive, so zero clears the gate without proving the rule is met (see `~/.claude/agents/architecture-research-planner.md` → Prose Register). Two forms are exempt in the tool and will not appear: a fenced block, and a token wrapped in backticks or quotes, which is a mention rather than a use. Table cells and blockquotes are **not** exempt — a defensive sentence in a table cell is still defensive.
+- **`CEILING: N slot(s) over ceiling` must be 0 — blocks, but only for the `design.md` run.** Ceilings exist for Detailed Design, Test Requirements, and the whole document; every other section reports a target and an advisory verdict with a `-` ceiling. A p75 ceiling on all eight sections blocked 23 of 39 existing documents, over half of them on a small section carrying no bloat. `over-target` is **not** a blocker: it means past the median, and is discharged by one line of justification naming what the extra words buy. Report the two or three largest overshoots, not every row. The tool prints the numbers; do not restate them here or anywhere else.
+- **Cross-section duplication spot-check — warning.** Take the two highest-word sections and look for a fact stated in both. This is the weakest check here: it needs whole-document awareness that does not survive a fix round, so treat a clean result as unproven rather than as evidence there is no duplication. When you do find a duplicate, the fix is to delete the restatement and keep the statement at its point of decision — never to relocate it.
+
+The tool owns the target and ceiling numbers and prints them per row, so there is no table to cross-check against and nothing to keep in step.
 
 **Terminology consistency:**
 - Component names used consistently across all files (e.g., "Update Manager" vs bare "Manager" in a context where a "Build Manager" also exists — flag ambiguous unqualified uses)
@@ -116,7 +156,18 @@ Produce a compact report in the main conversation (not a file unless the user as
 - [file] — no issues
 ```
 
-Blockers are items that would cause the next reviewer to raise a finding (stale TBD, unresolved OPEN row, diagram contradicts prose). Warnings are cosmetic or low-risk drift.
+**Blockers are exactly this list** — do not derive the set from "what a reviewer would flag". The register and ceiling gates are deliberately kept out of reviewer prompts (review pressure drives growth), so no reviewer will ever raise them and a reviewer-anticipation test silently classifies them as non-blocking:
+
+1. A non-zero exit from `citation-scan.sh` or `doc-metrics.sh` — the run is not a measurement.
+2. `REGISTER:` greater than 0, on `design.md` or `analysis.md`.
+3. `CEILING:` greater than 0 **on the `design.md` run only** — no other file is gated on length.
+4. In a design or user-facing doc: a `## Writing Rules` heading, or a `Writing Rules` row in the `doc-metrics.sh` table (the mechanical signal — it survives the heading being renamed), or an inline `RESOLVED` marker or finding ID. Review reports carry finding IDs by construction and are out of scope for this item.
+5. A stale `TBD`/`TODO` the Q&A session was meant to resolve, or an `OPEN` row resolved in prose but not in its table cell.
+6. A citation-scan hit that survives triage against the exemption list.
+7. A broken `§N.M` cross-reference, a diagram contradicting prose, or a resolution summary in the review-request doc that contradicts the current doc content.
+8. A `design.md` whose table shows no `5. Detailed Design` row — the section was renamed past recognition, so its ceiling never applied.
+
+Warnings: `over-target` rows, terminology drift, cosmetic inconsistency, review-report status-marker drift, and the duplication spot-check.
 
 ### Step 4 — Fix blockers
 

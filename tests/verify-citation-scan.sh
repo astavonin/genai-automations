@@ -36,7 +36,6 @@ assert_class() {
     if printf '%s' "$out" | $GREP -q 'unpinned source'; then got=unpinned
     elif printf '%s' "$out" | $GREP -q 'planning-doc ref'; then got=planning
     elif printf '%s' "$out" | $GREP -q 'accompanied ok'; then got=accompanied
-    elif printf '%s' "$out" | $GREP -q 'WARNING unclosed'; then got=unclosed
     else got=none; fi
     # Reject stray classes too: first-match classification alone would pass a fixture
     # that also emitted an unexpected hit.
@@ -121,8 +120,15 @@ assert_class "content after a closed fence is scanned" \
     'x\n```\ny\n```\nsee `src/after.cc:5`'                                             unpinned
 assert_class "nested fence inside a ledger block stays exempt" \
     'x\n~~~markdown\n## 2026-07-30 boom\n```\nsrc/nested.cc:2\n```\n~~~'               none
-assert_class "unclosed fence warns instead of reporting clean" \
-    'x\n```\nsrc/runaway.cc:99'                                                        unclosed
+# An unclosed fence hides every line after it, so a clean result would be a lie. This
+# BLOCKs rather than warning: a warning on stdout with no BLOCKER token was invisible to
+# every caller convention in this config, and doc-metrics.sh treats the same case as fatal.
+unc="$TMPDIR_ROOT/unclosed"; mkdir -p "$unc"
+printf 'x\n```\nsrc/runaway.cc:99\n' > "$unc/design.md"
+out=$(bash "$SCRIPT" "$unc" 2>&1); rc=$?
+[ $rc -eq 1 ] && printf '%s' "$out" | $GREP -q 'BLOCKER: unclosed' \
+    && pass "unclosed fence BLOCKs rather than reporting clean" \
+    || fail "unclosed fence BLOCKs rather than reporting clean" "rc=$rc out=$out"
 
 # --- file-shape edge cases ---------------------------------------------------
 crlf="$TMPDIR_ROOT/crlf"; mkdir -p "$crlf"

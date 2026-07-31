@@ -16,8 +16,8 @@
 #   0  scan ran — hits may or may not be present; read the output
 #   1  BLOCKER — bad input (unresolved path, placeholder, no .md files)
 #
-# Exit status deliberately does NOT signal "hits found", so callers must read the
-# output rather than wiring && to it. A hit is frequently a permitted accompaniment.
+# Exit status does NOT signal "hits found", so callers must read the output rather than
+# wiring && to it. A hit is frequently a permitted accompaniment.
 #
 # Tests: tests/verify-citation-scan.sh in the genai-automations repo (not installed alongside
 #        this script; run it there after editing).
@@ -107,8 +107,13 @@ HITS=$(printf '%s\n' "$FOUND" | while IFS= read -r f; do
       }
 
       END {
-        # An unclosed fence hides every following line. Say so rather than reporting clean.
-        if (fence) print F ": WARNING unclosed " delim " fence — lines after it were not scanned"
+        # An unclosed fence hides every following line, so a clean result would be a lie.
+        # BLOCKs rather than warning, matching doc-metrics.sh: a warning on stdout with no
+        # BLOCKER token was invisible to every caller convention in this config.
+        if (fence) {
+          printf "BLOCKER: unclosed %s fence in %s — lines after it were not scanned.\n", delim, F > "/dev/stderr"
+          exit 1
+        }
       }
 
       function emit(tok,   target, pinned, pfx) {

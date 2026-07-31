@@ -66,6 +66,13 @@ Invoke **coder agent** with:
 
 **If the coder agent flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 
+**If the fix pass touched any file under `planning/` or `docs/`, run `/verify-docs`, passing the `<issue-folder>` resolved in Step 0.** Code-review fixes reach design docs and READMEs — a changed contract updates `design.md`, a ledger entry lands in `observed-failures.md` — and nothing else in this loop checks citation form or cross-reference integrity there. Skip this when the pass touched only code and tests.
+
+Passing the folder is not optional: `/verify-docs` cannot discover planning docs without it (`git diff` never lists them, since the global gitignore keeps `planning/` untracked), and both of its scans — citation form and prose metrics — resolve it directly. Invoked without it they check nothing and the command reports `Clean`.
+
+- If blockers are reported: invoke architecture-research-planner scoped to those blockers only (design docs and `docs/` are never edited with Write/Edit directly), then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles. If blockers persist, surface a blocker: "Doc consistency blockers remain after 2 fix cycles — manual intervention needed." Pause and wait for user.
+- If warnings only: continue to the build check below.
+
 **After the coder agent completes, verify the build.** Read the project's build command from its `CLAUDE.md`, `README.md`, or `dev.sh`, then run it.
 
 - If the build passes: proceed to Step 3.

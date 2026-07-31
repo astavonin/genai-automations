@@ -75,6 +75,16 @@ Invoke **architecture-research-planner agent** with:
 
   This is not licence to skip a finding: every selected finding must still be resolved or explicitly flagged unaddressable. It changes *how* you may resolve it, not *whether*. Without it every confirmed finding becomes an append, and the document only ever grows.
 
+- **Instruction — this command does not grow the document by default.** The unit is one invocation of the fix loop, not one Step 2 pass and not one finding: Step 3 re-enters Step 2 on every CHANGES REQUESTED, and a per-pass budget would forbid a legitimate addition in the third pass even when the first two removed more than it adds. Take one measurement before the first Step 2 and one after the last, and target a total no higher than the one you started from:
+
+  ```bash
+  bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+  ```
+
+  The exception is a genuine gap: a finding reporting missing information is resolved by adding it, and that pass legitimately grows. Name the finding IDs that justified the growth in your response. What this rule blocks is the other case — resolving an ambiguity or a contradiction by appending a clarification, where the words are added and the defect stays. If the total grew and no finding reported a gap, find the append and replace it with a rewrite before you finish.
+
+  **Also report any deletion not attributable to a finding.** A flat total plus a required addition means something else was cut, and this instruction is what creates the pressure to cut it. List what you removed and which finding asked for it; if nothing asked, say so. Deleting load-bearing prose to fund an addition is the failure mode this rule introduces, and no other check in the loop can see it — the re-review checks the findings, `/verify-docs` checks form and length, and neither knows what the document used to say.
+
 **After the agent completes, set `design_modified = true`.**
 
 **If the architecture-research-planner flags any finding as unaddressable:** run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md` (the agent just completed, so the doc may have been partially modified — bump unconditionally). Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Surface the finding and output:
@@ -85,7 +95,7 @@ Re-invoke /review-design-fix-loop after resolving the unaddressable finding via 
 ```
 Do not proceed to Step 3.
 
-**Run `/verify-docs`** on the modified design doc:
+**Run `/verify-docs`** on the modified design doc, passing the `<issue-folder>` that holds it (resolve it per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). Without the folder, `/verify-docs` has nothing to enumerate — `git diff` never lists a planning doc — so both its scans run over an empty file list and it reports `Clean`, taking the citation gate and the register gate with it.
 - If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles (2 is sufficient; more signals a structural issue requiring design changes, not iterative fixes). If blockers clear within 2 cycles, proceed to Step 3. If blockers persist after 2 cycles, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Surface the blocker and output:
 ```
 Design review loop paused — consistency blockers after 2 fix cycles
@@ -162,10 +172,17 @@ Output:
 ```
 Design review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
-Design doc: [before] → [after] lines ([+/-N])
+Design doc: [before] → [after] prose words ([+/-N]), register [before] → [after]
+Design doc: not modified   (print this line instead when Step 1 returned APPROVED)
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md
 ```
 
-The line-count delta is one `wc -l` before Step 2 and one after the last fix pass. It enforces nothing, but it makes growth visible on every run — the two length rules already in this config (`DESIGN-TEMPLATE.md`'s "3–5 sentences max" and the architecture agent's "keep documentation concise") are both unmeasured, and both are routinely exceeded. A number you see beats a preference you don't.
+Both numbers come from the `TOTAL` row of one run before Step 2 and one after the last fix pass:
+
+```bash
+bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+```
+
+The delta enforces nothing here — Step 2 carries the net-non-growth instruction and `/verify-docs` carries the register gate — but it makes growth visible on every run. `wc -l` cannot: the repo bans manual line wrapping, so one paragraph is one line and a fix pass that adds 400 words to an existing paragraph shows a delta of 0. An earlier attempt at this rule reported `-0%` lines against a real `-2.1%` word change for exactly that reason. Prose words also exclude table rows, so converting a bloated paragraph into a table — the compression the rules ask for — registers as the reduction it is instead of as growth.
 
 Stop. Do not proceed to `/implement` automatically.

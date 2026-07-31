@@ -108,7 +108,7 @@ For **design-review findings**, no test requirements apply — the fix is a doc 
 
 Invoke the appropriate agent:
 - Code review: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only, explicitly passing the test requirements above and the resolved `<issue-folder>` path (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). If the finding describes incorrect runtime behaviour that the coder confirms reproduces, it must append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md` — observed-failure trigger 6. Without the path the coder cannot write it and the finding cannot clear re-review.
-- Design review: declare "I'll use architecture-research-planner agent to fix [finding ID]…" and invoke architecture-research-planner scoped to this finding only; instruct it not to add new items to `## 8. Open Questions` and not to modify the `**Revision:**` or `**Status:**` header fields — if it cannot address a finding, it must flag it explicitly rather than declining silently. Also instruct it that **rewriting or deleting text is a valid resolution**, and the preferred one when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — adding a clarification on top of bad text leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite when existing text is wrong, unclear, or duplicated, updating any inbound cross-references in the same pass. This does not permit skipping the finding, only resolving it by subtraction.
+- Design review: declare "I'll use architecture-research-planner agent to fix [finding ID]…" and invoke architecture-research-planner scoped to this finding only; instruct it not to add new items to `## 8. Open Questions` and not to modify the `**Revision:**` or `**Status:**` header fields — if it cannot address a finding, it must flag it explicitly rather than declining silently. Also instruct it that **rewriting or deleting text is a valid resolution**, and the preferred one when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — adding a clarification on top of bad text leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite when existing text is wrong, unclear, or duplicated, updating any inbound cross-references in the same pass. This does not permit skipping the finding, only resolving it by subtraction. Finally, pass the net-non-growth instruction — but note it is measured **per invocation of this command, not per finding**. Step 2 fixes findings one at a time, so a per-finding budget would forbid a legitimate addition for one finding even when three deletions elsewhere in the same run more than paid for it. Take one measurement before the first fix and one after the last, and use the same wording as `/review-design-fix-loop` Step 2, including the rewrite remedy.
 
 After applying any design-review fix (agent-driven or confirmed manual), set `design_modified = true`.
 
@@ -131,6 +131,19 @@ After applying any design-review fix (agent-driven or confirmed manual), set `de
   ```
 
 Continue until all findings from Step 1 are RESOLVED.
+
+**Doc verification (design reviews, and code reviews whose fixes touched `planning/` or `docs/`).** After the last finding is RESOLVED and before the revision bump below, run `/verify-docs`, passing the `<issue-folder>` resolved per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`. Step 2 edits design docs one finding at a time, so cross-reference drift and citation-form regressions accumulate across findings and no per-finding 2c check sees them — 2c is scoped to the changed lines and cannot.
+
+The folder is required, not contextual: `/verify-docs` discovers planning docs only from it (`git diff` never lists them under the global gitignore), so an invocation without it runs both scans over nothing and reports `Clean`.
+
+- If blockers are reported: invoke architecture-research-planner scoped to those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles, matching `/review-design-fix-loop`. If blockers clear, continue. If they persist after 2 cycles: for design reviews, if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`; then run the review-planning-update fragment (which includes push; use the review-type-matching parameters from Step 4). This is a terminal stop. Output:
+  ```
+  /review-iterate paused — doc consistency blockers after 2 fix cycles
+  Invoke /review-iterate after resolving the doc consistency issues.
+  ```
+- If warnings only: continue — warnings are non-blocking.
+
+For a design review, a fix applied here counts as a design edit: set `design_modified = true` if it was not already. For a code review the variable is never initialised and never read, so skip it — the doc fixes here still stand.
 
 **Immediately before Step 3, if this is a design review and `design_modified = true`**, run:
 ```

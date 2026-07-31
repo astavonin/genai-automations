@@ -85,6 +85,23 @@ class OrderProcessor {
 
 Always label these as illustrative and non-production.
 
+### Prose Register
+
+**Do not write defensively.** Defensive register adds words around a detail without adding detail: it argues that a choice was considered rather than stating the choice. Write the fact and stop.
+
+```text
+worse:  the queue is deliberately unbounded, which is what makes the producer
+        path allocation-free
+better: the queue is unbounded so writers never block
+
+detector list (matched whole-word, case-insensitive):
+deliberately|intentionally|by design|which is what makes|worth noting|it should be noted|note that|importantly|crucially|essentially|fundamentally|in other words|that said|of course
+```
+
+The list above is fenced so it does not trip its own detector. `~/.claude/scripts/doc-metrics.sh` owns the authoritative copy. `tests/verify-doc-metrics.sh` asserts all three copies of the list — the script, this file, and the Codex authoring skill — are byte-identical and appear exactly once each, so editing one without the others fails the suite rather than drifting silently.
+
+**The rule outranks the list, which is non-exhaustive by construction** — banning one token yields substitutes. A zero count is necessary, not sufficient: rewriting a listed token as "the choice here was made advisedly" leaves the count clean and the rule broken. Two exemptions the tool applies for you: a token inside a fenced block, and a token wrapped in backticks or quotes — a mention rather than a use, which is how a document discusses the rule. A token merely sitting inside a longer quoted sentence is still a use and still counts. Table cells and blockquotes are **not** exempt: a defensive sentence is defensive wherever it sits, and both were otherwise a way to satisfy the gate without changing the prose.
+
 ### Mermaid Diagram Standards
 - Include descriptive titles
 - Use clear, consistent naming conventions
@@ -157,6 +174,20 @@ Before finalizing any architecture or research deliverable, actively verify:
 4. No production-ready code was included (illustrative snippets only, clearly labeled)
 5. Recommendations are actionable with clear next steps
 6. All Quality Checks below are satisfied
+7. **Measure the prose you just wrote and report the numbers.** Run the tool on every Markdown file you created or modified and quote the results back in your response:
+
+   ```bash
+   bash ~/.claude/scripts/doc-metrics.sh <each-file-you-wrote>
+   ```
+
+   The two counters have different scopes:
+
+   - **Register: fix every hit, in every file.** The tool names the section, the token, and a word window for each. This applies to design docs, architecture docs, and READMEs alike — it is a rule about how you write, not about one document type.
+   - **Words: only a `design.md` is gated on length.** Report the per-row verdicts and resolve any `OVER-CEILING` before you finish, because that blocks in `/verify-docs`. Discharge an `over-target` row with one line of justification in your response, not in the document. Sections are matched by heading content, so a README or architecture doc whose headings resemble template sections will also show targets — those verdicts are informational, and only the `TOTAL` row's document ceiling is worth acting on outside a design doc.
+
+   A non-zero exit is not a result — it means the run was not a measurement (unclosed fence, NUL bytes, a broken `awk`). Fix the cause and re-run rather than reporting the numbers it printed.
+
+   Measuring and reporting is the step, not the instruction to write concisely. Reporting a number you had to compute is what makes the rule bind; an instruction to be concise does not.
 
 ## Quality Checks
 
@@ -171,6 +202,9 @@ Before finalizing any architecture or research deliverable, actively verify:
 - [ ] Security architecture reviewed and threat model considered
 - [ ] Design document is structured and ready for team review
 - [ ] Evidence-based analysis grounded in actual codebase findings, cited as file + symbol — no unpinned line numbers, no line references into planning docs
+- [ ] Every fact stated once, at its point of decision — a restatement elsewhere is deleted, not relocated
+- [ ] No defensive register: `doc-metrics.sh` reports `REGISTER: 0` for every file written, and its counts are quoted in the response
+- [ ] For a design doc, no `OVER-CEILING` row remains; any `over-target` row carries a one-line justification in the response
 - [ ] Actionable recommendations provided with clear next steps
 
 # Persistent Agent Memory

@@ -108,17 +108,20 @@ See `references/diagrams.md` for copy-paste examples of each type.
 
 ## Required Design Doc Sections
 
-Design docs follow the 7-section template at `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md`:
+Design docs follow the 8-section template at `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md`:
 
 1. Problem Statement
 2. Goals and Non-Goals
 3. Implementation Context
 4. Architecture Overview (Mermaid diagram required)
 5. Detailed Design (component boundaries and interfaces — not implementations)
-6. Trade-offs and Alternatives *(omit with a one-line note if none)*
-7. Open Questions *(omit with a one-line note if none)*
+6. Test Requirements (unit, integration, E2E — the behaviours and failure modes to cover, not file names)
+7. Trade-offs and Alternatives *(omit with a one-line note if none)*
+8. Open Questions *(omit with a one-line note if none)*
 
-Test plans and files-changed tables are **not** part of design docs — they emerge during implementation.
+Files-changed tables are **not** part of design docs — they emerge during implementation. §6 states what must be covered and at which level; the tests themselves are written during implementation.
+
+Documents written to the older 7-section numbering, with Trade-offs at §6 and Open Questions at §7, still exist. `doc-metrics.sh` matches its length targets by heading content rather than by number, so those documents are scored against the same slots — but new documents use the numbering above.
 
 ## Architecture Reviews
 

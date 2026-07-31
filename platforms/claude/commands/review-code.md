@@ -119,7 +119,7 @@ Applicability and the trigger list live in that fragment — do not work from a 
 
 When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/issues/*/` files:
 
-1. Run `/verify-docs` on all modified files before requesting re-review.
+1. Run `/verify-docs`, passing the resolved `<issue-folder>` (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). The folder argument is required — the command enumerates planning docs from it and from nothing else, so omitting it makes both scans report `Clean` over an empty file list.
 2. Fix any blockers reported by `/verify-docs`.
 3. Only then re-run `/review-code`.
 

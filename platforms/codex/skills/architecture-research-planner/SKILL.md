@@ -41,6 +41,21 @@ Use this structure unless the task clearly needs a different one:
 7. `Validation Plan` or `Tests to Add`
 8. `Open Items` when unresolved external inputs remain
 
+## Prose Register
+
+**Do not write defensively.** Defensive register adds words around a detail without adding detail: it argues that a choice was considered rather than stating the choice. Write the fact and stop. "The queue is unbounded so writers never block" carries everything the defensive form carries, in half the words.
+
+```text
+detector list (matched whole-word, case-insensitive):
+deliberately|intentionally|by design|which is what makes|worth noting|it should be noted|note that|importantly|crucially|essentially|fundamentally|in other words|that said|of course
+```
+
+The list is fenced so it does not trip its own detector, and it is **non-exhaustive by construction** — banning one token yields substitutes, so the rule outranks the list. Rewriting a listed token into an unlisted circumlocution leaves the count clean and the rule broken, and usually costs more words than the original.
+
+State each fact once, at its point of decision. When an argument appears twice, delete the copy rather than relocating it — relocating into a Pros/Cons block costs roughly twice the inline sentence.
+
+The section shape above differs from the Claude-side `DESIGN-TEMPLATE.md`, so the per-section word targets enforced there do not apply to documents written from this skill. The register rule and the one-statement-per-fact rule do.
+
 ## Diagram Guidance
 
 - Use Mermaid whenever lifecycle, ownership, data flow, boundaries, or command flow are easier to understand visually than in prose.
