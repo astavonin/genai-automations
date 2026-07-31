@@ -15,6 +15,13 @@
 # names its own mirrors. A guard over every `~/.claude/...` token in the corpus is red on
 # false positives: several are runtime-created, deliberately empty, or literal placeholders.
 #
+# Boundary with tests/verify-workflow-safety.sh, which also compares config files: that suite
+# owns the §4 status-marker gate end to end — its own gate model against the config, and every
+# site restating that one rule — because its remaining sections depend on those values being
+# right. This suite owns cross-file agreement for rules no suite models. A new declared-mirror
+# set with no behavioural model behind it belongs here; another statement of the marker gate
+# belongs in that suite's Section 0 site list.
+#
 # Exit codes: 0 = all tests passed, 1 = one or more failed.
 
 set -uo pipefail

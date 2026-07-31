@@ -170,6 +170,8 @@ Every review file written by `/review-design` or `/review-code` MUST contain:
 
 as the **first non-empty line after the H1 title**, within the first 20 lines. Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED`. No emoji, no verb/noun mixing. Machine-readable via `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'`.
 
+**This paragraph is parsed by a test.** `tests/verify-workflow-safety.sh` (in the `genai-automations` repo) extracts the window, the grep pattern, and the state list from the sentence above, and asserts that its own gate model, `skills/workflows/status-marker-verify/SKILL.md`, `commands/implement.md`, `agents/reviewer.md`, and the three `*-fix-loop` commands all agree with it. The load-bearing tokens are the phrases `Machine-readable via` and `Allowed states:`, the backtick quoting, and the words "within the first N lines". Reword freely, but run that suite afterwards — it fails rather than drifting silently, which is the point.
+
 **YAML exemption:** MR review YAML files (`planning/<epic-slug>/reviews/MR<N>-review.yaml`) are exempt from this Status marker convention — they use YAML schema, not Markdown. Use the YAML `approval:` field instead, with the mapping: `approved` → APPROVED, `changes_requested` → CHANGES REQUESTED, `none` → (no gate check). The `head -20 | grep` gate check does not apply to MR review YAML files; they do not participate in the compaction gate.
 
 **Migration note:** This marker is NOT retrofitted to pre-existing review files. Reviews written before this convention was adopted do not have the canonical marker; gates fail-safe (skip compaction) for those files. Users on in-flight milestones may manually add the marker to opt in.

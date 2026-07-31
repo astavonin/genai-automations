@@ -23,6 +23,8 @@ Every review file MUST contain exactly one status marker as the **first non-empt
 
 Allowed states: `APPROVED` | `CHANGES REQUESTED` | `REJECTED` — all uppercase, no emoji, no verb/noun mixing.
 
+**This section is parsed by a test.** `tests/verify-workflow-safety.sh` asserts that the state list and the `head`/`grep` command below match `~/.claude/CLAUDE.md` → "Review File Status-Marker Convention (§4)", which owns the rule. Editing one without the other fails that suite rather than drifting silently.
+
 This marker is machine-readable and used by the `/implement` gate. A review without the canonical marker causes the compaction gate to skip.
 
 ## Caller Must Specify
