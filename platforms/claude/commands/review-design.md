@@ -67,7 +67,10 @@ Only proceed when the gate passes.
    ```
 
 8. After writing, ask the user if they want to `open <path>` the review file
-9. **Phase gate (MANDATORY):** Do not auto-invoke `/implement`. Wait for the user to explicitly invoke `/implement` or an equivalent explicit directive. Reviewer `APPROVED` is NOT authorization — it is a precondition for asking the user. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization. See CLAUDE.md Critical Rules for the two-part test.
+
+9. **Report the outcome in the conversation:** the status marker, finding counts by severity, and the single most severe finding as one line. Nothing else — the report file holds the detail. This is a ceiling, not a template: a review aggregates 3–5 parallel agents, and without it the aggregate lands in the conversation instead of the file.
+
+10. **Phase gate (MANDATORY):** Do not auto-invoke `/implement`. Wait for the user to explicitly invoke `/implement` or an equivalent explicit directive. Reviewer `APPROVED` is NOT authorization — it is a precondition for asking the user. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization. See CLAUDE.md Critical Rules for the two-part test.
 
 ## Design-Level Constraint (MANDATORY — pass to every reviewer agent)
 

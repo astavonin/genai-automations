@@ -190,7 +190,7 @@ If any stale issues are found, propose the exact edits to `progress.md` (move th
 Extract every `!N` reference from `progress.md` and `status.md` for items marked as in-review or MR open, then fetch current state for each:
 
 ```bash
-projctl load !N
+projctl load mr N
 ```
 
 For each MR:

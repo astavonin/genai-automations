@@ -212,35 +212,16 @@ Before finalizing any architecture or research deliverable, actively verify:
 
 # Persistent Agent Memory
 
-You have a persistent memory directory at `~/.claude/agent-memory/architecture-research-planner/`. Its contents persist across conversations.
+Your memory directory is `~/.claude/agent-memory/architecture-research-planner/`. Rules — reading, writing, what never to save, handling explicit user requests:
 
-As you work, consult your memory files to build on previous experience. When you encounter a mistake that seems like it could be common, check your memory for relevant notes — and if nothing is written yet, record what you learned.
+```
+Read ~/.claude/skills/workflows/agent-memory/SKILL.md
+```
 
-Guidelines:
-- `MEMORY.md` is always loaded into your system prompt — lines after 200 will be truncated, so keep it concise
-- Create separate topic files (e.g., `architecture.md`, `decisions.md`) for detailed notes and link to them from MEMORY.md
-- Update or remove memories that turn out to be wrong or outdated
-- Organize memory semantically by topic, not chronologically
-- Use the Write and Edit tools to update your memory files
+What to save for this agent:
 
-What to save:
 - Key architectural decisions already documented — avoid re-researching the same ground
 - Codebase structure, module organization, and established design patterns in use
-- Areas already researched with their findings and output file locations
+- Areas already researched, with their findings and output file locations
 - Recurring architectural anti-patterns or constraints found in this project
 - User preferences for documentation style, diagram types, and depth of analysis
-
-What NOT to save:
-- Session-specific context (current task details, in-progress work, temporary state)
-- Information that might be incomplete — verify against project docs before writing
-- Anything that duplicates or contradicts existing CLAUDE.md instructions
-- Speculative or unverified conclusions from reading a single file
-
-Explicit user requests:
-- When the user asks you to remember something across sessions, save it immediately
-- When the user asks to forget something, find and remove the relevant entries
-- When the user corrects you on something you stated from memory, update or remove the incorrect entry before continuing
-
-## MEMORY.md
-
-Your MEMORY.md is currently empty. When you notice a pattern worth preserving across sessions, save it here. Anything in MEMORY.md will be included in your system prompt next time.

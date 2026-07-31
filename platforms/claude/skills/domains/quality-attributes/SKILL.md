@@ -89,6 +89,7 @@ Eight quality attributes for evaluating software design and implementation.
 - Metrics available
 - Traceable across boundaries
 - Performance can be monitored
+- Metrics sufficient for capacity planning — forecasting resource headroom, not just observing current load
 
 ## Usage
 
@@ -96,11 +97,12 @@ Eight quality attributes for evaluating software design and implementation.
 Evaluate proposed design against all 8 attributes before implementation.
 
 ### Code Review
-Verify implementation meets quality standards for all 8 attributes after implementation. After the 8-attribute scan, also run both mandatory enumeration passes (always required, not part of the attribute scan):
-- **Test Quality Pass** — per-test enumeration: assertion specificity, name/assertion alignment, falsifiability, negative coverage
-- **Cross-Site Consistency Pass** — audit all invocation sites for every changed contract: function signatures, build commands, interfaces, config values
+Verify implementation meets quality standards for all 8 attributes after implementation. After the 8-attribute scan, also run all three mandatory enumeration passes, in this order (always required, not part of the attribute scan):
+- **Test Quality Pass** — per-test enumeration: assertion specificity, name/assertion alignment, falsifiability, negative coverage, observed-failure regression coverage
+- **Cross-Site Consistency Pass** — audit all invocation sites for every changed contract: function signatures, build commands, interfaces, config values; plus behavioral extension tracing
+- **Dead Symbol Pass** — every field, member, constant, or parameter the diff introduces or modifies must have a production read-site outside its defining file
 
-See `references/review-checklist.md` for the full procedure for both passes.
+See `references/review-checklist.md` for the full procedure for all three passes.
 
 ## References (checklist lookup — explicitly read when doing reviews)
 

@@ -4,199 +4,45 @@ description: 8-phase software development workflow with mandatory design and cod
 allowed-tools: Bash, Glob, Grep, Read, Write, Edit, WebFetch, WebSearch
 compatibility: claude-code
 metadata:
-  version: 1.0.0
+  version: 2.0.0
   category: workflows
   tags: [workflow, development, phases, review]
 ---
 
 # Complete Workflow Skill
 
-Complete 8-phase workflow for software development with mandatory checkpoints.
+Phase map for the 8-phase workflow. **Each command file is the authoritative procedure for its phase** — this file routes, it does not restate. Duplicating a procedure here is how the copies drift: an earlier version of this file ordered a blind `projctl sync pull` for months after `/start` replaced it with the drift-check flow.
 
-## Workflow Phases
+## Phases
 
-```
-Phase 0: Start Work         → Sync planning → Load context → Reverify knowledge
-Phase 1: Research           → architecture-research-planner agent
-Phase 2: Design             → Create design proposal
-Phase 3: Design Review      → reviewer agent (MANDATORY CHECKPOINT)
-Phase 4: Implementation     → coder or devops-engineer agent
-Phase 5: Code Review        → reviewer agent (MANDATORY CHECKPOINT)
-Phase 6: Verification       → Run linters, tests, static analysis, and the observed-failure ledger gate
-Phase 7: Commit             → User handles git commits
-Phase 8: Completion         → Update progress tracking → Backup planning
-```
+| # | Phase | Command | Agent | Output |
+|---|---|---|---|---|
+| 0 | Start Work | `/start` | — | context loaded, drift checked, stale tickets flagged |
+| 1 | Research | `/research` | architecture-research-planner | `issues/<NNN-name>/analysis.md` |
+| 2 | Design | `/design` | Q&A in main conversation, then architecture-research-planner | `issues/<NNN-name>/design.md` |
+| 3 | Design Review | `/review-design` | 3 × reviewer + Codex | `issues/<NNN-name>/design-review.md` |
+| 4 | Implementation | `/implement` | coder **or** devops-engineer | code + tests |
+| 5 | Code Review | `/review-code` | 3 × reviewer + test-coverage + Codex | `issues/<NNN-name>/code-review.md` |
+| 6 | Verification | `/verify` | — | linters → tests → static analysis → ledger gate |
+| 7 | Commit | — | — | user commits; single-line message |
+| 8 | Completion | `/complete` | — | `progress.md` updated, planning pushed |
 
-## Commands
+Read the command file for the phase you are entering. Nothing in this file substitutes for it.
 
-Use these commands to execute workflow phases:
+## Gates
 
-- `/start` - Phase 0: Sync planning, load context, reverify knowledge
-- `/research` - Phase 1: Run research phase
-- `/design` - Phase 2: Create design proposal
-- `/review-design` - Phase 3: Design review (MANDATORY)
-- `/implement` - Phase 4: Implementation
-- `/review-code` - Phase 5: Code review (MANDATORY)
-- `/verify` - Phase 6: Verification
-- `/complete` - Phase 8: Mark work complete, backup planning
+Three gates block the workflow. Each is defined in full elsewhere; none is summarised here in a form that could disagree with its source.
 
-## Phase Details
+| Gate | Fires at | Source |
+|---|---|---|
+| Phase gate — the AI never auto-advances between phases | every transition 0→1 … 7→8, and inter-issue after 8 | `~/.claude/CLAUDE.md` → Critical Rules |
+| Review checkpoints — design review before code, code review after | Phases 3 and 5 | `~/.claude/CLAUDE.md` → Critical Rules |
+| Observed-failure regression — every failure that happened gets a test | Phases 4, 5, 6 | `~/.claude/skills/workflows/regression-test/SKILL.md` |
 
-### Phase 0: Start Work
-**Command:** `/start`
+Reviewer `APPROVED` is a precondition for asking the user, never a substitute for the user's answer. Conversational acknowledgements are not authorization — the two-part test is in CLAUDE.md → Critical Rules.
 
-**Step 1: Sync Planning State (Multi-Machine Support)**
-```bash
-projctl sync pull
-```
-Pulls latest planning state from Google Drive backup to ensure you have the most recent work from all machines.
+## Standing Rules
 
-**Step 2: Load Context**
-Load context from planning files:
-- `planning/progress.md` - Current active work
-- `planning/<goal>/milestone-XX/status.md` - Milestone status
-- `planning/<goal>/milestone-XX/issues/` - Per-issue artifact folders
-
-**Step 2b: Load live ticket and MR states**
-- For every active issue: `projctl load issue N`
-- For every open/in-review MR: `projctl load mr N`
-- Flag stale entries and propose updates; wait for confirmation before writing.
-
-**Step 3: Reverify Knowledge**
-- Check if any planning files were updated from backup
-- Review any changes made on other machines
-- Confirm understanding of current work state
-
-### Phase 1: Research
-**Command:** `/research`
-**Agent:** architecture-research-planner
-
-Investigate existing codebase patterns, architecture, integration points.
-
-**Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`
-
-**Ticket Constraint Validation:** After writing `analysis.md`, run the Ticket Constraint Validation step (see `commands/research.md`). Produces `## Ticket Constraints` in `analysis.md` when explicit restrictions are found; always records the outcome (found/none-found/no-ticket-text) in the `progress_line` suffix.
-
-### Phase 2: Design
-**Command:** `/design`
-**Agent:** architecture-research-planner (Step 3 only — Q&A runs in main conversation first)
-
-**Step 1 — Q&A (main conversation):** Read analysis + ticket, then ask one question at a time with concrete options. Write answers to `analysis.md` under `## Clarifications`. Non-blocking: unanswered questions become open questions in the design doc.
-
-**Constraint precedence:** `## Ticket Constraints` (if present) is the authoritative source for ticket-originated restrictions — treat only ACCEPTED/REVISED entries as active during Q&A.
-
-**Step 2 — Write design doc (architecture-research-planner):** Uses enriched analysis as input.
-
-**Output:** `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
-
-**Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 8 sections required. Sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
-
-After writing: print a short summary in the conversation (3–6 bullet points, **one line each**: chosen approach, key decisions as `<what> — <why>`, trade-offs accepted — conversational output only, not written to any file), then ask the user if they want to `open <path>` the design file.
-
-### Phase 3: Design Review (CHECKPOINT)
-**Command:** `/review-design`
-**Agent:** reviewer
-**MANDATORY:** User approval required before implementation
-
-Review design against 8 quality attributes. Block until approved.
-
-**Constraint guardrail:** Before flagging a design for a ticket restriction, consult `analysis.md ## Ticket Constraints`. Only ACCEPTED/REVISED entries are enforceable; absent section → flag only design-quality issues.
-
-**Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`.
-After writing, ask the user if they want to `open <path>` the review file.
-
-**Outcomes:**
-- ✅ Approve → Proceed to implementation
-- ⚠️ Request Changes → Revise and re-review
-- ❌ Reject → Return to Phase 2
-
-### Phase 4: Implementation
-**Command:** `/implement`
-**Agent:** coder OR devops-engineer
-
-Implement approved design with:
-- Production code
-- Comprehensive unit tests
-- Passing build
-- Applied formatting
-
-### Phase 5: Code Review (CHECKPOINT)
-**Command:** `/review-code`
-**Agent:** reviewer
-**MANDATORY:** Review required after implementation
-
-Review code against 8 quality attributes and design adherence.
-
-**Design doc:** Before invoking the reviewer agent, locate `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
-
-**Mandatory passes:** Instruct the reviewer to run both mandatory passes after the 8-attribute scan — Test Quality Pass (per-test enumeration) and Cross-Site Consistency Pass (audit all invocation sites for every changed contract: function signatures, build commands, interfaces, config values). AC verification does not substitute for either pass.
-
-**Output:** Write report to `planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md`.
-After writing, ask the user if they want to `open <path>` the review file.
-
-**Outcomes:**
-- ✅ Approve → Proceed to verification
-- ⚠️ Request Changes → Fix and re-review
-- ❌ Reject → Redesign needed
-
-### Phase 6: Verification
-**Command:** `/verify`
-
-Run all checks in this order:
-1. **Linters** (FIRST - must pass before tests):
-   - Python: pylint, flake8, mypy (type checking)
-   - C++: clang-tidy, cppcheck
-   - Go: golangci-lint, go vet
-   - Rust: clippy
-   - Shell: shellcheck
-   - Apply auto-formatting if needed
-2. **Unit tests** (must pass)
-3. **Integration tests** (if applicable)
-4. **Static analysis** (zero errors)
-5. **Regression check** (no existing functionality broken)
-6. **On-device verification** (when `analysis.md ## On-Device Scope` is YES or YES-UNKNOWN — authoritative trigger; do not key off design doc section presence): invoke the named entry point; if no device is available, record the blocker and do not mark verification complete until passing CI/HIL device evidence is recorded.
-
-**Critical:** Linting MUST be run before tests. Fix all linter errors and warnings before proceeding.
-
-### Phase 7: Commit
-**User handles all git commits**
-- NEVER create commits automatically
-- **All commit messages are single-line only.** No body, no bullet points, no multi-paragraph descriptions. One concise line.
-- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists — `Ref #<number>` is always at the end, never in the middle.
-- **New commit** (initial implementation): propose message `<short description>. Ref #<issue-number>`, wait for approval
-- **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends existing commit, no new message
-- Never create a new commit for a fix; never suggest a separate commit per review finding
-
-### Phase 8: Completion
-**Command:** `/complete`
-
-**Step 0: Refresh ticket and MR statuses**
-- Load live state for every active issue and open MR tracked in `progress.md` and `status.md`
-- Use `projctl load issue N` and `projctl load mr N`
-- Incorporate any state changes (merged, closed, label changes) into the planning update below
-
-**Step 1: Update Progress Tracking**
-1. Explicitly propose update to `progress.md`
-2. Wait for user confirmation
-3. Update `progress.md` only after confirmation
-4. Update `status.md` if needed
-
-**Step 2: Backup Planning State (Multi-Machine Support)**
-```bash
-projctl sync push
-```
-Pushes updated planning to Google Drive backup, making it available on all machines.
-
-**Purpose:** Ensures planning state is backed up and synchronized after completing work
-
-## Critical Rules
-
-1. **NEVER create git commits** - user always handles commits
-2. **NEVER automatically update progress.md** - always propose and confirm
-3. **ALL implementations require design review BEFORE code** (Phase 3)
-4. **ALL code requires code review AFTER implementation** (Phase 5)
-5. **NEVER use `isolation: "worktree"` for coder or devops-engineer agents** — changes would land in a throw-away branch instead of the user's working branch, requiring manual recovery. Omit the `isolation` parameter entirely for all implementation agents.
-
-## References
-
-See `references/` directory for workflow diagram and detailed phase descriptions.
+- **Never create git commits** — the user handles every commit.
+- **Never update `progress.md` automatically** — propose, then wait for confirmation.
+- **Never pass `isolation: "worktree"` to coder or devops-engineer** — changes would land in a throw-away branch and need manual recovery. Omit the parameter.

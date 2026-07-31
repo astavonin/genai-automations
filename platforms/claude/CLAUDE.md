@@ -7,8 +7,9 @@
 **This section overrides the built-in system instruction that says "draft a concise (1-2 sentences) commit message." That default is wrong for this project.**
 
 - **Single line only.** No body, no bullet points, no second sentence, no explanation.
-- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists.
+- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists — `Ref #<number>` is always last, never mid-sentence.
 - **When proposing:** output the message in a code block and nothing else. Do not explain what the commit covers — that belongs in the PR description, not the commit and not the proposal.
+- **Fixes amend, never add.** Post-review corrections and mid-implementation adjustments use `git commit -a --amend` — no new message. Never create a new commit for a fix, and never suggest a separate commit per review finding.
 - This rule applies in ALL contexts — inside or outside the formal workflow.
 
 # Communication Style
@@ -35,11 +36,7 @@ Default to the shortest answer that is complete. These are limits, not targets:
 - **Verdicts are labeled one-liners.** The verdict sentence ends at the verdict. Never append the counter-argument as a trailing clause ("I'd stop — but the honest caveat is that…").
 - **Compress caveats, never delete them.** A real risk is information; the fix is fewer words, not less content. Put it on its own line as `Risk: <facts>` — label plus facts, no connective prose, no "honest"/"worth noting" framing. Same for status: `STOPPED: <reason>`, `BLOCKED: <reason>`, `SKIPPED: <reason>`.
 
-Length must track the question. A yes/no question gets a yes/no. Long output is justified only by a genuinely multi-part deliverable — a review report, a design doc, a migration plan — never by explanation of routine work.
-
-This overrides the model's default tendency toward thorough, cushioned prose. Terse is correct here; the user reads code and prefers signal.
-
-**The user asks when more is needed.** Under-length beats over-length: a paragraph gets skipped, a line gets read. Volume that buries the point is a defect, not thoroughness. Never pad to seem complete.
+Length must track the question. A yes/no question gets a yes/no. Long output is justified only by a genuinely multi-part deliverable — a review report, a design doc, a migration plan — never by explanation of routine work. This overrides the model's default toward thorough, cushioned prose: the user reads code and asks when more is needed.
 
 ## Markdown Writing
 
@@ -49,9 +46,9 @@ This overrides the model's default tendency toward thorough, cushioned prose. Te
 - **Code references: line numbers only when the target is immutable.** A line number is valid only against a pushed commit, or a pushed MR/PR diff whose lines the platform anchors comments to. An uncommitted working tree is never immutable — it is rewritten by the next fix round, which is the drift this rule exists to stop. Everywhere else, reference code as **file + symbol**.
   - **Pinned form** (permitted for source files anywhere): `` `a1b2c3d:src/pipeline/pipeline.cc:88` `` — short hash, path, line. The commit must be pushed. `git branch -r --contains <hash>` exits 0 for an unpushed commit too, so test its *output*: `[ -n "$(git branch -r --contains <hash>)" ]`. The answer is only as fresh as the last `git fetch`.
   - **Default form** (any target that can still move): `` `src/pipeline/pipeline.cc` `` → `` `process_frame()` ``. Where no symbol exists — YAML keys, shell variables, Make targets — quote a distinctive token instead: `` `ci/pipeline.yml` ("cache_key") ``.
-  - **Never**: an unpinned source line reference (`` `src/pipeline/pipeline.cc:88` ``), or any line reference into a planning document (`` `design.md:682-690` ``, `` `analysis.md:69` ``) — **including a hash-prefixed one**, since planning docs are untracked under the global `planning/*` ignore and no commit pins them. This prohibition outranks "permitted anywhere" above. Cite planning docs by section and finding ID (`design.md §5.5`, `H3`).
-  - **The symbol is the locator; a line number is decoration.** Anywhere a finding, diagnosis, or report names a symbol, an unpinned `file:line` may accompany it — in a `Location:` field or inline in a prose bullet, it makes no difference. What is never permitted is a line number *standing alone*, because that is the locator that stops resolving. This is the rule every restatement in this config carries; the exemptions below are the cases where a line may stand alone.
-  - **Exemptions** — a bare line number is correct here: (a) the MR/PR review YAML `location:` **value**, since GitLab anchors inline comments to diff lines and returns HTTP 500 for lines absent from the diff; the finding *description* in the same YAML still names a symbol. (b) Fenced blocks quoting CLI output verbatim. (c) Article and book **snippet annotations**, governed by `BRIEF-TEMPLATE.md` §7 "Rendering note" and `article-review/SCOPES.md` → Scope 1.1, whose required form is a hash-pinned permalink; Each fallback is granted by exactly one document and is not portable to the other: the `<!-- file: path:L10-L25 -->` comment is accepted for already-published `draft.md` per `SCOPES.md` Scope 1.1 form (b) and is **not** accepted in a brief; a plain `` `src/file.rs:N-M` `` is accepted in `brief.md` only, where `BRIEF-TEMPLATE.md` → `## Rules` grants it for an unresolved hash and requires it be flagged. In `draft.md` a plain path is a High finding. Neither fallback licenses a new article. This exemption covers annotations only: article-review **findings** cite companion-repo code by the pinned form using the article-wide commit hash.
+  - **The symbol is the locator; a line number is decoration.** An unpinned `file:line` may *accompany* a symbol anywhere — in a `Location:` field or inline in a bullet, it makes no difference. What is never permitted is a line number **standing alone**, because that is the locator that stops resolving.
+  - **Never**: an unpinned source line reference standing alone (`` `src/pipeline/pipeline.cc:88` ``), or any line reference into a planning document (`` `design.md:682-690` ``, `` `analysis.md:69` ``) — **including a hash-prefixed one**, since planning docs are untracked under the global `planning/*` ignore and no commit pins them. This prohibition outranks "permitted anywhere" above. Cite planning docs by section and finding ID (`design.md §5.5`, `H3`).
+  - **Exemptions** — a bare line may stand alone in exactly three places: (a) the MR/PR review YAML `location:` **value**, since GitLab anchors inline comments to diff lines and returns HTTP 500 for lines absent from the diff — the `description` in the same YAML still names a symbol; (b) fenced blocks quoting CLI output verbatim; (c) article and book **snippet annotations**, governed by `BRIEF-TEMPLATE.md` §7 "Rendering note" and `article-review/SCOPES.md` → Scope 1.1, whose required form is a hash-pinned permalink. Each has one fallback, granted by exactly one document and not portable to the other: a plain `` `src/file.rs:N-M` `` is accepted in `brief.md` only, where `BRIEF-TEMPLATE.md` → `## Rules` grants it **solely for an unresolved commit hash** (`<unknown>`) and requires every affected entry be flagged; the `<!-- file: path:L10-L25 -->` comment is accepted for already-published `draft.md` only, per `SCOPES.md` Scope 1.1 form (b), and a plain path in `draft.md` is a High finding. Neither fallback licenses a new article, and the exemption covers annotations only — article-review **findings** use the pinned form with the article-wide hash.
   - **Why:** manual line wrapping is banned above, so one paragraph is one line — a line reference has poor resolution (a single line can exceed 1,700 characters) and high drift, since one inserted paragraph shifts every following number. Review reports are re-read on each fix round, so their locations go stale against a moved tree.
 
 ## Mermaid Diagrams
@@ -134,52 +131,14 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 
 ## Available Commands
 
-### Workflow Commands
+Every command's name and description is already injected into context as the available-skills list — read the roster there, not from a copy here. Invoke one via the Skill tool, or by the user typing `/<name>`. That listing also carries Claude Code built-ins (`review`, `security-review`, `simplify`, `init`, …) which are **not** part of this workflow; one of them advertises a `/code-review` that does not exist here.
 
-- `/start` - Sync planning from backup, load current work context, reverify knowledge
-- `/refresh` - Reload behavioral config files, restore expected behavior after session drift
-- `/research` - Run research phase (architecture-research-planner agent)
-- `/design` - Create design proposal
-- `/review-design` - Review design before implementation (MANDATORY)
-- `/implement` - Run implementation (coder or devops-engineer agent)
-- `/review-code` - Review code after implementation (MANDATORY)
-- `/review-article` - Review article before publication across five scopes (MANDATORY for publication)
-- `/verify` - Run verification (linters first, then tests, then static analysis)
-- `/comment` - Add comments to code: WHY-only inline comments + public API documentation (classes, interfaces, types, enums)
-- `/complete` - Mark work complete, update progress tracking, backup planning state
+Classify anything in the listing by this rule rather than by a stored list:
 
-### Utility Commands
+- **Phase commands** — `/start`, `/research`, `/design`, `/review-design`, `/implement`, `/review-code`, `/verify`, `/complete`. These eight advance the workflow; see Workflow Execution below.
+- **Workflow commands with no phase slot** — `/refresh` (reload this config after drift), `/comment`, `/review-article`.
+- **Utilities** — everything else defined in `~/.claude/commands/`.
 
-- `/mr` - Create merge request for current branch via projctl
-- `/load` - Load ticket information (issue/epic/milestone) via projctl
-- `/ticket` - Create milestones, epics, and/or issues as YAML for `projctl create`
-- `/review-mr` - Review an MR and generate YAML findings for `projctl comment`
-- `/review-code-fix-loop` - Full code review cycle: initial review → fix all findings → re-review until APPROVED → final clean review + report; stops after report
-- `/review-design-fix-loop` - Full design review cycle: initial review → fix all findings → re-review until APPROVED → final clean review + report; stops after report
-- `/review-article-fix-loop` - Full article review cycle: initial review → fix all High/Medium findings → re-review until APPROVED → final clean review + todos.md update + report; stops after report
-- `/review-fix` - Review a targeted fix (CI failure, local issue) using 3+1 consensus — scope is the fix only, not the full MR
-- `/verify-docs` - Verify design doc integrity and consistency after Q&A resolution or review finding fixes — run before re-review (architecture-research-planner agent)
-- `/write` - Research a topic and produce a structured Markdown draft (writer agent). In book-article mode (output path under `planning/book/`), produces a fact-verified `brief.md` per `BRIEF-TEMPLATE.md` instead of a first-pass draft — the actual article is written by Web-Claude in a subsequent step.
-- `/diagnose` - Investigate a failure using debugger agent + Codex cross-model verification
-- `/ci-debug` - Debug failed CI pipeline jobs: detect failures, fetch logs, launch debugger agent
-- `/tasks-sync` - Sync local planning task state with remote ticket system (push completions, discover epic children)
-- `/codex-review` - Run a standalone Codex review via codex-flow from a review request document (REVIEW-REQUEST-TEMPLATE.md)
-- `/codex-implement` - Run a standalone Codex implementation via codex-flow from a design document (DESIGN-TEMPLATE.md)
-
-## Quick Reference
-
-```
-1. Start:      /start → auto-compact → drift-check → sync pull (if needed) → load progress.md, status.md → reverify
-2. Research:   /research → architecture-research-planner → analysis.md
-3. Design:     /design → create design.md → push planning → /review-design
-4. Implement:  /implement → gated auto-compact → coder/devops-engineer → code + tests
-5. Review:     /review-code → reviewer → APPROVED/CHANGES REQUESTED/REJECTED marker → push planning
-6. Verify:     /verify → tests + linters + static analysis
-7. Commit:     User handles git commits (NEVER automatic)
-8. Complete:   /complete → update progress.md (propose & confirm) → sync push → gated auto-compact
-```
-
-**The AI never auto-advances between phases even after reviewer `APPROVED` — the user must explicitly invoke the next command (`/implement`, `/verify`, etc.). See Critical Rules.**
 
 ## Critical Rules
 
@@ -250,140 +209,28 @@ Consistent formatting makes warnings scannable across any skill output.
 
 ## Workflow Execution
 
-Each phase is entered only when the user invokes its corresponding slash command. No phase is entered automatically — completing one phase never licenses the AI to invoke the next.
+**Each command file is the authoritative procedure for its phase.** Read it when entering the phase; it is more detailed and more current than any summary. The phase map — which command owns each phase, its agent, and its output — lives in one place:
 
-For any implementation task, follow the phases below in order, entering each phase only when the user invokes its slash command per the preamble above:
-
-### Phase 0: Start Work
-**Step 0-pre: Auto-compact (unconditional, first)**
-Compact the session before any other action. Log the gate decision to `planning/.workflow-safety.log`. Emit `✓ Compacted at start` on success. On compact failure, log, warn, and continue.
-
-**Step 1: Sync Planning State (Multi-Machine Support) — drift-check flow**
-Do NOT blindly pull. First detect pre-feature projctl, then run drift check:
-```bash
-# Check if projctl sync status is available
-timeout 30 projctl sync status
-# Parse first line: in-sync → no-op; remote-ahead → pull; local-ahead → HALT; diverged → HALT
-# On timeout → blind pull with caveat warning
-# On pre-feature projctl (exit 2 / "invalid choice") → blind pull, no warning
+```
+Read ~/.claude/skills/workflows/complete-workflow/SKILL.md
 ```
 
-**Step 2: Load Context**
-```bash
-cat planning/progress.md
-cat planning/<epic-slug>/milestone-XX/status.md
-ls planning/<epic-slug>/milestone-XX/issues/
-```
+What each phase blocks on:
 
-**Step 2b: Load live ticket and MR states**
-- For every issue in the Active section of `progress.md`: `projctl load issue N`
-- For every MR marked open/in-review in `progress.md` or `status.md`: `projctl load mr N`
-- Flag stale entries (merged, closed, label changed) and propose planning file updates; wait for confirmation before writing.
+| # | Phase | Blocks on |
+|---|---|---|
+| 0 | Start Work | drift check: `local-ahead` or `diverged` HALTs |
+| 1 | Research | — |
+| 2 | Design | open questions unresolved in `design.md` §8 |
+| 3 | Design Review | CHECKPOINT — no code before APPROVED |
+| 4 | Implementation | observed failure fixed here ships its regression test in the same change |
+| 5 | Code Review | CHECKPOINT — findings above Low must be fixed |
+| 6 | Verification | linters before tests; observed-failure ledger gate |
+| 7 | Commit | see Commit Message Format above |
+| 8 | Completion | `progress.md` update needs explicit confirmation |
 
-**Step 3: Reverify Knowledge**
-- Check if any planning files were updated from backup
-- Review any changes made on other machines
-- Confirm understanding of current work state
-- Do not auto-advance to Phase 1 (/research). Wait for the user to explicitly invoke `/research`. Completing `/start` does not license advancing to research.
+No phase is entered automatically. Completing one never licenses invoking the next — see Critical Rules for the two-part authorization test, which applies at every transition including inter-issue after Phase 8.
 
-### Phase 1: Research
-- Use architecture-research-planner agent
-- Investigate existing codebase patterns and architecture
-- Output: `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/analysis.md`
-- After writing `analysis.md`, run the Ticket Constraint Validation step defined in `commands/research.md`. Phase 2 reads only the ACCEPTED/REVISED entries recorded under `## Ticket Constraints`; if the section is absent, no ticket restrictions have been validated for this issue.
-- Do not auto-advance to Phase 2 (/design). Wait for the user to explicitly invoke `/design`. Completing research does not license advancing to design.
-
-### Phase 2: Design
-- **Step 1 — Q&A (main conversation):** Before questioning, read `analysis.md ## Ticket Constraints` (if present) and treat only ACCEPTED and REVISED entries as active restrictions — do not question the user about DROPPED restrictions or ticket restrictions not listed there. Then read analysis + ticket; ask one question at a time with concrete options; write answers into `analysis.md` under `## Clarifications`; non-blocking (unanswered → open question)
-- **Constraint precedence:** `## Ticket Constraints` in `analysis.md` is the authoritative source for ticket-originated restrictions. Original ticket text is context only — a restriction not recorded under `## Ticket Constraints` is not a constraint. DROPPED entries are treated as absent.
-- **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
-- Output: `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`
-- **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 8 sections required; sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions
-- After writing the design file, print a short summary in the conversation (3–6 bullet points, **one line each**: chosen approach, key decisions as `<what> — <why>`, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
-- **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
-- Do not auto-invoke `/review-design`. Wait for the user to type `/review-design` or an equivalent explicit directive (e.g., "run design review", "review the design"). Conversational acknowledgements (see Definitions) are NOT authorization; if unclear, stop and ask.
-
-### Phase 3: Design Review (CHECKPOINT 1)
-- Use reviewer agent with `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`
-- Before flagging a design for violating a ticket restriction, consult `analysis.md` `## Ticket Constraints`. If the section exists, only ACCEPTED and REVISED entries are enforceable — DROPPED entries and restrictions not listed must not be flagged. If the section is absent (research predates this convention, no ticket text was available in-session, or no ticket-originated restrictions were found), no ticket-originated restrictions are enforceable in this review — flag only design-quality issues.
-- **Write review report to `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design-review.md`**
-- **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
-- After writing, ask the user if they want to `open` the file
-- Report the review outcome: status marker, finding counts by severity, and the single most severe finding as one line. Nothing else — the report file holds the detail.
-- **Wait for the user to explicitly invoke `/implement` to proceed to Phase 4. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements (see Definitions) after a design summary are NOT authorization. If the user has not typed `/implement` or an equivalent explicit directive ("start implementation", "proceed to Phase 4"), stop and ask.**
-- If rejected: return to Phase 2
-- **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
-
-### Phase 4: Implementation
-- **First step:** gated auto-compact (§7.3, §7.4) — both preconditions must pass: (1) `issues/<NNN-name>/design.md` + `design-review.md` exist on disk, mtime-ordered, status=APPROVED; (2) no `code-review.md` exists OR it has status=APPROVED. Log gate decision. Skip silently with §8.2 warning if gate fails.
-- Use coder agent (code) OR devops-engineer agent (CI/CD)
-- Follow approved design
-- Include comprehensive unit tests
-- **If the work fixes an observed failure, the regression test is a mandatory deliverable of this phase** — write it first, run it red, then fix. See "Observed Failures Always Get a Test".
-- Verify build passes
-- Apply formatting
-- Do not auto-invoke `/review-code`. Wait for the user to type `/review-code` or an equivalent explicit directive (e.g., "review the code", "run code review"). Conversational acknowledgements (see Definitions) are NOT authorization; if unclear, stop and ask.
-
-### Phase 5: Code Review (CHECKPOINT 2)
-- Use reviewer agent with review checklist
-- Evaluate all 8 quality attributes
-- **Pass design doc if it exists:** before invoking the reviewer agent, locate `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`. If it exists, include it in the reviewer prompt and instruct the reviewer to verify every acceptance criterion from the design against the implementation. If no design doc exists, proceed with quality-attribute review only.
-- **Instruct the reviewer to run both mandatory passes from the checklist:** Test Quality Pass (per-test enumeration) and Cross-Site Consistency Pass (audit all invocation sites for every changed contract — signatures, build flags, interfaces, config values — plus behavioral extension tracing for every new failure outcome on unchanged signatures). AC verification does not substitute for these passes.
-- **Write review report to `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/code-review.md`** (single file, always overwritten — no versioning suffixes)
-- **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED`** (verify before declaring done)
-- After writing, ask the user if they want to `open` the file
-- **Wait for the user to explicitly invoke `/verify` to proceed to Phase 6. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements (see Definitions) after a review summary are NOT authorization. If the user has not typed `/verify` or an equivalent explicit directive ("run verify", "proceed to Phase 6"), stop and ask.**
-- If rejected: fix and return for re-review
-- **Last step:** push planning to backup (elevated warning on failure: also recommend `projctl sync status` before `/complete`)
-
-### Phase 6: Verification
-- Run linters FIRST (must pass before tests): clang-tidy, pylint/mypy, clippy, golangci-lint, shellcheck
-- Apply auto-formatting if needed
-- Run all unit tests
-- Run integration tests (if applicable)
-- Run static analysis (zero errors)
-- Verify no regressions
-- **Observed-failure regression gate (Steps 6a–6d):** every entry in `<issue-folder>/observed-failures.md` is resolved, and no failure that occurred is missing an entry. An unresolved or absent entry is a BLOCKER — do not update planning state or proceed to `/complete`.
-- All checks must pass
-- Do not auto-propose commit messages or auto-run `git commit` after `/verify` completes. Wait for an explicit user-initiated directive to commit (e.g., "commit this", "create the commit", "please commit"). Conversational acknowledgements (see Definitions) after a verify success are NOT authorization to propose or run a commit — the two-part test from Critical Rules applies even though there is no `/commit` slash command.
-
-### Phase 7: Commit
-- **All commit messages are single-line only.** No body, no bullet points, no multi-paragraph descriptions. One concise line.
-- **Format:** `<short description>` with no ticket, or `<short description>. Ref #<number>` when a ticket exists — `Ref #<number>` is always at the end, never in the middle.
-- **New commit** (initial implementation): propose message in format `<short description>. Ref #<issue-number>`, wait for approval
-- **Fixes** (post-review corrections, mid-implementation adjustments): `git commit -a --amend` — amends the existing commit, no new message needed
-- Never create a new commit for a fix; never suggest a separate commit per review finding
-- After the commit is created, do not auto-invoke `/complete`. Wait for the user to type `/complete` or an equivalent explicit directive (e.g., "mark complete", "finish this issue"). Conversational acknowledgements (see Definitions) are NOT authorization; if unclear, stop and ask.
-
-### Phase 8: Completion
-**Step 0: Refresh live ticket and MR states**
-- Load live state for every active issue and open MR: `projctl load issue N` / `projctl load mr N`
-- Incorporate any state changes into the planning update below
-
-**Step 1: Update Planning Files**
-- After user confirms work complete
-- Explicitly propose updating `planning/progress.md`
-- Wait for user confirmation
-- Update `status.md` if needed
-
-**Step 2: Backup Planning State (Multi-Machine Support)**
-```bash
-# Push updated planning to Google Drive backup
-projctl sync push
-# Record push success/failure for the compaction gate (Step 3)
-```
-
-**Step 3: Gated auto-compact (last step, §7.5)**
-Three disk-checkable conditions must all pass:
-1. `git status --porcelain` — no uncommitted tracked changes outside `planning/`
-2. `projctl sync push` (Step 2) returned exit code 0
-3. `projctl sync status` reports `STATUS: in-sync`
-
-If all pass → log `FIRED` → compact → emit `✓ Compacted at complete-end`. If any fail → log `SKIPPED <condition>` → surface §8.2 warning → leave session uncompacted (acceptable). If compact itself fails → log + warn + accept.
-
-**Purpose:** Ensures planning state is backed up and available across machines after completing work
-
-**Inter-issue stop:** After Phase 8 completes (compact fired or skipped), stop. Do not start Phase 0 for the next issue listed in `progress.md`. Wait for the user to explicitly invoke `/start`. Completing one issue's Phase 8 does not license chaining into the next issue.
 
 # Agents
 

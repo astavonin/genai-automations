@@ -11,8 +11,13 @@ mapfile -d '' FILES < <(
 )
 
 if [ "${#FILES[@]}" -eq 0 ]; then
+    # Manual run (the CLAUDE.md mandate). Scan every platforms/ file on disk, tracked or
+    # not: `git ls-files` alone skips a newly created file, which is the case most likely
+    # to carry an unreviewed path. Verified before this union existed — an untracked file
+    # holding a /home/<user>/work/ path passed this hook with exit 0.
     mapfile -d '' FILES < <(
-        git ls-files -z -- 'platforms/' 2>/dev/null \
+        { git ls-files -z -- 'platforms/' 2>/dev/null
+          git ls-files -z -o --exclude-standard -- 'platforms/' 2>/dev/null; } \
             | grep -zv "$EXCL" || true
     )
 fi

@@ -64,6 +64,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Key metrics identified
 - [ ] Tracing approach clear
 - [ ] Monitoring capabilities planned
+- [ ] Metrics planned are sufficient for capacity planning, not only for observing current load
 
 ### Design Quality
 - [ ] Simplest approach that meets requirements
@@ -177,6 +178,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Metrics available
 - [ ] Traceable across boundaries
 - [ ] Performance can be monitored
+- [ ] Metrics are sufficient for capacity planning — forecasting resource headroom is a distinct check from observing current performance
 
 ### Test Quality Pass (mandatory — runs after quality-attribute scan)
 

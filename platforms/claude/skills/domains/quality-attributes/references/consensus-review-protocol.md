@@ -367,7 +367,7 @@ Run all reverification agents for all findings in a single parallel batch — do
 
 ### Step H: Manual Passes (code, fix, and MR reviews only — always required after Steps B–G)
 
-After all agent and Codex outputs are aggregated, the **main reviewer** must manually complete both enumeration passes. These cannot be delegated to agents — they require deliberate cross-file auditing that agents perform inconsistently.
+After all agent and Codex outputs are aggregated, the **main reviewer** must manually complete the two enumeration passes below. The checklist defines three — the Dead Symbol Pass is the third, and it stays delegated to the reviewer agents, which run it per `~/.claude/agents/reviewer.md`. These two cannot be delegated: they require deliberate cross-file auditing that agents perform inconsistently.
 
 **1. Cross-Site Consistency Pass**
 For every function/method signature, build command, interface definition, or configuration value modified by the diff: enumerate every site that references that contract (call sites, overrides, mocks, CI jobs, Makefile targets, config consumers) and verify they are consistent. Follow the full procedure in `review-checklist.md`. These findings are NOT filtered by the 2/3 consensus rule — any mismatch found here is included regardless of whether agents flagged it.

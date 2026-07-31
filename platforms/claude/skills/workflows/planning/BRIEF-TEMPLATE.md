@@ -11,7 +11,7 @@ Every `brief.md` produced by `/write` in book-article mode MUST follow this stru
 
 ## Structure
 
-```markdown
+~~~markdown
 # Brief — <Article Title>
 
 **Article:** <NNN-slug>
@@ -225,7 +225,7 @@ Content this article is expected to cover per Type B rules.
 - Applicable rules: <bullet list of style-guide sections particularly relevant to this article, e.g. "Code Integration density target", "No em-dashes", "Pipeline framing in section headers">
 - AI-detection patterns to actively watch: <copied verbatim from the AI-detection heading in `planning/style-guide.md` — do not paraphrase; if the section cannot be found, write `patterns-unavailable`>
 - **Note:** This §11 is the style contract for **both** the brief's own minimal prose AND the `draft.md` that Web-Claude writes. Web-Claude MUST read `planning/style-guide.md` before writing `draft.md`; `/review-article` will fail `draft.md` against the rules named here.
-```
+~~~
 
 ## Rules
 

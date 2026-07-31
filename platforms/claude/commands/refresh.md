@@ -35,6 +35,7 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
    ```
    Read ~/.claude/skills/workflows/planning/SKILL.md
    Read ~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md
+   Read ~/.claude/skills/workflows/agent-memory/SKILL.md
    ```
 
 5. Read domain skills:

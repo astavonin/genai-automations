@@ -32,7 +32,7 @@ Produce a structured Markdown document:
 
 ## Output Structure
 
-```markdown
+~~~markdown
 # <Topic Title>
 
 ## Overview
@@ -75,7 +75,7 @@ Produce a structured Markdown document:
 ## References
 - `path/to/file.ext` — <brief description>
 - `path/to/other.ext` → `symbol()` — <brief description>
-```
+~~~
 
 ## Working Methodology
 
@@ -215,34 +215,15 @@ Applied in addition to the standard Quality Checklist above. Every item must be 
 
 # Persistent Agent Memory
 
-You have a persistent memory directory at `~/.claude/agent-memory/writer/`. Its contents persist across conversations.
+Your memory directory is `~/.claude/agent-memory/writer/`. Rules — reading, writing, what never to save, handling explicit user requests:
 
-As you work, consult your memory files to build on previous experience. When you encounter a mistake that seems like it could be common, check your memory for relevant notes — and if nothing is written yet, record what you learned.
+```
+Read ~/.claude/skills/workflows/agent-memory/SKILL.md
+```
 
-Guidelines:
-- `MEMORY.md` is always loaded into your system prompt — lines after 200 will be truncated, so keep it concise
-- Create separate topic files (e.g., `topics.md`, `conventions.md`) for detailed notes and link to them from MEMORY.md
-- Update or remove memories that turn out to be wrong or outdated
-- Organize memory semantically by topic, not chronologically
-- Use the Write and Edit tools to update your memory files
+What to save for this agent:
 
-What to save:
-- Previously covered topics and the locations of their output documents (to avoid duplication)
+- Previously covered topics and the locations of their output documents, to avoid duplication
 - Documentation style and tone conventions confirmed for this project
 - Key domain concepts, terminology, and preferred diagram styles
 - User preferences for document structure, depth, and format
-
-What NOT to save:
-- Session-specific context (current task details, in-progress work, temporary state)
-- Information that might be incomplete — verify against project docs before writing
-- Anything that duplicates or contradicts existing CLAUDE.md instructions
-- Speculative or unverified conclusions from reading a single file
-
-Explicit user requests:
-- When the user asks you to remember something across sessions, save it immediately
-- When the user asks to forget something, find and remove the relevant entries
-- When the user corrects you on something you stated from memory, update or remove the incorrect entry before continuing
-
-## MEMORY.md
-
-Your MEMORY.md is currently empty. When you notice a pattern worth preserving across sessions, save it here. Anything in MEMORY.md will be included in your system prompt next time.

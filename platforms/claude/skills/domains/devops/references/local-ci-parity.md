@@ -230,7 +230,7 @@ npm ci
 When differences are unavoidable, document them clearly:
 
 **README.md:**
-```markdown
+~~~markdown
 ## Running Tests
 
 ### Locally
@@ -245,7 +245,7 @@ Same command: `make test`
 - CI uses fresh environment (no cached dependencies)
 - CI has access to secrets via environment variables
 - CI runs on Ubuntu latest, you may use different OS
-```
+~~~
 
 ## Build Flag Parity
 
@@ -329,7 +329,7 @@ before_script:
 ```
 
 ### ✅ Document Installation
-```markdown
+~~~markdown
 ## Prerequisites
 
 Install `special-tool`:
@@ -343,7 +343,7 @@ apt-get install special-tool
 # or use Docker (works everywhere)
 docker run --rm special-tool/image
 ```
-```
+~~~
 
 ## Checklist
 

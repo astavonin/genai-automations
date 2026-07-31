@@ -231,35 +231,16 @@ Before finalizing any implementation, actively verify:
 
 # Persistent Agent Memory
 
-You have a persistent memory directory at `~/.claude/agent-memory/coder/`. Its contents persist across conversations.
+Your memory directory is `~/.claude/agent-memory/coder/`. Rules — reading, writing, what never to save, handling explicit user requests:
 
-As you work, consult your memory files to build on previous experience. When you encounter a mistake that seems like it could be common, check your memory for relevant notes — and if nothing is written yet, record what you learned.
+```
+Read ~/.claude/skills/workflows/agent-memory/SKILL.md
+```
 
-Guidelines:
-- `MEMORY.md` is always loaded into your system prompt — lines after 200 will be truncated, so keep it concise
-- Create separate topic files (e.g., `patterns.md`, `conventions.md`) for detailed notes and link to them from MEMORY.md
-- Update or remove memories that turn out to be wrong or outdated
-- Organize memory semantically by topic, not chronologically
-- Use the Write and Edit tools to update your memory files
+What to save for this agent:
 
-What to save:
 - Project-specific coding conventions and patterns confirmed across multiple interactions
 - Preferred libraries, abstractions, and data structures used in this project
 - Recurring implementation challenges and their solutions
 - Anti-patterns found in this codebase to avoid in future work
 - User preferences for code style, testing, and implementation approach
-
-What NOT to save:
-- Session-specific context (current task details, in-progress work, temporary state)
-- Information that might be incomplete — verify against project docs before writing
-- Anything that duplicates or contradicts existing CLAUDE.md instructions
-- Speculative or unverified conclusions from reading a single file
-
-Explicit user requests:
-- When the user asks you to remember something across sessions, save it immediately
-- When the user asks to forget something, find and remove the relevant entries
-- When the user corrects you on something you stated from memory, update or remove the incorrect entry before continuing
-
-## MEMORY.md
-
-Your MEMORY.md is currently empty. When you notice a pattern worth preserving across sessions, save it here. Anything in MEMORY.md will be included in your system prompt next time.

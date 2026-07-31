@@ -21,7 +21,7 @@ Example: `issues/007-vector-tables/` → `planning/book/milestone-XX-<name>/issu
 NOT the companion code repo. This ensures `Output File` resolves under the repository.
 Provide the companion code repo path in the Context section instead.
 
-```markdown
+~~~markdown
 # Review Request — <Article Title> — Code and Factual Accuracy
 
 **Repository:** <absolute path to article project root — the repo containing planning/>
@@ -101,4 +101,4 @@ No ledger exists for this work — article review.
 
 - Annotation presence check (Scope 1.1) — handled by Agent 1
 - Prose quality, completeness, internal consistency — out of scope for Codex
-```
+~~~

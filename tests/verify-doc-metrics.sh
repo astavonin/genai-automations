@@ -25,7 +25,7 @@ CODEX_DOC="$(cd "$(dirname "$0")/.." && pwd)/platforms/codex/skills/architecture
 # Bump when adding or removing a test. Asserted at the end so a block that silently skips
 # itself — as the interpreter loop once did on a one-awk box — shows up as a count mismatch
 # instead of a green run.
-EXPECTED_TESTS=159
+EXPECTED_TESTS=161
 
 TMPDIR_ROOT=$(mktemp -d)
 PASS=0
@@ -484,10 +484,52 @@ else
          "script='$script_list' agent='$agent_list' codex='$codex_list'"
 fi
 
+# The three checks above name their files as constants, so they test the copies someone
+# remembered to add — going from two copies to three required editing this suite. Discover
+# every publication site instead, and require the named constants to be exactly that set:
+# a fourth copy then joins the comparison by existing, rather than by being remembered.
+_root="$(cd "$(dirname "$0")/.." && pwd)"
+discovered=$(cd "$_root" && $GREP -rl -x 'deliberately|.*' --include='*.md' platforms/ 2>/dev/null | sort)
+declared=$(printf '%s\n%s\n' "${AGENT_DOC#"$_root/"}" "${CODEX_DOC#"$_root/"}" | sort)
+if [ "$discovered" = "$declared" ]; then
+    pass "the detector list is published in exactly the two documents this suite names"
+else
+    fail "the detector list is published in exactly the two documents this suite names" \
+         "$(diff <(printf '%s\n' "$declared") <(printf '%s\n' "$discovered") \
+            | /usr/bin/sed 's/^</  only declared: /; s/^>/  only on disk: /')"
+fi
+
 out=$(bash "$SCRIPT" "$AGENT_DOC" 2>&1)
 [ "$(summary "$out" REGISTER)" = "0" ] \
     && pass "the agent doc does not trip its own detector" \
     || fail "the agent doc does not trip its own detector" "$out"
+
+# --- the real corpus must be measurable ---------------------------------------
+# Every assertion above this line runs on a synthetic fixture, so the corpus this
+# script exists to govern was never itself measured. Four config files once carried a
+# ``` block nesting another ```, which inverts fence parity and makes the script exit
+# BLOCKER — invisible in review, since an unbalanced fence reads as ordinary Markdown,
+# and invisible here, because the only real-file assertion covers one file.
+#
+# Measurability is the property, not agreement: every awk emits the same BLOCKER on a
+# broken fence, so an interpreter-agreement check passes straight through this defect.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+corpus_files=()
+while IFS= read -r -d '' f; do corpus_files+=("$f"); done \
+    < <(find "$REPO_ROOT/platforms" -name '*.md' -print0 | sort -z)
+
+if [ "${#corpus_files[@]}" -eq 0 ]; then
+    fail "the config corpus is measurable" "found no .md files under platforms/"
+else
+    out=$(bash "$SCRIPT" "${corpus_files[@]}" 2>&1); rc=$?
+    blockers=$(printf '%s\n' "$out" | $GREP -c '^BLOCKER' || true)
+    if [ "$rc" -eq 0 ] && [ "$blockers" -eq 0 ]; then
+        pass "all ${#corpus_files[@]} config files under platforms/ are measurable"
+    else
+        fail "all ${#corpus_files[@]} config files under platforms/ are measurable" \
+             "exit=$rc, $blockers BLOCKER line(s): $(printf '%s\n' "$out" | $GREP '^BLOCKER' | head -5)"
+    fi
+fi
 
 # --- canon(): slot matching by whole words, not substrings -------------------
 # A substring test put "Attestation" and "Contest Rules" in the Test slot, and gave
