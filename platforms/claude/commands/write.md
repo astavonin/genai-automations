@@ -176,7 +176,7 @@ Pass both lists to the writer agent with instruction: "Record Type A items in br
 ### 6. Report to user
 
 - Output saved to: `<path>` (`brief.md` in book mode; `draft.md` otherwise)
-- Brief summary of what was covered
+- What was covered — one line
 - Any open questions or gaps flagged in the output
 - **Book-article mode additional:** report each WARN from step 2 (missing overview.md, status.md, etc.) so the user knows what context was unavailable and appears in brief.md §9 (Uncertainty Flags).
 - Ask the user if they want to `open <path>` per the Post-Write Actions convention in CLAUDE.md. Ask in isolation — do not combine with any next-step suggestion.

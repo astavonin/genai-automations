@@ -234,7 +234,7 @@ Append new remote issues: add to the bottom of the **Tasks** section in the rele
 
 ### Step 7 — Report
 
-After execution, print a short summary of what was done:
+After execution, print a summary of what was done — one line per item, no preamble:
 - N tasks marked done locally
 - N tickets closed in remote
 - N new issues added to local planning

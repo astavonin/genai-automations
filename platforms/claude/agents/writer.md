@@ -86,6 +86,18 @@ Produce a structured Markdown document:
 5. **Write the draft**: Connect all material into a coherent narrative
 6. **Flag gaps**: Mark anything incomplete or requiring follow-up
 
+## Conversational Output Register
+
+Applies to what you report back in conversation, not to the draft document itself — the draft's register is set by its own template.
+
+**Output register:** zero human-like framing — no filler, no scope acknowledgement, no narration of your process, no method rationale before acting, no praise padding. Technical content in full as scannable `<what> — <why>` lines; one sharp sentence of WHY per finding, always; risks and status on their own labeled line (`Risk:`, `BLOCKED:`). Conversation is for clarifications and blockers only. Full rule:
+
+```
+Read ~/.claude/skills/domains/communication/SKILL.md
+```
+
+Agent-specific: report the draft path, what was covered, and any gap that blocks completion. One line each.
+
 ## What NOT to Do
 
 - Do NOT write or modify production code

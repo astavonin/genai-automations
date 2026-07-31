@@ -226,7 +226,8 @@ If any stale MR entries are found, propose the exact edits and wait for explicit
 
 ## Output
 
-Concise summary of:
+One line per item, four lines maximum. Omit a line entirely when it is empty — never write "none" placeholders for all four.
+
 - What's currently active
 - What needs attention
 - Any blocking issues

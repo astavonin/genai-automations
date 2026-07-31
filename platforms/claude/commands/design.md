@@ -94,8 +94,6 @@ Options considered: <option A>, <option B>, <option C>.
 
 ### Step 4: Spawn architecture-research-planner
 
-Declare: "I'll use architecture-research-planner agent to create the design document..."
-
 Pass to the agent:
 - The enriched analysis doc (including clarifications)
 - The DESIGN-TEMPLATE.md structure
@@ -129,10 +127,9 @@ Apply the detection criteria from `~/.claude/skills/workflows/design-open-questi
 Increment the pass counter (starts at 0).
 
 1. For each open question in turn: present it (same dialog format as Step 2 — state the context, offer concrete options), wait for the user's answer (including "accepted as known-unknown"), then immediately append that answer to `analysis.md` under `## Clarifications` (same format as Step 3) before moving to the next question.
-2. After all open questions are answered, re-declare: "I'll use architecture-research-planner agent to update the design document with resolved questions..."
-3. Re-invoke the architecture-research-planner agent with the updated `analysis.md` (including new clarifications) and the instruction to update `design.md`: remove from `## 8. Open Questions` ALL items — both those answered with a decision AND those accepted as known-unknown. Accepted-as-known-unknown questions are tracked in `analysis.md ## Clarifications` only; they must not remain in `design.md` Section 8. Incorporate answered decisions into the relevant design sections. After this pass, `## 8. Open Questions` must contain only the template's "none" note or be absent. Follow the Section 8 format rules above. Overwrite `design.md`.
-4. Run `/verify-docs` on the modified `design.md`, passing `planning/<goal>/milestone-XX/issues/<NNN-name>/` as the issue folder — without it both of its scans run over an empty file list and report `Clean`. If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface: "Doc consistency blockers remain — manual intervention needed." Pause and wait for user.
-5. Return to the top of Step 5 and check Section 8 again using the gate criteria. Repeat until the gate passes.
+2. Re-invoke the architecture-research-planner agent with the updated `analysis.md` (including new clarifications) and the instruction to update `design.md`: remove from `## 8. Open Questions` ALL items — both those answered with a decision AND those accepted as known-unknown. Accepted-as-known-unknown questions are tracked in `analysis.md ## Clarifications` only; they must not remain in `design.md` Section 8. Incorporate answered decisions into the relevant design sections. After this pass, `## 8. Open Questions` must contain only the template's "none" note or be absent. Follow the Section 8 format rules above. Overwrite `design.md`.
+3. Run `/verify-docs` on the modified `design.md`, passing `planning/<goal>/milestone-XX/issues/<NNN-name>/` as the issue folder — without it both of its scans run over an empty file list and report `Clean`. If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface: "Doc consistency blockers remain — manual intervention needed." Pause and wait for user.
+4. Return to the top of Step 5 and check Section 8 again using the gate criteria. Repeat until the gate passes.
 
 **Iteration cap:** If the pass counter reaches 5 without the gate passing, stop and surface: "Design open questions unresolved after 5 passes — manual intervention needed." Pause and wait for user.
 
@@ -155,7 +152,7 @@ Increment the pass counter (starts at 0).
 
 **After writing (only after Step 5 gate passes — all open questions resolved):**
 1. **Run `/verify-docs` unconditionally, passing `planning/<goal>/milestone-XX/issues/<NNN-name>/` as the issue folder.** Step 5 runs it only on the branch where open questions were found, so a design that is clean on the first pass would otherwise never be checked — and this command is the one that instructs the agent on citation form and writing rules, so it must also be the one that verifies them. The folder argument is required: `/verify-docs` enumerates planning docs from it and from nothing else, so omitting it yields a `Clean` report over an empty file list. Fix any blockers, then re-run. Cap at 2 consecutive blocker-fix cycles; if blockers persist, surface them and pause for the user.
-2. Print a short summary in the conversation — 3–6 bullet points covering: chosen approach, key architectural decisions with rationale, significant trade-offs accepted. This is conversational output only; do not write it to any file.
+2. Print a short summary in the conversation — 3–6 bullet points, **one line each**: chosen approach, key architectural decisions as `<what> — <why>`, significant trade-offs accepted. This is conversational output only; do not write it to any file.
 3. Ask the user if they want to `open <path>` the design file.
 
 **Planning checkpoint** (`new_phase = design 📝`, `progress_line = - design complete — design.md written, awaiting review`, `escalation = standard`; if the issue is not yet in the Active section, add a minimal entry first):

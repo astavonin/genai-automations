@@ -52,8 +52,6 @@ Then follow the **Gate re-fire handling** in Actions below. Do not proceed to St
 
 ### Step 1: Initial review
 
-Declare: "I'll use reviewer agent for the initial design review..."
-
 Follow `/review-design` with the deviations listed above. Writes `design-review.md`.
 
 If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4. (No revision bump — the doc was not modified in this run.)
@@ -61,8 +59,6 @@ If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**S
 If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Do not update the design doc status header.
 
 ### Step 2: Fix all findings
-
-Declare: "I'll use architecture-research-planner agent to fix all design findings..."
 
 **Which findings to fix:** Fix all Critical, High, and Medium findings. For Low: fix those with a concrete fix direction stated in the review; skip advisory-only entries. Apply this rule without asking the user.
 
@@ -106,7 +102,7 @@ Re-invoke /review-design-fix-loop after resolving the doc consistency issues.
 
 ### Step 3: Re-review
 
-Increment `iteration` (`iteration += 1`). Declare: "I'll use reviewer agent for re-review pass [N]..." where N is the current value of `iteration`.
+Increment `iteration` (`iteration += 1`).
 
 Follow `/review-design` with the deviations listed above. **Pass the current `design-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `design-review.md`.
 
@@ -123,8 +119,6 @@ Re-invoke /review-design-fix-loop after addressing the stalled finding via /desi
 ```
 
 ### Step 4: Final clean review
-
-Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-design` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `design-review.md`.
 

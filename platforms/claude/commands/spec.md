@@ -52,8 +52,6 @@ If clarification is needed, ask at most 2–3 questions, one at a time. Ask only
 
 ### Step 3: Spawn architecture-research-planner
 
-Declare: "I'll use architecture-research-planner agent to write the spec..."
-
 Pass to the agent:
 - The article notes from `status.md` for this issue
 - The analysis.md content (if it exists)

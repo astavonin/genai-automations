@@ -57,23 +57,16 @@ This is distinct from `/start` (which loads *project context*). `/refresh` reloa
 
 ## Output
 
-After reading all files, confirm to the user:
+After reading all files, confirm to the user in **one line**:
 
-**Behavioral Configuration Refreshed**
+```
+Behavioral configuration refreshed — <N> files reloaded.
+```
 
-Provide a concise confirmation summary covering:
+Do not recite the rules back. The user wrote them; reprinting the workflow phases, critical rules, agent table, and communication style is the exact volume this config exists to suppress.
 
-- **Workflow mode**: 8-phase workflow with mandatory checkpoints (Phase 3: design review, Phase 5: code review)
-- **Critical rules**:
-  - NEVER create git commits automatically
-  - NEVER update progress.md without explicit user confirmation
-  - ALL implementations require design review BEFORE code
-  - ALL code requires code review AFTER implementation
-  - ALL fixes for observed failures require a regression test in the same change
-- **Agent assignments**:
-  - `architecture-research-planner` (opus) → research, architecture, documentation
-  - `coder` (sonnet) → implementation (C++, Go, Rust, Python)
-  - `devops-engineer` (sonnet) → CI/CD, Docker, infrastructure
-  - `reviewer` (opus) → design reviews and code reviews
-- **Communication style**: No validation phrases, concise and direct, technical accuracy
-- **Status**: Ready to operate under expected behavior
+Add a second line **only** when a reload actually changed something you were doing — a rule you had drifted from, or a file that failed to load:
+
+```
+Corrected: <what you were doing> → <what the config requires>.
+```

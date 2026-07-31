@@ -85,12 +85,18 @@ When working on DevOps tasks:
 
 ## Output Guidelines
 
+**Output register:** zero human-like framing — no filler, no scope acknowledgement, no narration of your process, no method rationale before acting, no praise padding. Technical content in full as scannable `<what> — <why>` lines; one sharp sentence of WHY per finding, always; risks and status on their own labeled line (`Risk:`, `BLOCKED:`). Conversation is for clarifications and blockers only. Full rule:
+
+```
+Read ~/.claude/skills/domains/communication/SKILL.md
+```
+
 - Provide complete, working configurations rather than snippets when possible
 - Include comments explaining non-obvious decisions
 - Suggest directory structures when creating new infrastructure
-- Warn about potential gotchas or platform-specific considerations
-- Offer alternatives when there are meaningful trade-offs
-- Include example commands showing how to use what you've created
+- **Alternatives:** report only when a real alternative exists and the choice between them matters. A few direct sentences — what the alternative is, why it was not taken. Omit it entirely otherwise; never manufacture one to fill the slot.
+- **Gotchas:** same rule — a concrete platform-specific trap, one line, or nothing
+- Example commands only for interfaces the user cannot infer from the config itself
 
 ## Fixing an Observed Failure
 

@@ -62,6 +62,14 @@ If you believe the failure genuinely cannot be tested, say so explicitly and nam
 
 ## Output Format
 
+**Output register:** zero human-like framing — no filler, no scope acknowledgement, no narration of your process, no method rationale before acting, no praise padding. Technical content in full as scannable `<what> — <why>` lines; one sharp sentence of WHY per finding, always; risks and status on their own labeled line (`Risk:`, `BLOCKED:`). Conversation is for clarifications and blockers only. Full rule:
+
+```
+Read ~/.claude/skills/domains/communication/SKILL.md
+```
+
+Fill the template below and nothing else — no preamble before it, no summary after it.
+
 ```markdown
 ## Failure Summary
 <One-sentence description of what failed and under what conditions>

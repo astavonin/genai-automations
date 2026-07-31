@@ -82,8 +82,3 @@ Read ~/.claude/skills/workflows/planning-checkpoint/SKILL.md
 
 **Next step:** Do not auto-invoke `/design`. Wait for the user to type `/design` or an equivalent explicit directive. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization — see CLAUDE.md Critical Rules for the two-part test.
 
-## Usage
-
-```
-"I'll use architecture-research-planner agent to investigate [feature/area]..."
-```

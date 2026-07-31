@@ -40,8 +40,6 @@ Resolve `<issue-folder>` once and echo it. Every later step reuses this exact st
 
 ### Step 1: Initial review
 
-Declare: "I'll use reviewer agent for the initial code review..."
-
 Follow `/review-code` with the deviations listed above. Writes `code-review.md`.
 
 If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
@@ -49,8 +47,6 @@ If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already 
 If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2.
 
 ### Step 2: Fix all findings
-
-Declare: "I'll use coder agent to fix all findings from the current review..."
 
 **Which findings to fix:** Fix all Critical, High, and Medium findings. For Low: fix those with a concrete `fix:` field in the review; skip advisory-only entries. Apply this rule without asking the user.
 
@@ -80,7 +76,7 @@ Passing the folder is not optional: `/verify-docs` cannot discover planning docs
 
 ### Step 3: Re-review
 
-Increment `iteration` (`iteration += 1`). Declare: "I'll use reviewer agent for re-review pass [N]..." where N is the current value of `iteration`.
+Increment `iteration` (`iteration += 1`).
 
 Follow `/review-code` with the deviations listed above. **Pass the current `code-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `code-review.md`.
 
@@ -91,8 +87,6 @@ If result is `CHANGES REQUESTED` or `REJECTED`: return to Step 2.
 **Stall detection:** If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
 
 ### Step 4: Final clean review
-
-Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-code` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `code-review.md`.
 

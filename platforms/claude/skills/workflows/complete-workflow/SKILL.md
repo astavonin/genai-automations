@@ -91,7 +91,7 @@ Investigate existing codebase patterns, architecture, integration points.
 
 **Structure:** Follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — all 8 sections required. Sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions.
 
-After writing: print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs accepted — conversational output only, not written to any file), then ask the user if they want to `open <path>` the design file.
+After writing: print a short summary in the conversation (3–6 bullet points, **one line each**: chosen approach, key decisions as `<what> — <why>`, trade-offs accepted — conversational output only, not written to any file), then ask the user if they want to `open <path>` the design file.
 
 ### Phase 3: Design Review (CHECKPOINT)
 **Command:** `/review-design`
@@ -193,17 +193,9 @@ Pushes updated planning to Google Drive backup, making it available on all machi
 
 1. **NEVER create git commits** - user always handles commits
 2. **NEVER automatically update progress.md** - always propose and confirm
-3. **ALWAYS declare agent before use** - state "I'll use <agent-name> agent to <task>..." before every agent invocation
-4. **ALL implementations require design review BEFORE code** (Phase 3)
-5. **ALL code requires code review AFTER implementation** (Phase 5)
-6. **NEVER use `isolation: "worktree"` for coder or devops-engineer agents** — changes would land in a throw-away branch instead of the user's working branch, requiring manual recovery. Omit the `isolation` parameter entirely for all implementation agents.
-
-## Agent Declaration
-
-Always declare agent usage:
-```
-"I'll use <agent-name> agent to <task-description>..."
-```
+3. **ALL implementations require design review BEFORE code** (Phase 3)
+4. **ALL code requires code review AFTER implementation** (Phase 5)
+5. **NEVER use `isolation: "worktree"` for coder or devops-engineer agents** — changes would land in a throw-away branch instead of the user's working branch, requiring manual recovery. Omit the `isolation` parameter entirely for all implementation agents.
 
 ## References
 

@@ -328,7 +328,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 3. **Be Constructive**: Focus on improvement, not criticism
 4. **Be Practical**: Balance ideal solutions with pragmatic progress
 5. **Be Consistent**: Apply same standards across all reviews
-6. **Be Educational**: Explain WHY something is a concern
+6. **Be Educational, briefly**: always give one sentence on WHY it is a concern — targeted, never a rationale paragraph
 
 ## Review Report Format
 

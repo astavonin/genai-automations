@@ -162,16 +162,6 @@ Implementation complete with:
 - Passing build
 - Applied formatting
 
-## Usage
-
-```
-"I'll use coder agent to implement the authentication module following the approved design..."
-```
-
-```
-"I'll use devops-engineer agent to create the CI pipeline configuration..."
-```
-
 ## Planning State Update (last step before handing off)
 
 After implementation is complete and build passes, update planning state:

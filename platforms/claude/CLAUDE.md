@@ -13,6 +13,8 @@
 
 # Communication Style
 
+Full rule: `~/.claude/skills/domains/communication/SKILL.md` — the single source for the output register, applying to this conversation and to every agent's conversational output. The limits below and in "Verbosity (hard limits)" are the summary; edit the skill, not the summaries.
+
 - Avoid validation phrases like "you are right", "great idea", or similar unnecessary affirmations
 - Focus on technical accuracy and objective analysis
 - Be concise and direct
@@ -27,12 +29,17 @@ Default to the shortest answer that is complete. These are limits, not targets:
 - **No hedging stacks.** One qualifier maximum. Not "probably, though it may depend on, and I'd want to verify".
 - **Options are welcome.** When a decision is genuinely the user's, lay out the alternatives with their trade-offs and give a recommendation. Keep each option to a line or two.
 - **Tables and lists over prose** for anything with more than two facts.
-- **Findings and reviews:** the finding, the location, the fix. No rationale paragraphs unless the reasoning is non-obvious.
+- **Findings and reviews:** the finding, the location, the fix, and one sharp sentence of WHY it matters. All four, always. Never a rationale paragraph.
 - **Corrections:** state the corrected fact in one sentence. No account of how the error happened unless it changes what to do next.
+- **No method rationale.** Never explain how you will do something, or why that way over another, before doing it. A tool preamble is ≤6 words or absent. Not "Let me pull the spec before explaining it, rather than paraphrasing from the reviewers" → "Pulling the spec."
+- **Verdicts are labeled one-liners.** The verdict sentence ends at the verdict. Never append the counter-argument as a trailing clause ("I'd stop — but the honest caveat is that…").
+- **Compress caveats, never delete them.** A real risk is information; the fix is fewer words, not less content. Put it on its own line as `Risk: <facts>` — label plus facts, no connective prose, no "honest"/"worth noting" framing. Same for status: `STOPPED: <reason>`, `BLOCKED: <reason>`, `SKIPPED: <reason>`.
 
 Length must track the question. A yes/no question gets a yes/no. Long output is justified only by a genuinely multi-part deliverable — a review report, a design doc, a migration plan — never by explanation of routine work.
 
 This overrides the model's default tendency toward thorough, cushioned prose. Terse is correct here; the user reads code and prefers signal.
+
+**The user asks when more is needed.** Under-length beats over-length: a paragraph gets skipped, a line gets read. Volume that buries the point is a defect, not thoroughness. Never pad to seem complete.
 
 ## Markdown Writing
 
@@ -181,7 +188,6 @@ Reference: `~/.claude/skills/workflows/complete-workflow/`
 - **After every compaction (auto or manual), run `/refresh` as the first action before responding to the user**
 - **Always propose commit message and wait for explicit approval before committing**
 - **NEVER automatically update progress.md** - always propose explicitly and wait for user confirmation
-- **ALWAYS declare agent before use**: state "I'll use <agent-name> agent to <task-description>..." before every agent invocation
 - **ALL implementations require design review BEFORE code** (Phase 3)
 - **ALL code requires code review AFTER implementation** (Phase 5)
 - **ALL fixes for observed failures require a regression test in the same change** — see "Observed Failures Always Get a Test" above. `/verify` Steps 6a–6d are a hard gate; the fix and the test are one deliverable, never a fix now and a test later.
@@ -293,7 +299,7 @@ ls planning/<epic-slug>/milestone-XX/issues/
 - **Step 2 — Write design doc:** Use architecture-research-planner agent with the enriched analysis as input
 - Output: `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design.md`
 - **Structure:** follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` exactly — all 8 sections required; sections 7 and 8 may be omitted with a one-line note when there are genuinely no alternatives or open questions
-- After writing the design file, print a short summary in the conversation (3–6 bullet points: chosen approach, key decisions with rationale, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
+- After writing the design file, print a short summary in the conversation (3–6 bullet points, **one line each**: chosen approach, key decisions as `<what> — <why>`, trade-offs — conversational output only, not written to any file), then ask the user if they want to `open` it
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
 - Do not auto-invoke `/review-design`. Wait for the user to type `/review-design` or an equivalent explicit directive (e.g., "run design review", "review the design"). Conversational acknowledgements (see Definitions) are NOT authorization; if unclear, stop and ask.
 
@@ -303,7 +309,7 @@ ls planning/<epic-slug>/milestone-XX/issues/
 - **Write review report to `planning/<epic-slug>/milestone-XX/issues/<NNN-name>/design-review.md`**
 - **Review file MUST contain `**Status:** APPROVED|CHANGES REQUESTED|REJECTED` as first non-empty line after H1, within first 20 lines** (machine-readable, no emoji). Verify with `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring done.
 - After writing, ask the user if they want to `open` the file
-- Present a summary of the review outcome to the user
+- Report the review outcome: status marker, finding counts by severity, and the single most severe finding as one line. Nothing else — the report file holds the detail.
 - **Wait for the user to explicitly invoke `/implement` to proceed to Phase 4. Reviewer `APPROVED` is NOT user authorization — it is a precondition for asking the user, not a substitute for the user's answer. Conversational acknowledgements (see Definitions) after a design summary are NOT authorization. If the user has not typed `/implement` or an equivalent explicit directive ("start implementation", "proceed to Phase 4"), stop and ask.**
 - If rejected: return to Phase 2
 - **Last step:** push planning to backup via the push-planning fragment (best-effort, non-blocking)
@@ -392,19 +398,13 @@ Reference: `~/.claude/agents/`
 
 > **Rule:** Any task that produces architecture documentation or a service README MUST be delegated to architecture-research-planner. Never write these files inline with Write/Edit tools.
 
-## Agent Declaration Pattern
+> **Reviewer invocation:** always pass the Code Review Checklist at `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` in the reviewer agent's prompt.
 
-For EVERY task, explicitly state agent usage:
+## Agent Output Register
 
-```
-"I'll use <agent-name> agent to <task-description>..."
-```
+Reference: `~/.claude/skills/domains/communication/SKILL.md` — the single source for the output register. It applies to the main conversation and to every agent's conversational output. Agent files carry a one-line summary plus a pointer to it; edit the skill, not the copies.
 
-**Examples:**
-- "I'll use architecture-research-planner agent to investigate existing error handling patterns..."
-- "I'll use coder agent to implement the authentication module following the approved design..."
-- "I'll use devops-engineer agent to create the CI pipeline configuration..."
-- "I'll use reviewer agent for code review. Please use the Code Review Checklist from ~/.claude/skills/domains/quality-attributes/references/review-checklist.md..."
+Summary: human-like register zero; technical content kept in full as scannable `<what> — <why>` lines; one sharp sentence of WHY per finding, always; conversation reserved for clarifications, blockers, and the prompts this file mandates (the `open <path>` question, commit-message and `progress.md` proposals, phase gates); when relaying an agent result, relay the substance and drop the agent's framing.
 
 # Planning Structure
 

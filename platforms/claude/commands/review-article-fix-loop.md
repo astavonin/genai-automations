@@ -36,8 +36,6 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 
 ### Step 1: Initial review
 
-Declare: "I'll use reviewer agent for the initial article review..."
-
 Follow `/review-article` with the deviations listed above. Writes `article-review.md`.
 
 If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
@@ -45,8 +43,6 @@ If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already 
 If result is `CHANGES REQUESTED`: proceed to Step 2.
 
 ### Step 2: Fix all findings
-
-Declare: "I'll use writer agent to fix all findings from the current review..."
 
 **Which findings to fix:** Fix all High and Medium findings. For Low: fix those with a concrete fix direction stated in the review; skip advisory-only entries. Apply this rule without asking the user.
 
@@ -125,7 +121,7 @@ rm -f /tmp/article-review-todos-before.txt
 
 ### Step 3: Re-review
 
-Increment `iteration` (`iteration += 1`). Declare: "I'll use reviewer agent for re-review pass [N]..." where N is the current value of `iteration`.
+Increment `iteration` (`iteration += 1`).
 
 Follow `/review-article` with the deviations listed above. **Pass the current `article-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `article-review.md`.
 
@@ -151,8 +147,6 @@ Re-invoke /review-article-fix-loop after addressing the stalled finding manually
 ```
 
 ### Step 4: Final clean review
-
-Declare: "I'll use reviewer agent for the final clean review..."
 
 Follow `/review-article` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `article-review.md`.
 

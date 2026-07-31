@@ -51,8 +51,6 @@ When running any review pass in this command (Steps 0 and 3), deviate from the i
 
 ### Step 0: Initial review
 
-Declare: "I'll use reviewer agent for the initial review..."
-
 Run the **complete review protocol** for the appropriate type:
 - Code review: follow `/review-code` exactly — full 3+1 consensus + Codex, all mandatory passes, writes `code-review.md`
 - Design review: follow `/review-design` exactly — full 3+1 consensus + Codex, writes `design-review.md`
@@ -107,8 +105,8 @@ For **design-review findings**, no test requirements apply — the fix is a doc 
   ```
 
 Invoke the appropriate agent:
-- Code review: declare "I'll use coder agent to fix [finding ID]…" and invoke coder agent scoped to this finding only, explicitly passing the test requirements above and the resolved `<issue-folder>` path (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). If the finding describes incorrect runtime behaviour that the coder confirms reproduces, it must append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md` — observed-failure trigger 6. Without the path the coder cannot write it and the finding cannot clear re-review.
-- Design review: declare "I'll use architecture-research-planner agent to fix [finding ID]…" and invoke architecture-research-planner scoped to this finding only; instruct it not to add new items to `## 8. Open Questions` and not to modify the `**Revision:**` or `**Status:**` header fields — if it cannot address a finding, it must flag it explicitly rather than declining silently. Also instruct it that **rewriting or deleting text is a valid resolution**, and the preferred one when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — adding a clarification on top of bad text leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite when existing text is wrong, unclear, or duplicated, updating any inbound cross-references in the same pass. This does not permit skipping the finding, only resolving it by subtraction. Finally, pass the net-non-growth instruction — but note it is measured **per invocation of this command, not per finding**. Step 2 fixes findings one at a time, so a per-finding budget would forbid a legitimate addition for one finding even when three deletions elsewhere in the same run more than paid for it. Take one measurement before the first fix and one after the last, and use the same wording as `/review-design-fix-loop` Step 2, including the rewrite remedy.
+- Code review: invoke coder agent scoped to this finding only, explicitly passing the test requirements above and the resolved `<issue-folder>` path (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). If the finding describes incorrect runtime behaviour that the coder confirms reproduces, it must append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md` — observed-failure trigger 6. Without the path the coder cannot write it and the finding cannot clear re-review.
+- Design review: invoke architecture-research-planner scoped to this finding only; instruct it not to add new items to `## 8. Open Questions` and not to modify the `**Revision:**` or `**Status:**` header fields — if it cannot address a finding, it must flag it explicitly rather than declining silently. Also instruct it that **rewriting or deleting text is a valid resolution**, and the preferred one when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — adding a clarification on top of bad text leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite when existing text is wrong, unclear, or duplicated, updating any inbound cross-references in the same pass. This does not permit skipping the finding, only resolving it by subtraction. Finally, pass the net-non-growth instruction — but note it is measured **per invocation of this command, not per finding**. Step 2 fixes findings one at a time, so a per-finding budget would forbid a legitimate addition for one finding even when three deletions elsewhere in the same run more than paid for it. Take one measurement before the first fix and one after the last, and use the same wording as `/review-design-fix-loop` Step 2, including the rewrite remedy.
 
 After applying any design-review fix (agent-driven or confirmed manual), set `design_modified = true`.
 
@@ -153,7 +151,7 @@ One increment per `/review-iterate` invocation regardless of how many per-findin
 
 ### Step 3: Final full re-review
 
-Once all findings are resolved, declare: "I'll use reviewer agent for the final full re-review..."
+Once all findings are resolved, run the final full re-review.
 
 Run the **complete review protocol** by invoking the appropriate command:
 - Code review: follow `/review-code` exactly — full 3+1 consensus + Codex, mandatory passes (Test Quality, Cross-Site Consistency, Dead Symbol), overwrites `code-review.md`
