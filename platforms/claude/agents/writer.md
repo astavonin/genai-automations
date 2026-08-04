@@ -127,12 +127,14 @@ Before finalizing any draft document, actively verify:
 
 # Book Article Mode
 
-Activated when the invoker (specifically `/write`) passes the token `[MODE: book-article]` as the **first line** of the prompt. In all other cases, use the default behavior above.
+Activated when the invoker (specifically `/write`) passes `[MODE: book-article/main]` or `[MODE: book-article/appendix]` as the **first line** of the prompt. In all other cases, use the default behavior above.
+
+**`[MODE: book-article/appendix]` — a reference appendix page.** Its spec is a fact contract, not a coding contract, so requirements 1–5 below (line-range verification, commit-hash capture, verbatim excerpts, test enumeration, current API signatures) have no subject: an A-page has no companion repo and never cites code. Write `(none — fact contract)` in §7.1–§7.4, `n/a — appendix page` in the companion metadata fields and `Part`, and do not invent a commit hash. The spec's §2 Claims are the facts — carry each with the source attached to it, verified rows into §7.5 (numeric or not), and rows from the unverified table into §9 only, keeping their `[UNVERIFIED: ...]` text inside the claim string. Requirement 10's permalink-format clause also has no subject here (no code citations to format); its style-guide-version and prose-compliance clauses still apply in full. Requirements 6 and 7 apply with a different subject — see each below. Full rules: `~/.claude/skills/workflows/page-type/SKILL.md`.
 
 ## Purpose
 
 In Book Article Mode, your output is **not** a first-pass article. Your output is a **fact-verified article-writing brief** that Web-Claude will use to write the actual article. The brief carries:
-- **Verified facts:** line ranges, commit hash, test list, API signatures, code excerpts to include verbatim, numeric constants and their sources.
+- **Verified facts:** line ranges, commit hash, test list, API signatures, code excerpts to include verbatim, numeric constants and their sources. (For an `appendix` page, §7.1–§7.4 hold `(none — fact contract)` instead — its verified facts are the spec's §2 Claims and §5 Verification Procedure, carried with their sources into §7.5. §8 is not used for an appendix page.)
 - **Article intent:** theory scope, reader arc, section outline, A-page dependencies, diagram list, external citations needed.
 - **Structural guidance:** style-guide version applied, TODO integration plan, uncertainty flags.
 
@@ -162,21 +164,25 @@ Plus the metadata block at the top (Article, Part, Companion repo (local), Compa
 
 2. **Every commit hash must be captured.** Use `git rev-parse HEAD` in the companion repo. All GitHub permalinks in brief.md use this hash, not `main` or a branch name.
 
-3. **Every test named in the spec must be listed.** For each: test name, file, line range, one-sentence "what this test proves". Verified against the file, not against the spec. If the spec lists no tests, write `(none — spec defines no tests)` in §7.3 and record a §9 uncertainty flag noting the empty test surface.
+3. **Every test named in the spec must be listed.** For each: test name, file, line range, one-sentence "what this test proves". Verified against the file, not against the spec. If the spec lists no tests, write `(none — spec defines no tests)` in §7.3 and record a §9 uncertainty flag noting the empty test surface. Does not apply to `appendix` — see the mode paragraph above, which mandates `(none — fact contract)` for §7.1–§7.4 uniformly and no §9 flag.
 
 4. **Every code excerpt to include verbatim must be captured in full.** For excerpts under ~30 lines that will appear in the article body, include the exact code text. For larger blocks that will be summarized in prose (not shown verbatim), include just the file/line permalink and a one-sentence purpose note in §7.1.
 
 5. **API signatures reflect the current code.** For each struct/enum/trait to be referenced in the article, capture the current definition (struct fields, enum variants, trait method signatures). Not the spec's version — the code's version.
 
-6. **Theory scope must be inferred.** Based on the article's pipeline slice (from `planning/book/overview.md` + `status.md`), the topic (from status.md article notes), and existing A-page coverage (from `docs/appendix/`), determine what physical/OS layer theory the article's front-half must cover. Aim for a walking-tour version that references A-pages for depth. Format as a bulleted list of concepts.
+6. **Theory scope must be inferred.**
+   **main:** Based on the article's pipeline slice (from `planning/book/overview.md` + `status.md`), the topic (from status.md article notes), and existing A-page coverage (from `docs/appendix/`), determine what physical/OS layer theory the article's front-half must cover. Aim for a walking-tour version that references A-pages for depth. Format as a bulleted list of concepts.
+   **appendix:** Theory scope is not inferred — it is transcribed from `spec.md` §1 Scope ("Concepts carried"), the fact contract's own scope decision. Carry "Deferred" entries from §1 into brief.md §3's "Explicitly out of theory scope" list.
 
-7. **A-page dependencies must be listed with existence status.** For each A-page the article will link to: A-page name, existence (`Published`, `Planned`, `Missing`), what depth is available there. If an A-page doesn't exist yet, flag it: "A2 does not exist; article should link but note as pending, OR write A2 first (recommended for sequencing)."
+7. **A-page dependencies must be listed with existence status.**
+   **main:** For each A-page the article will link to: A-page name, existence (`Published`, `Planned`, `Missing`), what depth is available there. If an A-page doesn't exist yet, flag it: "A2 does not exist; article should link but note as pending, OR write A2 first (recommended for sequencing)."
+   **appendix:** §4 lists only other A-pages *this* page cites for its own depth, if any — usually "(none)". The inverse relation (which main articles depend on this page) is the Blocks column in `planning/book/appendix/status.md`'s Linked-from rows (`page-type/SKILL.md`); it is already tracked there and is not re-derived in this page's own brief.
 
 8. **Section outline uses pipeline framing, not code-artifact framing.** Section names refer to pipeline concepts ("What V4L2 promises when you ask for a format"), not Rust artifact names ("`Format` (requested) vs `FrameLayout` (negotiated)"). Line budgets are estimates, not hard targets.
 
 9. **Diagram list is a specification of diagrams needed, not the diagrams themselves.** Excalidraw authoring happens in Web-Claude sessions. For each diagram: name, purpose (what it shows), placement (which section), Mermaid concept sketch (rough ASCII or Mermaid for Web-Claude to iterate from before rebuilding in Excalidraw).
 
-10. **Style guide compliance is enforced.** The brief MUST use the GitHub permalink format for code references (``[`src/file.rs:N-M`](https://github.com/<owner>/<repo>/blob/<hash>/src/file.rs#LN-LM)``), NOT the `<!-- file: -->` HTML comment format. All rules from `planning/style-guide.md` (in the book repo) apply to any prose the brief contains — though the brief should contain minimal prose, since it is a structured brief, not narrative. Extract the style guide version by scanning the first 10 lines of `planning/style-guide.md` for a line matching regex `^Version:\s*(.+?)\s*$`; the capture becomes the version string in the brief's metadata block. If no `Version:` line is present in the first 10 lines, record `version-unknown`.
+10. **Style guide compliance is enforced.** **main:** the brief MUST use the GitHub permalink format for code references (``[`src/file.rs:N-M`](https://github.com/<owner>/<repo>/blob/<hash>/src/file.rs#LN-LM)``), NOT the `<!-- file: -->` HTML comment format. **appendix:** no code references exist to format — this clause has no subject. **Both:** all rules from `planning/style-guide.md` (in the book repo) apply to any prose the brief contains — though the brief should contain minimal prose, since it is a structured brief, not narrative. Extract the style guide version by scanning the first 10 lines of `planning/style-guide.md` for a line matching regex `^Version:\s*(.+?)\s*$`; the capture becomes the version string in the brief's metadata block. If no `Version:` line is present in the first 10 lines, record `version-unknown`.
 
 11. **Uncertainty flags.** Two distinct §9 subsections — populate both separately:
     - **(a)** For any claim you cannot verify with high confidence, insert `[VERIFY: <specific claim>]` inline in the brief and file a corresponding `[VERIFY: <claim>]` bullet under §9's `[VERIFY:]` list. Examples: `The Pi 5 pisp_be block outputs NV12 [VERIFY: confirm against pisp_be documentation, not just spec text].`, `The IMX708 sensor readout time at 2304x1296 is ~17.9ms [VERIFY: confirm from A1 or measure].`
@@ -193,21 +199,21 @@ Plus the metadata block at the top (Article, Part, Companion repo (local), Compa
 
 ## Output file
 
-`planning/book/milestone-XX-<name>/issues/<NNN-name>/brief.md`. **NOT** `draft.md`. The `draft.md` filename is reserved for the actual article produced by Web-Claude in a subsequent step.
+`planning/book/milestone-XX-<name>/issues/<NNN-name>/brief.md` — or `planning/book/appendix/issues/A<N>-<slug>/brief.md` for an `appendix` page. **NOT** `draft.md`. The `draft.md` filename is reserved for the actual article produced by Web-Claude in a subsequent step.
 
 ## Book Article Mode Quality Checklist
 
 Applied in addition to the standard Quality Checklist above. Every item must be satisfied before the brief is considered complete:
 
-- [ ] Every line range in the brief has been read and verified against the current code
-- [ ] Commit hash is captured and used in all permalinks (no `main`, no branch names)
-- [ ] Every test in the spec is enumerated with a "what this proves" note
-- [ ] Every code excerpt intended for verbatim inclusion is captured in full
-- [ ] API signatures reflect current code, not the spec's version
+- [ ] Every line range in the brief has been read and verified against the current code (main only — an `appendix` brief has `(none — fact contract)` in §7.1 instead)
+- [ ] Commit hash is captured and used in all permalinks, no `main`, no branch names (main only — an `appendix` brief uses `n/a — appendix page` and invents no commit hash)
+- [ ] Every test in the spec is enumerated with a "what this proves" note (main only — an `appendix` brief has `(none — fact contract)` in §7.3 instead)
+- [ ] Every code excerpt intended for verbatim inclusion is captured in full (main only — an `appendix` brief has `(none — fact contract)` in §7.2 instead)
+- [ ] API signatures reflect current code, not the spec's version (main only — an `appendix` brief has `(none — fact contract)` in §7.4 instead)
 - [ ] Theory scope is stated (not inferred from omission)
 - [ ] A-page dependencies are listed with existence status
 - [ ] Section outline uses pipeline framing, not code-artifact framing
-- [ ] All code references use GitHub permalink format, not `<!-- file: -->`
+- [ ] All code references use GitHub permalink format, not `<!-- file: -->` (main only — an `appendix` brief cites no code, so it has none to format)
 - [ ] Style guide version is captured in the metadata block
 - [ ] Uncertainty is flagged with `[VERIFY: ...]` markers in §9's `[VERIFY:]` list
 - [ ] Missing context files (WARN cases from `/write`) are recorded in §9's "Missing context files" subsection (not as `[VERIFY:]` bullets)

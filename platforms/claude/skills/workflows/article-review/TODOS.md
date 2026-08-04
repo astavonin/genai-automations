@@ -27,11 +27,19 @@ The three commands depend on these exact column names. Do not rename without upd
 
 To determine which `todos.md` entries belong to the current article:
 
+0. **Resolve the page type first** per `~/.claude/skills/workflows/page-type/SKILL.md`. A **reference appendix page** takes step 0a and skips steps 1–4; a **main article** takes steps 1–4.
+
+   0a. **Appendix page.** There is no part, and its absence is **not** a skip condition. Match on a whole-token boundary — `A2` must not match `A20` — for both types:
+       - **Type A** (`Referenced in`): match when the cell names this page — `Appendix A2`, `A2`, or a combined form such as `Appendix A2/A3`.
+       - **Type B** (`Resolves in`): match when the cell names this page, using the same forms.
+
+       This is the complete appendix rule. Steps 1–4 below are the main-article derivation and do not apply — extraction proceeds directly with these matches; there is no further step.
+
 1. **Determine the article's part** from `status.md`. Standard mappings:
    - `Part 1` → `part1`, `Part 2` → `part2`, etc.
    - `Introduction` → `intro`
    - `Appendix` → `appendix`
-   This step is MANDATORY — do not skip it.
+   This step is MANDATORY for a main article — do not skip it. It does not apply to an appendix page, which resolved at step 0a.
 
 2. **For entries whose cell contains a `partN/` prefix** (e.g., `part1/04 draft`): the match MUST include the correct part. A bare numeric match (`04`) that crosses part boundaries is rejected — it would silently attribute a `part1/04` TODO to a `part2/04` article.
 

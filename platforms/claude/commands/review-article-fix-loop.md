@@ -7,6 +7,13 @@ description: Run initial article review, fix all High and Medium findings, re-re
 
 Run the full article review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED → final clean review + report.
 
+## Usage
+
+```
+/review-article-fix-loop                       # infers all paths from current issue context
+/review-article-fix-loop <issue-folder-path>    # explicit issue folder — REQUIRED for an appendix page, since progress.md can never resolve one
+```
+
 ## Agents
 
 - **reviewer (opus)** — all review passes (full `/review-article` multi-agent protocol each time)
@@ -14,7 +21,9 @@ Run the full article review cycle autonomously: initial review → fix all findi
 
 ## Prerequisite
 
-Both `spec.md` and `draft.md` must exist in the active issue folder before Step 1. No existing `article-review.md` required — this command produces it. If either file is missing, stop and report which is absent.
+Both `spec.md` and `draft.md` must exist in the issue folder — the argument if one was given, else derived from the active issue in `planning/progress.md` (main articles only; an appendix page must be given explicitly, per `~/.claude/skills/workflows/page-type/SKILL.md` → "Obtaining the path"). `<issue-folder>` below means this resolved path. No existing `article-review.md` required — this command produces it. If either file is missing, stop and report which is absent.
+
+Every `/review-article` pass below (Steps 1, 3, 4) receives the same issue-folder-path argument this command was invoked with, if any.
 
 ## Protocol Deviations
 
@@ -32,7 +41,7 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 **Preamble:** Initialize `iteration = 0` before Step 1. Set exactly once at command start; never reset mid-run.
 
 **Review-planning-update parameters** — all `review-planning-update` invocations in this command use identical parameters (shown inline at each call site for readability; listed here once as the single source of truth):
-`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`
+`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`, `issue_folder = <issue-folder>`
 
 ### Step 1: Initial review
 
@@ -66,7 +75,7 @@ rm -f /tmp/article-review-todos-before.txt
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
-(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`)
+(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`, `issue_folder = <issue-folder>`)
 
 Then surface the finding to the user and stop:
 ```
@@ -88,7 +97,11 @@ diff /tmp/article-review-todos-before.txt <(grep -oE 'TODO\[[^]]+\]' /path/to/dr
 
 Compare the dropped IDs against the finding list; for any ID drop that was NOT explicitly requested by a finding, add to the combined writer prompt: "The following TODO markers were dropped — restore them: [paste diff output]".
 
-**2. Annotation coherence check** — substitute the actual `draft.md` path. The `prev_nonblank` pattern tolerates zero or more blank lines between annotation and fence. Limitations: indented fences, nested fenced blocks, and fences inside HTML comments are not detected.
+**2. Annotation coherence check.**
+
+**Appendix pages: skip this check entirely** and treat it as passed. An A-page never cites code (`page-type/SKILL.md` → Resolution) — its fenced blocks are captured command output or evidence, not GitHub-permalinked source snippets — running this check against one asks the writer to fabricate a commit hash for evidence, the exact failure class this contract exists to prevent.
+
+For a `main` page: substitute the actual `draft.md` path. The `prev_nonblank` pattern tolerates zero or more blank lines between annotation and fence. Limitations: indented fences, nested fenced blocks, and fences inside HTML comments are not detected.
 
 ```bash
 awk '
@@ -136,7 +149,7 @@ rm -f /tmp/article-review-todos-before.txt
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
-(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`)
+(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`, `issue_folder = <issue-folder>`)
 
 This is a terminal stop. Surface the stall and output:
 ```
@@ -156,7 +169,7 @@ If this final clean review returns `CHANGES REQUESTED`: run the review-planning-
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
-(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`)
+(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`, `issue_folder = <issue-folder>`)
 
 Report to the user and stop:
 ```
@@ -168,7 +181,7 @@ The fix loop converged but the clean pass found new issues. Review the findings 
 
 Verify the status marker:
 ```bash
-head -20 planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md | grep -m 1 '^\*\*Status:\*\*'
+head -20 <issue-folder>/article-review.md | grep -m 1 '^\*\*Status:\*\*'
 ```
 
 **Cross-article TODO update:** If `planning/book/todos.md` exists and the TODO scan ran (check the `**TODO scan:**` field in `article-review.md` — skip this step if the field is missing OR reads `✗ skipped`), check whether any open entries were resolved during this review cycle:
@@ -181,13 +194,13 @@ Run the review-planning-update fragment (which includes push):
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
-(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`)
+(`approved_phase = article approved ✅`, `review_label = article review`, `approved_next = ready for publication or revision`, `escalation = standard`, `issue_folder = <issue-folder>`)
 
 Output:
 ```
 Article review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
-Final report: planning/book/milestone-XX-<name>/issues/<NNN-name>/article-review.md
+Final report: <issue-folder>/article-review.md
 ```
 
 Stop. Do not proceed to publication automatically.

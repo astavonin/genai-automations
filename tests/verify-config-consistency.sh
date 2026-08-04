@@ -29,6 +29,14 @@ set -uo pipefail
 GREP=/usr/bin/grep
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLAUDE="$ROOT/platforms/claude"
+PAGETYPE="$CLAUDE/skills/workflows/page-type/SKILL.md"
+APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
+
+# Bump when adding or removing an assertion. Asserted at the end so a block that silently
+# skips itself shows up as a count mismatch instead of a green run — the sibling suites
+# (verify-doc-metrics.sh, verify-workflow-safety.sh) added this counter for the same reason;
+# this suite had none, which is finding T3 in planning/genai-automations/appendix-page-type.
+EXPECTED_TESTS=27
 
 PASS=0
 FAIL=0
@@ -84,15 +92,22 @@ fi
 # pointer at it is clutter, not a defect — git does not track empty directories, so several
 # exist only in the working tree. Test the pair, not the directory alone.
 dangling=""
+checked_refs=0
 while IFS= read -r skill; do
     $GREP -qE '(See|see) `references/`|references/ directory' "$skill" || continue
+    checked_refs=$((checked_refs + 1))
     refs="$(dirname "$skill")/references"
     [ -d "$refs" ] || { dangling="$dangling$skill → references/ (absent)\n"; continue; }
     [ -n "$(ls -A "$refs" 2>/dev/null)" ] || dangling="$dangling$skill → references/ (empty)\n"
 done < <(find "$CLAUDE" -name 'SKILL.md')
 
-if [ -z "$dangling" ]; then
-    pass "every skill pointing at references/ has a non-empty one"
+# T3: this loop previously had no non-emptiness guard, unlike its two siblings in this file
+# (checked -eq 0, n_src -eq 0 above/below) — if the body never runs, $dangling stays empty
+# and the assertion passes vacuously, exactly like a skipped test reporting green.
+if [ "$checked_refs" -eq 0 ]; then
+    fail "every skill pointing at references/ has a non-empty one" "matched 0 SKILL.md files referencing references/ — the extraction is broken, not clean"
+elif [ -z "$dangling" ]; then
+    pass "every skill pointing at references/ has a non-empty one ($checked_refs checked)"
 else
     fail "every skill pointing at references/ has a non-empty one" "$(printf "%b" "$dangling")"
 fi
@@ -137,6 +152,565 @@ if [ -z "$absent" ]; then
 else
     fail "all 8 phase commands named in CLAUDE.md exist under commands/" "missing:$absent"
 fi
+
+echo "== Book page-type activation token =="
+
+# T2(a): write.md and writer.md each declare the [MODE: book-article/*] activation token
+# independently — a mirror with no behavioural model behind it. Require the sets to agree
+# and the superseded bare form (no page-type suffix) to be gone from both.
+write_modes=$($GREP -oE '\[MODE: book-article/[a-z]+\]' "$CLAUDE/commands/write.md" | sort -u)
+writer_modes=$($GREP -oE '\[MODE: book-article/[a-z]+\]' "$CLAUDE/agents/writer.md" | sort -u)
+n_write_modes=$(printf '%s\n' "$write_modes" | $GREP -c . || true)
+if [ "$n_write_modes" -eq 0 ]; then
+    fail "activation-token set extracted from write.md" "extraction found none"
+elif [ "$write_modes" = "$writer_modes" ]; then
+    pass "activation-token set ($n_write_modes forms) agrees between write.md and writer.md"
+else
+    fail "activation-token set agrees between write.md and writer.md" \
+         "$(diff <(printf '%s\n' "$write_modes") <(printf '%s\n' "$writer_modes"))"
+fi
+
+bare_hits=$( { $GREP -F '[MODE: book-article]' "$CLAUDE/commands/write.md" "$CLAUDE/agents/writer.md" || true; } | wc -l)
+if [ "$bare_hits" -eq 0 ]; then
+    pass "the superseded bare [MODE: book-article] token (no page-type suffix) is gone from both"
+else
+    fail "the superseded bare [MODE: book-article] token (no page-type suffix) is gone from both" "$bare_hits occurrence(s) remain"
+fi
+
+echo "== Appendix path-form agreement =="
+
+# T2(b) / M5: page-type/SKILL.md's Resolution table is the single source for the appendix
+# issue-folder shape (`A<N>-<slug>`, not a bare glob). A site that spells out the loose form
+# silently accepts a folder the fragment itself says must be rejected.
+#
+# Two hardcodes made this fragile. (1) matching the row by its label text ("Issue folder")
+# false-reds on a benign label rename — extract the first data row after the table's header
+# separator instead, which is structural, not textual. (2) extracting the appendix cell by
+# backtick field POSITION (awk -F'`' '{print $4}') silently shifts to the wrong field when an
+# unrelated backtick-quoted token is added anywhere earlier in the row — extract by content
+# instead: the backtick-quoted segment that contains "appendix/issues/", wherever it sits.
+res_row=$(awk '
+  /^## Resolution/ { f=1 }
+  f && /^\|---/ { sep=1; next }
+  f && sep && /^\|/ { print; exit }
+' "$PAGETYPE")
+appendix_form=$(printf '%s' "$res_row" | $GREP -oE '`[^`]*appendix/issues/[^`]*`' | tr -d '`')
+if [ -z "$appendix_form" ]; then
+    fail "appendix issue-folder form extracted from the Resolution table" "row='$res_row'"
+else
+    # The glob character is what makes a form "loose", not a trailing slash after it — a
+    # trailing-slash requirement here lets `appendix/issues/*` (no slash) through unnoticed.
+    loose_hits=$($GREP -rn 'appendix/issues/\*' --include='*.md' "$CLAUDE" || true)
+    if [ -z "$loose_hits" ]; then
+        pass "the loose appendix form (appendix/issues/*, no A<N> identifier) appears nowhere"
+    else
+        fail "the loose appendix form (appendix/issues/*, no A<N> identifier) appears nowhere" "$loose_hits"
+    fi
+
+    bad_sites=""
+    n_sites=0
+    while IFS= read -r file; do
+        n_sites=$((n_sites + 1))
+        $GREP -qF "$appendix_form" "$file" || bad_sites="$bad_sites${file#"$ROOT"/} (spells out an appendix path but not the canonical form)\n"
+    done < <($GREP -rl 'appendix/issues/' --include='*.md' "$CLAUDE")
+    if [ "$n_sites" -eq 0 ]; then
+        fail "every site spelling out the appendix path uses the canonical form" "no site spells the path out at all — extraction broken"
+    elif [ -z "$bad_sites" ]; then
+        pass "every site spelling out the appendix path ($n_sites of them) uses the canonical form"
+    else
+        fail "every site spelling out the appendix path uses the canonical form" "$(printf "%b" "$bad_sites")"
+    fi
+fi
+
+echo "== Rejection-block deferral =="
+
+# T2(c) / M4: only the three commands that independently resolve and reject a page-type
+# path (spec, write, review-article) can hit the rejection branch — review-article-fix-loop
+# delegates entirely to /review-article, and the non-command consumers never resolve a path
+# at all, so scoping this to "every Consumers-table row" would force an artificial reference
+# into files with nothing to defer to.
+#
+# Accepting EITHER the block's first line OR the phrase "fragment's error text" means a
+# consumer that RESTATES the block verbatim also satisfies the check, since restating
+# includes the first line — the opposite of deferring to it. It also cannot tell a genuine
+# deferral from a surviving sentence that names the phrase while mandating the forbidden
+# fallback behaviour ("...today, guess the closest page type and continue"). Extracting
+# block_first_line from PAGETYPE itself, rather than hardcoding the sentence, also keeps the
+# check from false-redding on a benign reword of that line.
+block_first_line=$(awk '
+  /\*\*Rejection is mandatory\.\*\*/ { f=1 }
+  f && /^```/ { fence++; if (fence == 1) next; else exit }
+  f && fence == 1 { print; exit }
+' "$PAGETYPE")
+if [ -z "$block_first_line" ]; then
+    fail "rejection block first line found in page-type/SKILL.md" "extraction found none"
+else
+    bad=""
+    for rel in commands/spec.md commands/write.md commands/review-article.md; do
+        f="$CLAUDE/$rel"
+        if $GREP -qF "$block_first_line" "$f"; then
+            bad="$bad$rel (restates the rejection block verbatim instead of deferring)\n"
+        elif ! $GREP -qF "fragment's error text" "$f"; then
+            bad="$bad$rel (no deferral phrase found)\n"
+        elif $GREP -qiE 'guess[^.]*page type' "$f"; then
+            bad="$bad$rel (deferral phrase present but a guess-and-continue sentence survives)\n"
+        fi
+    done
+    if [ -z "$bad" ]; then
+        pass "every path-resolving command defers to the fragment's rejection text without restating or bypassing it"
+    else
+        fail "every path-resolving command defers to the fragment's rejection text without restating or bypassing it" "$(printf "%b" "$bad")"
+    fi
+fi
+
+echo "== Source Requirement (SR) set agreement =="
+
+# T2(d) / M2: commands/spec.md's "Section rules to enforce — appendix" bullet is a summary
+# of APPENDIX-SPEC-TEMPLATE.md §3; an omitted SR silently changes what a spec is graded on
+# without changing what SCOPES.md Scope 2A checks it against.
+#
+# Bounded on `## 3\.` (the number only) rather than `## 3\. Source Requirements` (the
+# number plus its current title) — a benign heading reword would otherwise false-red this
+# extraction even though every SR line inside the section is untouched.
+tmpl_sr=$(awk '/^## 3\./{f=1;next} /^## 4\./{f=0} f' "$APPENDIX_TEMPLATE" \
+    | $GREP -oE 'SR[0-9]+' | sort -u)
+spec_sr=$($GREP -oE 'SR[0-9]+' "$CLAUDE/commands/spec.md" | sort -u)
+n_tmpl=$(printf '%s\n' "$tmpl_sr" | $GREP -c . || true)
+if [ "$n_tmpl" -eq 0 ]; then
+    fail "SR set extracted from APPENDIX-SPEC-TEMPLATE.md §3" "extraction found none"
+elif [ "$tmpl_sr" = "$spec_sr" ]; then
+    pass "SR set ($n_tmpl rules) agrees between APPENDIX-SPEC-TEMPLATE.md §3 and commands/spec.md"
+else
+    fail "SR set agrees between APPENDIX-SPEC-TEMPLATE.md §3 and commands/spec.md" \
+         "$(diff <(printf '%s\n' "$tmpl_sr") <(printf '%s\n' "$spec_sr"))"
+fi
+
+echo "== page-type/SKILL.md Consumers-table completeness =="
+
+# T2(e) / M3: the Consumers table is a manually maintained index; it must equal the
+# discovered referrer set exactly, or a new consumer joins silently and the table
+# under-reports again on day one, which is how this drift started.
+table_paths=$($GREP -oE '^\| `~/\.claude/[^`]+`' "$PAGETYPE" | sed -E 's#^\| `~/\.claude/##' | sed -E 's/`$//' | sort -u)
+n_table=$(printf '%s\n' "$table_paths" | $GREP -c . || true)
+discovered=$($GREP -rl -F 'page-type/SKILL.md' --include='*.md' "$CLAUDE" \
+    | sed "s#^$CLAUDE/##" | $GREP -v -F 'skills/workflows/page-type/SKILL.md' | sort -u)
+if [ "$n_table" -eq 0 ]; then
+    fail "Consumers table rows extracted from page-type/SKILL.md" "extraction found none"
+elif [ "$table_paths" = "$discovered" ]; then
+    pass "Consumers table ($n_table rows) equals the discovered referrer set"
+else
+    fail "Consumers table equals the discovered referrer set" \
+         "$(diff <(printf '%s\n' "$table_paths") <(printf '%s\n' "$discovered") | sed 's/^</  only in table: /; s/^>/  only on disk: /')"
+fi
+
+echo "== Article-review commands avoid hardcoded milestone-form issue-folder paths =="
+
+# A literal milestone-form path spelled out in review-article.md or review-article-fix-loop.md
+# and then passed as a parameter VALUE to another skill (e.g. status-marker-verify's
+# `review_file`) is functionally wrong for an appendix page, not just a readability shortcut —
+# the receiving skill has no way to know either command's internal path convention. Check both
+# files against the general pattern rather than one exact historical literal, so a *different*
+# hardcoded milestone path anywhere in either file is still caught.
+FIXLOOP="$CLAUDE/commands/review-article-fix-loop.md"
+REVIEWARTICLE="$CLAUDE/commands/review-article.md"
+bad=""
+for f in "$FIXLOOP" "$REVIEWARTICLE"; do
+    [ -f "$f" ] || { bad="$bad$f (file absent)\n"; continue; }
+    n=$($GREP -c 'planning/book/milestone-XX-<name>/issues/<NNN-name>' "$f" || true)
+    [ "$n" -gt 0 ] && bad="$bad${f#"$ROOT"/}: $n hardcoded occurrence(s)\n"
+done
+if [ -z "$bad" ]; then
+    pass "neither review-article.md nor review-article-fix-loop.md hardcodes the milestone-form issue-folder path — both use <issue-folder>"
+else
+    fail "neither review-article.md nor review-article-fix-loop.md hardcodes the milestone-form issue-folder path" "$(printf "%b" "$bad")"
+fi
+
+# FIXLOOP's annotation-coherence check must still exempt an appendix draft from the
+# permalink/commit-hash instruction (its evidence blocks are not GitHub-permalinked source,
+# so the check would otherwise ask the writer to fabricate a commit hash). Matching the exact
+# phrase "Appendix pages: skip this check" false-reds on a benign reword ("bypass" for "skip",
+# etc.) even though the behaviour is unchanged — check the structural relationship instead:
+# the paragraph opening on "Appendix pages" mentions skipping within a few lines.
+#
+# H3: that loose window+keyword check is itself defeatable — a decoy lead-in
+# "**Appendix pages: do not skip this check**" contains "Appendix pages" and "skip" and
+# satisfies the old check even though it states the opposite of an exemption. Anchor on the
+# bold lead-in line itself and require the skip-word to appear with no intervening
+# negation ("do not" / "don't" / "never") ahead of it on that line.
+if [ -f "$FIXLOOP" ]; then
+    appendix_line=$($GREP -m1 -E '\*\*Appendix pages:' "$FIXLOOP")
+    APOS="'"
+    neg_pattern="(do not|don${APOS}t|never)[^.]*(skip|bypass|exempt|omit)"
+    if [ -z "$appendix_line" ]; then
+        fail "the annotation-coherence check exempts appendix drafts from the permalink/commit-hash instruction" \
+             "no '**Appendix pages:' lead-in line found — an appendix draft's evidence blocks would be asked to fabricate a commit hash"
+    elif printf '%s' "$appendix_line" | $GREP -qiE 'skip|bypass|exempt|omit' \
+         && ! printf '%s' "$appendix_line" | $GREP -qiE "$neg_pattern"; then
+        pass "the annotation-coherence check exempts appendix drafts from the permalink/commit-hash instruction"
+    else
+        fail "the annotation-coherence check exempts appendix drafts from the permalink/commit-hash instruction" \
+             "line: $appendix_line"
+    fi
+fi
+
+echo "== Appendix TODO match rule: single statement =="
+
+# T1 ledger entry 1 (the A-page TODO rule drift): TODOS.md's header claims it "owns the TODO
+# extraction rules and is authoritative for them," but page-type/SKILL.md restated the exact
+# appendix match rule (the A2-vs-A20 whole-token-boundary example) despite its own text
+# claiming to state only the identifier mapping.
+#
+# A bare `grep -rl 'A20'` file-level match has two failure modes — (1) gutting the operative
+# clause while some unrelated prose mention of "A20" survives in the owner file still passes
+# green, since the file itself still matches; (2) an unrelated `0xA20` token anywhere in the
+# corpus turns it red. Anchor on the operative clause's structural content — the
+# backtick-quoted `A2`/`A20` pair on the same line — which is immune to both: deleting the
+# clause drops the pair entirely (extraction goes to zero, correctly caught below), and
+# `0xA20` is not backtick-quoted as `A20` paired with a backtick-quoted `A2` on that line.
+owner="skills/workflows/article-review/TODOS.md"
+op_pattern='`A2`.*`A20`'
+sites=$($GREP -rlE "$op_pattern" --include='*.md' "$CLAUDE" | sed "s#^$CLAUDE/##" | sort -u)
+n_sites=$(printf '%s\n' "$sites" | $GREP -c . || true)
+if [ "$n_sites" -eq 0 ]; then
+    fail "the appendix TODO match rule's operative clause is stated somewhere" "extraction found no \`A2\`...\`A20\` pair — the rule text may have changed or been deleted"
+elif [ "$n_sites" -eq 1 ] && [ "$sites" = "$owner" ]; then
+    pass "the appendix TODO match rule has exactly one statement ($owner)"
+else
+    fail "the appendix TODO match rule has exactly one statement ($owner)" "found in: $sites"
+fi
+
+echo "== TODOS.md consumers name the appendix branch =="
+
+# The assertion above only catches the rule losing its single statement. It does not catch
+# commands/review-article.md's 2b reverting to an unbranched form that never mentions the
+# appendix page type — the Consumers-table check is satisfied by any reference to
+# page-type/SKILL.md anywhere in the file, which the Setup section's unrelated read call
+# already provides regardless of what 2b itself says. Check that each of the three commands
+# reading TODOS.md names both "step 0a" and "appendix" within the paragraph that follows the
+# read call — text an unbranched revert would drop.
+missing=""
+n_consumers=0
+for rel in commands/spec.md commands/write.md commands/review-article.md; do
+    f="$CLAUDE/$rel"
+    n_consumers=$((n_consumers + 1))
+    window=$($GREP -A8 -F 'article-review/TODOS.md' "$f")
+    if printf '%s' "$window" | $GREP -qi 'step 0a' && printf '%s' "$window" | $GREP -qi 'appendix'; then
+        :
+    else
+        missing="$missing$rel\n"
+    fi
+done
+if [ "$n_consumers" -eq 0 ]; then
+    fail "every command reading TODOS.md names step 0a and appendix in its TODO-scan step" "extraction found no consumers — broken"
+elif [ -z "$missing" ]; then
+    pass "all $n_consumers command(s) reading TODOS.md name step 0a and appendix in their TODO-scan step"
+else
+    fail "every command reading TODOS.md names step 0a and appendix in its TODO-scan step" "$(printf "%b" "$missing")"
+fi
+
+echo "== Unverified-claim marker: four mandated hops survive verbatim =="
+
+# The [UNVERIFIED:] marker is the direct mitigation for a claim sourced from analysis.md —
+# see observed-failures.md entry 2. It only works if the token survives every hop verbatim.
+# Anchored to each hop's actual definition text, not a bare "[UNVERIFIED:" substring — a
+# prose mention of the token (e.g. inside another hop's own explanatory aside) would
+# otherwise satisfy a looser check without the definition itself surviving.
+#
+# Hop 4's anchor text — "claim marked `[UNVERIFIED: ...]` or `[VERIFY: ...]`" — occurs TWICE
+# in SCOPES.md: at Scope 2A criterion 2 itself, and again in the Codex Requirements bullet
+# "Unverified claims hedged (2A.2, appendix only)". Either satisfies a whole-file `grep -qF`,
+# so deleting criterion 2 outright while the Codex bullet survives would still pass. Anchor
+# hop 4 on criterion 2's own numbering instead — the line matching `^2\. \*\*Every claim
+# marked` — so only that specific criterion, not any occurrence of the phrase, is checked.
+missing_hop=""
+$GREP -qF '`[UNVERIFIED: <what is missing>]`' "$CLAUDE/skills/workflows/page-type/SKILL.md" \
+    || missing_hop="${missing_hop}skills/workflows/page-type/SKILL.md (marker table)\n"
+$GREP -qF '[UNVERIFIED: no device access]' "$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md" \
+    || missing_hop="${missing_hop}skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md (§2 example row)\n"
+$GREP -qF '[UNVERIFIED: <what is missing>]' "$CLAUDE/skills/workflows/planning/BRIEF-TEMPLATE.md" \
+    || missing_hop="${missing_hop}skills/workflows/planning/BRIEF-TEMPLATE.md (§9 bullet)\n"
+criterion2=$($GREP -m1 -E '^2\. \*\*Every claim marked' "$CLAUDE/skills/workflows/article-review/SCOPES.md")
+if [ -z "$criterion2" ]; then
+    missing_hop="${missing_hop}skills/workflows/article-review/SCOPES.md (Scope 2A criterion 2 — no line starting '2. **Every claim marked')\n"
+else
+    printf '%s' "$criterion2" | $GREP -qF '[UNVERIFIED: ...]' \
+        && printf '%s' "$criterion2" | $GREP -qF '[VERIFY: ...]' \
+        || missing_hop="${missing_hop}skills/workflows/article-review/SCOPES.md (Scope 2A criterion 2 — missing one of the two marker tokens)\n"
+fi
+if [ -z "$missing_hop" ]; then
+    pass "the [UNVERIFIED:] marker's definition is stated at all 4 mandated hops"
+else
+    fail "the [UNVERIFIED:] marker's definition is stated at all 4 mandated hops" "missing from:\n$(printf "%b" "$missing_hop")"
+fi
+
+# H3: a whole-file `grep -qF '§9 only'` is satisfied by a decoy sentence anywhere in the
+# file — inverting the Routing (appendix) paragraph itself to "§7.5 and §8" while a decoy
+# "§9 only" sentence survives elsewhere left the old check green. Anchor on the paragraph's
+# own lead-in instead, so only that specific paragraph's content is checked.
+routing_line=$($GREP -m1 -F '**Routing (appendix).**' "$CLAUDE/commands/write.md")
+if [ -z "$routing_line" ]; then
+    fail "write.md 2d's Routing (appendix) paragraph names §9 as the sole destination for unverified rows" \
+         "the '**Routing (appendix).**' paragraph is absent — an unverified claim could silently reach a verified-fact section"
+elif printf '%s' "$routing_line" | $GREP -qF '§9 only' && ! printf '%s' "$routing_line" | $GREP -qF '§7.5 and §8'; then
+    pass "write.md 2d's Routing (appendix) paragraph names §9 as the sole destination for unverified rows"
+else
+    fail "write.md 2d's Routing (appendix) paragraph names §9 as the sole destination for unverified rows" \
+         "paragraph: $routing_line"
+fi
+
+echo "== review-planning-update: no dangling optional-parameter mechanism =="
+
+# A documented-but-unpassed optional parameter made an appendix review silently derive a
+# milestone status.md that "writes to nothing" — the fix removes the parameter rather than
+# propagating it to every call site: the fragment's Step 1/2 skip condition is now derived
+# structurally from the issue-folder path (no milestone-XX segment), so there is nothing to
+# pass and nothing to keep in sync. Guard the deletion: no "Caller may specify"
+# optional-parameter mechanism should reappear in the shared-fragment corpus, and the removed
+# parameter name must not reappear anywhere.
+bad=""
+opt_hits=$($GREP -rl 'Caller [Mm]ay [Ss]pecify' --include='*.md' "$CLAUDE/skills" || true)
+[ -n "$opt_hits" ] && bad="${bad}Caller-may-specify mechanism reintroduced in: $opt_hits\n"
+status_file_hits=$($GREP -rl 'status_file' --include='*.md' "$CLAUDE" || true)
+[ -n "$status_file_hits" ] && bad="${bad}status_file reappeared in: $status_file_hits\n"
+if [ -z "$bad" ]; then
+    pass "no optional-parameter mechanism or status_file has reappeared"
+else
+    fail "no optional-parameter mechanism or status_file has reappeared" "$(printf "%b" "$bad")"
+fi
+
+echo "== page-type vocabulary implies a pointer to the fragment =="
+
+# The Consumers-table check above can only see a file that ALREADY names page-type/SKILL.md
+# — it is blind to a file that carries appendix-page-type behaviour without naming the
+# fragment at all (review-planning-update/SKILL.md once carried appendix rules with zero
+# references, invisible to that discovery method). Add the converse: every file using
+# page-type vocabulary (the appendix path shape or its identifier placeholder) must point
+# back to the fragment somewhere.
+vocab_hits=$($GREP -rl -E 'appendix/issues/|A<N>-<slug>' --include='*.md' "$CLAUDE" \
+    | sed "s#^$CLAUDE/##" | $GREP -v -F 'skills/workflows/page-type/SKILL.md' | sort -u)
+n_vocab=$(printf '%s\n' "$vocab_hits" | $GREP -c . || true)
+missing=""
+while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    $GREP -qF 'page-type/SKILL.md' "$CLAUDE/$rel" || missing="$missing$rel\n"
+done <<EOF
+$vocab_hits
+EOF
+if [ "$n_vocab" -eq 0 ]; then
+    fail "every file carrying page-type vocabulary points back to page-type/SKILL.md" "extraction found no files carrying appendix vocabulary — broken"
+elif [ -z "$missing" ]; then
+    pass "all $n_vocab file(s) carrying page-type vocabulary point back to page-type/SKILL.md"
+else
+    fail "every file carrying page-type vocabulary points back to page-type/SKILL.md" "$(printf "%b" "$missing")"
+fi
+
+echo "== A-pages never cite code: no conditional carve-out remains =="
+
+# page-type/SKILL.md states unconditionally that an A-page never cites code. A conditional
+# carve-out ("...or appendix if the draft cites code" / "If the draft does cite code...")
+# reopens the path this rule exists to close — guard against its reintroduction the same way
+# the bare-MODE-token check above guards its own deletion.
+carveout_hits=$($GREP -rniE 'or appendix if the draft cites code|if the draft does cite code' --include='*.md' "$CLAUDE" || true)
+if [ -z "$carveout_hits" ]; then
+    pass "no 'appendix ... cites code' conditional carve-out remains in the corpus"
+else
+    fail "no 'appendix ... cites code' conditional carve-out remains in the corpus" "$carveout_hits"
+fi
+
+# Round-3 stall diagnosis: every assertion added that round guarded a deletion staying
+# deleted (status_file, the carve-out phrases, the bare MODE token) — none guarded a
+# newly-added rule's presence, which is how inverting the rule at its source (H1, H2 in
+# planning/genai-automations/appendix-page-type/code-review.md) left the whole suite green.
+# The five blocks below close that gap for the six round-3 rules the report identifies as
+# unguarded, anchored on each rule's own operative content rather than on the absence of
+# its predecessor.
+
+echo "== review-planning-update Steps 1-2: skip condition tests issue_folder against the appendix form =="
+
+# H2: the predicate this replaces had no explicit input and, read structurally, was
+# satisfied by every flat non-milestone planning/ folder in this repo. The fix takes the
+# resolved issue-folder path as an explicit `issue_folder` parameter and tests it against
+# the appendix form specifically. Anchor on the "**Skip condition.**" line itself (this
+# fragment's paragraphs are unwrapped, one per line) so a revert to the old generic wording
+# — which has neither `issue_folder` nor the appendix form on that line — is caught.
+RPU="$CLAUDE/skills/workflows/review-planning-update/SKILL.md"
+skip_line=$($GREP -m1 -F '**Skip condition.**' "$RPU")
+bad=""
+if [ -z "$skip_line" ]; then
+    bad="no '**Skip condition.**' line found in Step 1"
+else
+    printf '%s' "$skip_line" | $GREP -qF 'issue_folder' || bad="${bad}skip condition does not test issue_folder; "
+    printf '%s' "$skip_line" | $GREP -qF 'appendix/issues/A<N>-<slug>' || bad="${bad}skip condition does not name the appendix issue-folder form; "
+fi
+$GREP -qF 'Applies only to a page type with a milestone folder' "$RPU" \
+    && bad="${bad}the old no-input predicate sentence has reappeared; "
+if [ -z "$bad" ]; then
+    pass "Steps 1-2 skip condition tests the explicit issue_folder parameter against the appendix issue-folder form"
+else
+    fail "Steps 1-2 skip condition tests the explicit issue_folder parameter against the appendix issue-folder form" "$bad"
+fi
+
+echo "== A-pages never cite code: the rule itself is present and unconditional =="
+
+# H1: every deletion the appendix simplification made (carve-outs, Scope 1 suppression,
+# the fix-loop annotation exemption) is downstream of this one sentence. The carve-out
+# guard above only catches a *reintroduced* carve-out phrase — it cannot notice this
+# sentence itself being softened or deleted. Anchor on the exact bolded sentence and
+# reject any conditional token on it.
+rule_line=$($GREP -m1 -F '**An appendix page never cites code.**' "$PAGETYPE")
+if [ -z "$rule_line" ]; then
+    fail "the 'An appendix page never cites code' rule is present in page-type/SKILL.md → Resolution" \
+         "the bolded sentence is absent — extraction found no exact match"
+elif printf '%s' "$rule_line" | $GREP -qiE '\b(if|unless|except|when)\b'; then
+    fail "the 'An appendix page never cites code' rule is present in page-type/SKILL.md → Resolution" \
+         "the sentence carries a conditional token: $rule_line"
+else
+    pass "the 'An appendix page never cites code' rule is present in page-type/SKILL.md → Resolution and carries no conditional token"
+fi
+
+echo "== writer.md Book Article Mode: the [MODE: book-article/appendix] paragraph keeps its operative clauses =="
+
+# T1: a prior mutation replaced this entire branch with a bare pointer to
+# page-type/SKILL.md and every existing assertion stayed green, because the only existing
+# check (Book page-type activation token, above) tests the token SET, not this paragraph's
+# content. Anchor on the paragraph's own lead-in and require its load-bearing sentinels to
+# survive on that line.
+mode_line=$($GREP -m1 -F '`[MODE: book-article/appendix]` — a reference appendix page.' "$CLAUDE/agents/writer.md")
+bad=""
+if [ -z "$mode_line" ]; then
+    bad="the mode paragraph itself is absent"
+else
+    printf '%s' "$mode_line" | $GREP -qF '(none — fact contract)' || bad="${bad}(none — fact contract) clause missing; "
+    printf '%s' "$mode_line" | $GREP -qF 'n/a — appendix page' || bad="${bad}n/a — appendix page clause missing; "
+    printf '%s' "$mode_line" | $GREP -qF 'do not invent a commit hash' || bad="${bad}do-not-invent-a-commit-hash clause missing; "
+    printf '%s' "$mode_line" | $GREP -qF '§9 only' || bad="${bad}§9-only routing clause missing; "
+fi
+if [ -z "$bad" ]; then
+    pass "the [MODE: book-article/appendix] paragraph retains its operative clauses (fact-contract sentinels, no-commit-hash, §9-only routing)"
+else
+    fail "the [MODE: book-article/appendix] paragraph retains its operative clauses" "$bad"
+fi
+
+echo "== write.md step 4: the appendix-additional-pass bullet list is intact =="
+
+# T1: "a rule stated only here does not reach [the agent]" is the bullet list's own stated
+# failure mode. Window-bounded between the heading and the next mode's heading so deleting
+# the whole block (not just individual bullets) is caught too.
+window=$(awk '
+  /\*\*Appendix page — additionally pass\*\*/ { f=1 }
+  f && /\*\*Non-book mode:\*\*/ { exit }
+  f { print }
+' "$CLAUDE/commands/write.md")
+bad=""
+if [ -z "$window" ]; then
+    bad="the 'Appendix page — additionally pass' heading is absent"
+else
+    printf '%s' "$window" | $GREP -qF 'analysis.md' || bad="${bad}analysis.md bullet missing; "
+    printf '%s' "$window" | $GREP -qF '2d routing rule verbatim' || bad="${bad}2d-routing-rule bullet missing; "
+    printf '%s' "$window" | $GREP -qF 'n/a — appendix page' || bad="${bad}companion-metadata bullet missing; "
+    printf '%s' "$window" | $GREP -qF '(none — fact contract)' || bad="${bad}§7.1-§7.4 sentinel bullet missing; "
+fi
+if [ -z "$bad" ]; then
+    pass "write.md step 4 retains all 4 appendix-additional-pass bullets"
+else
+    fail "write.md step 4 retains all 4 appendix-additional-pass bullets" "$bad"
+fi
+
+echo "== review-article.md Step 2: Agent 1's appendix Scope-1 suppression and Scope 2A reassignment are intact =="
+
+# T1: a plain revert of Agent 1's launch bullet to the unbranched main-only form stayed
+# green under the old suite, and round 3 separately left Agent 1 launched with nothing to
+# do for an appendix page (H6, fixed by reassigning it Scope 2A) — this assertion guards
+# both the suppression clause and its replacement on the same anchored line.
+agent1_line=$($GREP -m1 -F '**Agent 1**' "$CLAUDE/commands/review-article.md")
+bad=""
+if [ -z "$agent1_line" ]; then
+    bad="no '**Agent 1**' launch line found in Step 2"
+else
+    printf '%s' "$agent1_line" | $GREP -qiF 'appendix' || bad="${bad}no appendix branch in the Agent 1 launch line; "
+    printf '%s' "$agent1_line" | $GREP -qF 'Scope 1 is suppressed entirely' || bad="${bad}the Scope-1 suppression instruction is gone; "
+    printf '%s' "$agent1_line" | $GREP -qF 'Scope 2A' || bad="${bad}Agent 1 is no longer reassigned Scope 2A; "
+fi
+if [ -z "$bad" ]; then
+    pass "review-article.md Step 2 keeps Agent 1's appendix Scope-1 suppression and Scope 2A reassignment"
+else
+    fail "review-article.md Step 2 keeps Agent 1's appendix Scope-1 suppression and Scope 2A reassignment" "$bad"
+fi
+
+echo "== Scope 2A criteria, Codex bullets, and label-mapping rows agree =="
+
+# This mirror is load-bearing and cannot be collapsed into a single pointer — codex-flow
+# review runs with --ignore-user-config --ignore-rules and reads only its bundled resources
+# plus the request document, so the Codex-facing bullets cannot just say "see SCOPES.md";
+# the criteria text must be copied into the request verbatim. A dropped bullet or a severity
+# that disagrees between the criteria and the Codex-facing copy means Claude and Codex grade
+# an appendix draft against different rules inside the same review.
+SCOPES="$CLAUDE/skills/workflows/article-review/SCOPES.md"
+# Criteria severities: bound extraction to the Scope 2A section only — its 5 numbered
+# criteria share the "N. **...**" shape with every other scope's numbered list, so an
+# unbounded extraction silently grabs the wrong scope's items instead of failing loudly.
+scope2a_section=$(awk '/^### Scope 2A/{f=1} f && /^## Scope 3/{f=0} f' "$SCOPES")
+crit_sev=$(printf '%s\n' "$scope2a_section" | $GREP -oE '^[1-5]\.|Severity: \*\*[A-Za-z]+\*\*' \
+    | sed 's/\*//g' | paste -d' ' - - | sort -n | sed -E 's/^[0-9]+\. //')
+# Codex bullet severities: extracted per criterion number rather than by a single regex
+# spanning "(2A.N, appendix only) ... Severity: X" — greedy `.*` between the tag and the
+# severity crosses the first unrelated period in the bullet's own prose (e.g. "spec.md"),
+# so it never reaches the real "Severity:" token.
+bullet_sev=""
+for n in 1 2 3 4 5; do
+    line=$($GREP -E "\(2A\.$n, appendix only\)" "$SCOPES")
+    sev=$(printf '%s' "$line" | $GREP -oE 'Severity: [A-Za-z]+' | tail -1)
+    bullet_sev="$bullet_sev$sev
+"
+done
+bullet_sev=$(printf '%s' "$bullet_sev" | sed '/^$/d')
+label_rows=$($GREP -oE '2A\.[1-5] — ' "$SCOPES" | sort -u)
+n_crit=$(printf '%s\n' "$crit_sev" | $GREP -c . || true)
+n_bullet=$(printf '%s\n' "$bullet_sev" | $GREP -c . || true)
+n_label=$(printf '%s\n' "$label_rows" | $GREP -c . || true)
+if [ "$n_crit" -ne 5 ] || [ "$n_bullet" -ne 5 ] || [ "$n_label" -ne 5 ]; then
+    fail "Scope 2A has 5 criteria, 5 Codex bullets, and 5 label-mapping rows" \
+         "criteria=$n_crit bullets=$n_bullet label-rows=$n_label"
+elif [ "$crit_sev" = "$bullet_sev" ]; then
+    pass "Scope 2A's 5 criteria, Codex bullets, and label-mapping rows agree in count and severity"
+else
+    fail "Scope 2A's 5 criteria, Codex bullets, and label-mapping rows agree in count and severity" \
+         "$(diff <(printf '%s\n' "$crit_sev") <(printf '%s\n' "$bullet_sev"))"
+fi
+
+echo "== Templates named in CLAUDE.md's numbered-heading exemption exist =="
+
+# CLAUDE.md's Markdown Writing section names four templates as the sole exemption to the
+# unnumbered-heading rule. Nothing checked that the named files actually exist, so a typo'd
+# or renamed template (e.g. APPENDIX-FACT-SPEC-TEMPLATE.md for the real
+# APPENDIX-SPEC-TEMPLATE.md) would silently exempt the wrong file and un-exempt the right one.
+CLAUDE_MD="$CLAUDE/CLAUDE.md"
+tmpl_line=$($GREP -m1 -F 'The only exceptions are docs generated from' "$CLAUDE_MD")
+tmpl_names=$(printf '%s' "$tmpl_line" | $GREP -oE '[A-Z][A-Z-]*TEMPLATE\.md')
+n_tmpl_names=$(printf '%s\n' "$tmpl_names" | $GREP -c . || true)
+if [ "$n_tmpl_names" -eq 0 ]; then
+    fail "template names extracted from CLAUDE.md's numbered-heading exemption" "extraction found none — sentence may have changed"
+else
+    absent=""
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        found=$(find "$CLAUDE" -name "$name" 2>/dev/null | head -1)
+        [ -z "$found" ] && absent="$absent$name\n"
+    done <<EOF
+$tmpl_names
+EOF
+    if [ -z "$absent" ]; then
+        pass "all $n_tmpl_names template(s) named in CLAUDE.md's numbered-heading exemption exist"
+    else
+        fail "all template(s) named in CLAUDE.md's numbered-heading exemption exist" "$(printf "%b" "$absent")"
+    fi
+fi
+
+echo
+total=$((PASS + FAIL))
+[ "$total" -eq "$EXPECTED_TESTS" ] \
+    && pass "all $EXPECTED_TESTS assertions ran" \
+    || fail "all $EXPECTED_TESTS assertions ran" "ran $total — a block skipped itself or EXPECTED_TESTS is stale"
 
 echo
 echo "passed: $PASS   failed: $FAIL"
