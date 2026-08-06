@@ -797,6 +797,24 @@ def test_parse_review_request_rejects_ledger_scaffolding(tmp_path: Path, body: s
             "**Evidence:**\n```\ncaptured output\n```\n~~~",
             id="real-ledger-with-inner-fence",
         ),
+        # The template opens its ledger fence as `~~~markdown`, not a bare `~~~`. An author
+        # following it verbatim and stating the no-ledger sentence inside that fence had the
+        # request rejected: the scaffolding pattern was anchored to a bare delimiter, so the
+        # info string survived into the body and the absent-ledger sentence no longer matched
+        # at the start. The entries case never hit it, because a `**Status:**` line satisfies
+        # the other branch — which is why this reached the template unnoticed.
+        pytest.param(
+            "~~~markdown\nNo ledger exists for this work.\n~~~",
+            id="no-ledger-inside-template-fence",
+        ),
+        pytest.param(
+            "~~~markdown\nNo ledger exists for this work — external MR.\n~~~",
+            id="external-mr-inside-template-fence",
+        ),
+        pytest.param(
+            "```markdown\nNo ledger exists for this work — article review.\n```",
+            id="article-review-inside-backtick-fence",
+        ),
     ],
 )
 def test_parse_review_request_accepts_valid_ledger_shapes(tmp_path: Path, body: str) -> None:

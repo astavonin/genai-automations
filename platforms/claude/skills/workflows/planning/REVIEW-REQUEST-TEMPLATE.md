@@ -6,6 +6,8 @@
 **Output File:** `planning/<epic-slug>/reviews/<name>-codex-review.md`  *(MR-scoped)*  or  `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/codex-review.md`  *(issue-scoped)*
 **Date:** YYYY-MM-DD
 
+`Output File` is resolved against `Repository` and must land inside it — `codex_flow/contracts.py` → `output_path` rejects anything that escapes the repo root, including an absolute path elsewhere or a `../` prefix. When the review targets a companion repo, `Repository` is still the repo whose `planning/` receives the output, never the code repo being read.
+
 ---
 
 ## Context

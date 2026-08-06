@@ -61,7 +61,13 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
 
 # Lines that are template scaffolding rather than ledger content: fence delimiters, horizontal
 # rules, HTML comments, and the ledger's own H1. Stripped before the section is judged non-empty.
-_LEDGER_SCAFFOLDING = re.compile(r"^(~~~|```|-{3,}|<!--.*|#\s+Observed Failures\b.*)$")
+# The fence alternatives accept a trailing info string because REVIEW-REQUEST-TEMPLATE.md opens
+# its ledger fence as `~~~markdown`: anchored to a bare delimiter, that line survived into the
+# body and pushed the absent-ledger sentence off the start, rejecting every request that
+# followed the template and had no ledger to paste.
+_LEDGER_SCAFFOLDING = re.compile(
+    r"^(~~~\S*|```\S*|-{3,}|<!--.*|#\s+Observed Failures\b.*)$"
+)
 # The one sentence that may stand in for a ledger, with the documented suffixes.
 _LEDGER_ABSENT = re.compile(r"^No ledger exists for this work\.?( — .+)?$", re.IGNORECASE)
 
