@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suites
 # (verify-doc-metrics.sh, verify-workflow-safety.sh) added this counter for the same reason;
 # this suite had none, which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=27
+EXPECTED_TESTS=28
 
 PASS=0
 FAIL=0
@@ -703,6 +703,40 @@ EOF
         pass "all $n_tmpl_names template(s) named in CLAUDE.md's numbered-heading exemption exist"
     else
         fail "all template(s) named in CLAUDE.md's numbered-heading exemption exist" "$(printf "%b" "$absent")"
+    fi
+fi
+
+echo "== Codex quality-attributes SKILL.md carries the widened Minimality item (I5 / FR-5) =="
+
+# codex-flow review runs with --ignore-user-config --ignore-rules and reads only bundled
+# resources plus the request document, so this file is the only place a Codex design or code
+# review ever sees the widened Minimality criterion.
+#
+# H3: a single anchor on the trailing "flag what serves neither" clause does not separate the
+# widened form from a reversion to public-API-surface-only scope — that reversion keeps the
+# same trailing clause, so the old single-phrase check stayed green on it. Require BOTH scope
+# clauses the widening adds: the mechanism-wide one and the implementation-wide one. Dropping
+# either half, or reducing the whole item to the bare noun "minimality", now fails; the two
+# markers are otherwise stable text, independent of which noun phrase follows "no larger than".
+#
+# Bound to the "- minimality:" bullet line itself, not a whole-file search: this file also
+# carries a disclosure sentence (M9) that names both clause phrases in prose to explain what
+# this check binds to, and a whole-file grep is satisfied by that sentence even when the
+# bullet above it is reduced to a bare noun or reverted — the exact vacuous-check shape this
+# finding exists to close.
+QA_SKILL="$ROOT/tools/codex-flow/codex_flow/resources/skills/domains/quality-attributes/SKILL.md"
+if [ ! -f "$QA_SKILL" ]; then
+    fail "quality-attributes SKILL.md carries the widened Minimality item, not a bare noun" \
+         "file not found: $QA_SKILL"
+else
+    min_line=$($GREP -m1 -E '^- minimality:' "$QA_SKILL")
+    if [ -n "$min_line" ] \
+       && printf '%s' "$min_line" | $GREP -qF 'the mechanism is no larger than' \
+       && printf '%s' "$min_line" | $GREP -qF 'the implementation is no larger than the approved design requires'; then
+        pass "quality-attributes SKILL.md carries the widened Minimality item, not a bare noun"
+    else
+        fail "quality-attributes SKILL.md carries the widened Minimality item, not a bare noun" \
+             "the '- minimality:' bullet line ('$min_line') must carry both scope clauses ('the mechanism is no larger than ...' and 'the implementation is no larger than the approved design requires') — mirror absent, reduced to a bare noun, or reverted to public-API-surface-only scope"
     fi
 fi
 

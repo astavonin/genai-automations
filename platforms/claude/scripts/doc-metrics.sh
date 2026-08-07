@@ -124,6 +124,54 @@ for f in "$@"; do
         seen["TOTAL"] = 1
         sec = "(preamble)"
         nhit = 0; nsec = 0; prevprose = 0
+
+        # Design-field state (mechanism-proportionality): slot 7 tracks one open ### option
+        # block at a time; slot 3 tracks the current requirement-group state. Both reset per
+        # section change, mirroring how word/register accumulation is already section-scoped.
+        opt_open = 0; opt_cost = 0; opt_miss_val = 0; opt_loc = ""
+        # D6: the column a bare Misses: label was seen in, in a table row whose own cells
+        # (its own cell and the next one over) never supplied a value — a label-row/value-row
+        # table layout puts the value in the SAME column of the NEXT table row instead
+        # ("| **Cost:** | **Misses:** |" over "| ~1 LOC | none |"). Reset alongside
+        # opt_cost/opt_miss_val: see the H3+ heading rule below for why the reset lives at
+        # block-OPEN rather than at close_opt_block().
+        miss_pending_col = 0
+        slot7_block_ever = 0
+        # req_scan_bullets is a THIRD axis, independent of req_group: req_group == "req" means
+        # a From: tag on a bullet here is inline-in-a-group (not misplaced), true for both a
+        # validly-opened group and a spaced-colon near-miss (H1) — the _collect_bullets()
+        # helper in markdown_parser.py strips the label before comparing it to the field name, so a
+        # spaced-colon opener really is collected as a live group in production and an inline
+        # tag beneath it really is valid. req_scan_bullets narrows that to "also flag a bullet
+        # with NO tag at all", which stays off for the near-miss: the malformed opener itself
+        # already reports once, and scoring every bullet beneath it too would scale the same
+        # defect by bullet count instead of stating it once, undoing the "one hit already tells
+        # the author where to look" property the near-miss branch exists for.
+        req_group = ""; req_scan_bullets = 0; req_close_loc = ""
+        COST = 0; MISSES = 0; FROM = 0; UNTAGGED = 0; nfhit = 0
+
+        # D4: the From: value first-tokens from_valid() accepts, declared exactly once so
+        # tests/verify-doc-metrics.sh (I6) can read this literal directly instead of
+        # re-deriving the accepted set by scanning the from_valid() body for quoted tokens — a
+        # scan that a same-shaped literal ANYWHERE in the window (a comment, a stray string)
+        # could feed just as easily as a real value, and that cannot see a value accepted
+        # through a comparison other than a literal == at all (a from_valid() rewritten to
+        # test a token with `~` instead of enumerating it here would not add a new quoted
+        # literal for the old scan to catch). "bare": the token alone is sufficient (analysis).
+        # "value": a second token, any text (ticket, spec). "date": a second token in strict
+        # YYYY-MM-DD form (incident, decision). from_valid() below reads ONLY this table —
+        # every first-token comparison it makes is array membership, not a literal or a
+        # pattern, so widening the accepted set means editing this one line, and I6 then
+        # catches a mismatch against the documented five in DESIGN-TEMPLATE.md without having
+        # to understand HOW from_valid() tests a token. An unrecognised first token reads
+        # from_kind[] as "" by ordinary awk array-reference semantics (referencing an absent
+        # key creates it empty rather than erroring) — the trailing return 0 in from_valid()
+        # already covers that case, so no separate membership array is kept here.
+        FROM_N = split("analysis:bare ticket:value spec:value incident:date decision:date", FROM_L, " ")
+        for (fi = 1; fi <= FROM_N; fi++) {
+          split(FROM_L[fi], fkv, ":")
+          from_kind[fkv[1]] = fkv[2]
+        }
       }
 
       # Strip CR so CRLF files tokenise like LF ones. Without this the CR rides along into
@@ -192,6 +240,20 @@ for f in "$@"; do
       # H1 was attributed to the last `##`. No interval quantifier anywhere in this program:
       # some mawk builds ignore them, and a static test in the suite forbids them.
       /^##?[ \t]/ {
+        # Close design-field state for the section being left, before it is overwritten:
+        # the H1/H2 branch closes any open option block on a section change, and fires the
+        # no-block-opened warning for a slot-7 section that closes having opened none, and
+        # the counterpart warning for a slot-3 section that closes having opened no
+        # requirement group at all (M2 — the mention hole slot 7 already had a closer for).
+        close_opt_block()
+        close_slot7_section()
+        close_slot3_section()
+        # req_scan_bullets does not live inside close_slot3_section(): it is set at every
+        # req_group == "req" assignment site (both branches below), so it must be cleared here
+        # too, or a section that ends INSIDE an open group (no closing label, no malformed
+        # opener afterward) leaks its 1 into field_scan calls for the next slot-3 section,
+        # before that section own opener, if any, is seen.
+        req_group = ""; req_scan_bullets = 0
         h = heading_text($0)
         sec = unique(h)
         register_section(sec)
@@ -206,8 +268,29 @@ for f in "$@"; do
       }
 
       # H3 and deeper: structure, so no words, but its register belongs to the author.
+      # In slot 7 an EXACT H3 (not H4+) opens a new option block, closing any already open —
+      # heading text is not inspected, so a §7 sub-heading omitting the word "Option" still
+      # opens one. H4+ opens no block: a sub-heading inside an option belongs to that option.
       /^###+[ \t]/ {
-        scan_register(heading_text($0), sec)
+        h3 = heading_text($0)
+        scan_register(h3, sec)
+        if (match($0, /^#+/) && RLENGTH == 3 && canon(sec) == "7") {
+          close_opt_block()
+          opt_open = 1; opt_cost = 0; opt_miss_val = 0
+          miss_pending_col = 0
+          opt_loc = h3
+          slot7_block_ever = 1
+        }
+        # D3: in slot 3, ANY heading level 3+ naming one of the three requirement-group labels
+        # is a malformed opener — the valid form is inline bold text, never a heading, at any
+        # depth. This line never reaches field_scan at all (this rule already `next`s past it),
+        # so it is the only place that can catch this shape. Reported the instant it is seen,
+        # like the spaced-colon near-miss in field_scan below — independent of req_group state
+        # and of whatever else the section does or does not contain (D3).
+        if (canon(sec) == "3" && h3 ~ /^(Functional Requirements|Non-Functional Requirements|Constraints):?$/) {
+          UNTAGGED++
+          record_field_hit(sec, h3, "requirement group opener written as a heading, not inline bold text")
+        }
         prevprose = 0
         next
       }
@@ -222,6 +305,7 @@ for f in "$@"; do
         gsub(/\|/, " ", cells)
         halfwords[sec] += count_words(cells)
         scan_register($0, sec)
+        field_scan($0, sec)
         prevprose = 0
         next
       }
@@ -239,6 +323,10 @@ for f in "$@"; do
         register_section(sec)
         halfwords[sec] += 2 * count_words(line)
         scan_register(line, sec)
+        # Raw $0, not the marker-stripped `line`: stripping the list marker puts a bold
+        # label that opens a bullet at position 0, where the line-start test would misread
+        # it as a group opener or a misplaced From: tag (§5.3).
+        field_scan($0, sec)
       }
 
       END {
@@ -262,6 +350,13 @@ for f in "$@"; do
           printf "         so their sections would share one budget. Use ## headings.\n" > "/dev/stderr"
           exit 1
         }
+
+        # Close whatever design-field state the document ended in: the last open option
+        # block, a final slot-7 section that closed having opened none, and a final slot-3
+        # section that closed having opened no requirement group.
+        close_opt_block()
+        close_slot7_section()
+        close_slot3_section()
 
         total = 0; totreg = 0; over = 0
         for (s = 1; s <= nsec; s++) {
@@ -307,6 +402,28 @@ for f in "$@"; do
         # invisible to the length gate. Reported rather than blocked: a design doc
         # legitimately carries feature-specific sections.
         print "UNSLOTTED: " unslot " section(s) holding " unslotw " word(s)"
+
+        # Four design-field counters print unconditionally, like the three above, so a zero
+        # reads as checked-and-clean rather than not-checked. This script states counts, not
+        # verdicts — /verify-docs owns the warn-versus-block split.
+        print "COST: " COST " option block(s) or option-less section(s) with no Cost line"
+        print "MISSES: " MISSES " Cost line(s) with no Misses value"
+        print "FROM: " FROM " misplaced or unrecognised From tag(s)"
+        # M11: widened for the same reason COST was — UNTAGGED also carries a malformed
+        # group-opener hit (heading-level, bulleted-label, or spaced-colon), none of which is
+        # a bullet, so a bullet-only wording told an operator a tag was missing from a bullet
+        # that was never examined. D3 dropped the section-level "group-less section" category
+        # (a section-wide proxy that went silent behind an earlier valid group and fired on
+        # any arbitrary bullet, malformed or not — see close_slot3_section()) in favour of the
+        # three malformed-opener hits reporting for themselves, so the wording no longer
+        # names it.
+        print "UNTAGGED: " UNTAGGED " requirement bullet(s) with no From tag, or malformed requirement-group opener(s)"
+        if (nfhit > 0) {
+          print ""
+          print "design-field hits (section, locator, reason):"
+          for (h = 1; h <= nfhit; h++)
+            printf "  %s\t%s\t%s\n", fhit_sec[h], fhit_loc[h], fhit_reason[h]
+        }
       }
 
       # --- helpers ---------------------------------------------------------------
@@ -473,6 +590,371 @@ for f in "$@"; do
         if (!(s in reg)) { nsec++; order[nsec] = s; halfwords[s] = 0; reg[s] = 0; seen[s] = 1 }
       }
 
+      # --- design-field helpers (mechanism-proportionality) ----------------------
+
+      # Record one design-field hit for the detail block. Locator carries no line number —
+      # the code-reference rule forbids one into a planning document — so callers pass a
+      # heading or the opening words of a bullet instead.
+      function record_field_hit(where, loc, reason) {
+        nfhit++
+        fhit_sec[nfhit] = where
+        fhit_loc[nfhit] = loc
+        fhit_reason[nfhit] = reason
+      }
+
+      # Close the currently open §7 option block, if any, scoring it against the flowchart
+      # in §5.3: no Cost line warns (COST); Cost present but Misses absent or empty blocks
+      # (MISSES). A block carrying Misses and no Cost warns on the same branch as one
+      # carrying neither — the missing half is the declared price, so Cost absence is
+      # checked first and short-circuits the Misses check. Only opt_open resets here — the
+      # per-block fields reset when the NEXT block opens (H3 branch), which is the one reset
+      # that matters: leaving it here too would let it silently cover for a dropped open-time
+      # reset, so a later block would never inherit a still-true opt_cost/opt_miss_val from a
+      # sibling that never re-declared them.
+      function close_opt_block() {
+        if (!opt_open) return
+        if (!opt_cost) {
+          COST++
+          record_field_hit(sec, opt_loc, "no Cost: line in this option block")
+        } else if (!opt_miss_val) {
+          MISSES++
+          record_field_hit(sec, opt_loc, "no Misses: value in this option block")
+        }
+        opt_open = 0
+      }
+
+      # A slot-7 section that closes having opened no ### option block warns once — this is
+      # the silent-pass hole for a §7 whose options are bold lines or H4s, or omit the word
+      # "Option" in their heading. Gated on the section actually being slot 7: a document
+      # that never entered §7 at all must not warn from here (that is absence, not this).
+      function close_slot7_section() {
+        if (canon(sec) == "7" && !slot7_block_ever) {
+          COST++
+          record_field_hit(sec, sec, "no ### option block opened in this section")
+        }
+        slot7_block_ever = 0
+      }
+
+      # Slot 3 has no section-level "no group opened" counterpart to close_slot7_section()
+      # above. D3: an earlier version fired that warning at section close, gated on "no fully-
+      # valid group ever opened in this section" — which went silent the instant ANY valid
+      # group appeared earlier in the same section (a later malformed opener became invisible),
+      # and fired on ANY bullet at all, valid-group-related or not (a §3 holding only
+      # **Context Files:** or **Verification:** bullets warned despite attempting no
+      # requirement group whatsoever). Both were section-scoped proxies for a fact each
+      # malformed shape already knows about itself the instant it is seen: the heading-level
+      # opener (H3+ heading rule, below) and the bulleted-label opener (field_scan, below) now
+      # report there directly — the same standing the spaced-colon near-miss already had —
+      # independent of slot state and of each other, so a malformed opener warns once wherever
+      # it appears, no matter what else is or is not in the section around it.
+      function close_slot3_section() {
+        req_close_loc = ""
+      }
+
+      # First 6 words of a requirement bullet, list marker stripped for readability only —
+      # this is display, not a scan input. Never digit-only in practice, since the code-
+      # reference rule forbids a bare line-number locator and this is prose words instead.
+      function opening_words(raw,   t, w, n, i, out) {
+        t = raw
+        sub(/^[ \t]*([-*+]|[0-9]+\.)[ \t]+/, "", t)
+        n = split(t, w, /[ \t]+/)
+        out = ""
+        for (i = 1; i <= n && i <= 6; i++) out = out (out == "" ? "" : " ") w[i]
+        return out
+      }
+
+      # D8: the ONE place that knows how much padding **Label:** tolerates, at the label
+      # itself and at the line own edges — mirroring markdown_parser.py exactly: FIELD_PATTERN
+      # (^\*\*(?P<name>[^*]+):\*\*...) matched against line.strip(), then
+      # match.group("name").strip(). Given a raw line, returns the field name it opens with —
+      # one of the three requirement-group names, "From", some other label, or "" if the line
+      # does not open with **...:** at all. D5 widened the near-miss branch for the three
+      # requirement labels; D7 widened it again for wide Unicode whitespace; this round found
+      # the identical axis unfixed at the From: label, because each site kept its own
+      # spelling-tolerant regex instead of asking one function. Wide-whitespace (NBSP, the
+      # U+2000-U+200A block, \v, \f) is folded to a plain space FIRST, both at the line edges
+      # and around the label, in the SAME gsub — Python str.strip() does not distinguish the
+      # two either. Every site below that needs to know "does this line open with a
+      # **Label:**, and if so which" calls this instead of keeping its own regex, so fixing
+      # one label spelling and missing another stops being possible.
+      function field_label(line,   t) {
+        t = line
+        gsub(/\302\240|\342\200[\200-\212]|\013|\014/, " ", t)
+        gsub(/^[ \t]+|[ \t]+$/, "", t)
+        if (t !~ /^\*\*[^*]+:\*\*/) return ""
+        sub(/^\*\*[ \t]*/, "", t)
+        sub(/[ \t]*:\*\*.*$/, "", t)
+        return t
+      }
+
+      # Validate a From: tag value: the first whitespace-delimited token, and the second
+      # where the first demands one. Text beyond that is free prose (§5.3) — a tag may carry
+      # a ticket link or an explanatory clause, so only the first two tokens are tested. D4:
+      # first is looked up in from_kind[], built once in BEGIN from a single declared literal
+      # — never compared with == against a token spelled out here, and never tested with ~
+      # against anything: the only regex match in this function is w[2] against the date
+      # format, which tests the SECOND token shape, not whether the first is accepted. An
+      # unrecognised first token reads kind as "" (see the BEGIN comment) and falls through
+      # every branch below to the trailing return 0.
+      function from_valid(value,   w, n, first, kind) {
+        gsub(/^[ \t]+/, "", value)
+        n = split(value, w, /[ \t]+/)
+        if (n < 1) return 0
+        first = w[1]
+        kind = from_kind[first]
+        if (kind == "bare") return 1
+        if (kind == "value") return (n >= 2 && w[2] != "")
+        if (kind == "date") return (n >= 2 && w[2] ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/)
+        return 0
+      }
+
+      # Strip one leading blockquote marker run, list marker, and table pipe from a slot-7
+      # field line before testing the Cost:/Misses: anchor (M1) — a block declaring both
+      # fields as list items, blockquote lines, or table cells otherwise never matches, and
+      # close_opt_block() then reports the value as absent even though it is present. Slot 3
+      # cannot reuse this: stripping there would let a bullet-line bold label pass for a
+      # group opener (see field_scan below), which is exactly the hazard the raw line guards
+      # against. Order matters only in that each sub() is a no-op when its prefix is absent,
+      # so a line carrying none, one, or several of these prefixes strips cleanly either way.
+      function strip_field_prefix(s) {
+        sub(/^([ \t]*>)+[ \t]*/, "", s)
+        sub(/^[ \t]*([-*+]|[0-9]+\.)[ \t]+/, "", s)
+        sub(/^[ \t]*\|[ \t]*/, "", s)
+        return s
+      }
+
+      # The presence check (mechanism-proportionality). Called from the table-row and prose
+      # branches with the RAW line — never the marker-stripped text those branches build for
+      # their own word count, because stripping the list marker puts a bold label that opens
+      # a bullet at position 0, where the line-start test below would misread it as a group
+      # opener or a misplaced From: tag. Both branches sit below `fence { next }`, so a
+      # fenced example is exempt without any special-casing here.
+      function field_scan(raw, where,   slot, val, occ, n, i, misplaced, pfx, was_req,
+                           bulleted_open, ncell, cell, ci, cv, nv, pv, lbl, blbl, nbraw) {
+        slot = canon(where)
+        if (slot == "7") {
+          if (opt_open) {
+            # D6: a table row is scanned PER CELL, not just cell 1. A single first-pipe strip
+            # (below, in the non-table branch) anchors the label test at line start, so it can
+            # only ever see whichever field happens to open the FIRST cell — a Cost: and
+            # Misses: label sharing one row ("| **Cost:** ~1 LOC | **Misses:** none |") or a
+            # label-row/value-row layout ("| **Cost:** | **Misses:** |" over "| ~1 LOC | none
+            # |") both left the SECOND field invisible; the D1/D2 value-side fix could not
+            # rescue this, since it runs after the anchor and the anchor itself never matched.
+            # Splitting the row on its own pipes and testing each cell independently closes the
+            # position dimension entirely — this is not one more shape added to the list
+            # (bold mentions, indentation, list markers, trailing-space labels, two-column
+            # cells, leading-space labels), it replaces "match the whole line once" with
+            # "match every cell", which subsumes the cell-1 case as the N=1 instance of it.
+            if (raw ~ /^([ \t]*>)*[ \t]*\|/) {
+              # Split on the RAW line, unstripped — no strip_field_prefix() call needed here
+              # (unlike the non-table branch below, which anchors ONE label at line start and
+              # so does need its leading marker gone first). A blockquote marker or the row
+              # own opening pipe just becomes an extra leading cell that never matches either
+              # label pattern; every cell is tested on its own, so it costs nothing to carry.
+              ncell = split(raw, cell, /\|/)
+              # D6 cross-row: a label-row/value-row layout puts the Misses LABEL in one row
+              # and its value in the SAME COLUMN of the very next table row — a shape no
+              # single row can resolve alone. miss_pending_col, armed below once the OWN cells
+              # of a row are exhausted with no value found, is resolved here FIRST, against
+              # the current row cell at that remembered column, before the current row own
+              # labels are scanned. Bounded to exactly one row of lookahead — cleared whether
+              # it resolves or not — so a later, unrelated table sharing the same option block
+              # cannot be mistaken for the missing value.
+              if (miss_pending_col > 0) {
+                if (miss_pending_col <= ncell) {
+                  pv = cell[miss_pending_col]
+                  gsub(/^[ \t]+|[ \t]+$/, "", pv)
+                  if (pv != "" && pv !~ /^\*\*(Cost|Misses):\*\*/) opt_miss_val = 1
+                }
+                miss_pending_col = 0
+              }
+              for (ci = 1; ci <= ncell; ci++) {
+                cv = cell[ci]
+                gsub(/^[ \t]+|[ \t]+$/, "", cv)
+                # Anchored at CELL start — matching anywhere in the cell let a bold MENTION in
+                # Pros/Cons prose (e.g. "reuses the existing **Cost:** tracking") satisfy or
+                # spoof the gate (H1a/H1b), the same reasoning the non-table anchor below uses.
+                if (cv ~ /^\*\*Cost:\*\*/) opt_cost = 1
+                if (cv ~ /^\*\*Misses:\*\*/) {
+                  val = cv
+                  sub(/^\*\*Misses:\*\*/, "", val)
+                  gsub(/^[ \t]+|[ \t]+$/, "", val)
+                  # The D1 two-column shape: the label sits ALONE in its own cell and the value
+                  # is the ADJACENT cell ("| **Misses:** | none |") — look there only when
+                  # this cell own value is empty, and only when that next cell is not itself a
+                  # recognised label: a Misses cell immediately followed by a Cost cell
+                  # ("| **Misses:** | **Cost:** ~5 |", both label-only) must still read as an
+                  # EMPTY Misses, not slurp the whole Cost cell as if it were the Misses value.
+                  if (val == "" && ci + 1 <= ncell) {
+                    nv = cell[ci + 1]
+                    gsub(/^[ \t]+|[ \t]+$/, "", nv)
+                    if (nv !~ /^\*\*(Cost|Misses):\*\*/) val = nv
+                  }
+                  if (val != "") opt_miss_val = 1
+                  else miss_pending_col = ci
+                }
+              }
+            } else {
+              # Non-table forms (plain, list, blockquote): a single label per line, anchored
+              # at line start (optional leading whitespace) after strip_field_prefix removes
+              # any list/blockquote marker (M1) — slot 3 keeps the raw line instead, because a
+              # stripped list marker there would put a bold label at position 0, where the
+              # group-opener test would misread it (§5.3), a hazard slot 7 does not have.
+              pfx = strip_field_prefix(raw)
+              if (match(pfx, /^[ \t]*\*\*Cost:\*\*/)) opt_cost = 1
+              if (match(pfx, /^[ \t]*\*\*Misses:\*\*/)) {
+                val = pfx
+                sub(/^.*\*\*Misses:\*\*/, "", val)
+                # D2: a pipe here is document content, never a cell boundary (this branch only
+                # runs when raw is NOT a table row), so the value is read to the end of the
+                # line with no realignment.
+                gsub(/^[ \t]+|[ \t]+$/, "", val)
+                if (val != "") opt_miss_val = 1
+              }
+            }
+          }
+          return
+        }
+        if (slot != "3") return
+
+        # A bold label at line start is a group opener — but only three labels open a
+        # SCANNED (requirement) group. Any other label at line start, or **From:** itself,
+        # opens a group this scan does not treat as an opener: **From:** is a per-bullet
+        # tag, not a section boundary, and the C2 Context Files carve-out falls out of this
+        # mechanism rather than needing a special case. A bold span NOT at line start (a
+        # mid-bullet `**Cost:**` mention, as FR-1 itself carries) never changes req_group.
+        # "Line start" allows optional leading whitespace: the _collect_bullets helper in
+        # markdown_parser.py strips whitespace before testing FIELD_PATTERN, so an indented
+        # label still breaks the parser while escaping an unindented-only scanner (H6). No
+        # apostrophe in a comment below this point in the awk program: the whole program is a
+        # single-quoted shell string and a literal apostrophe would end it early.
+        # was_req remembers whether THIS line found the group already open, before any of the
+        # branches below can change it — the only fact M3 needs to attribute a closure to the
+        # label that caused it, rather than to whatever bullet happens to follow.
+        was_req = (req_group == "req")
+        # D8: the one normalisation every label site below decides from — see field_label()
+        # above. lbl is what THIS raw line opens with, if anything: one of the three
+        # requirement-group names, "From", some other label entirely, or "" if the line does
+        # not open with **...:** at all. D5 widened the near-miss branch for the three
+        # requirement labels; D7 (an internal round) widened it again for wide Unicode
+        # whitespace; this round found the identical axis unfixed at the From: label, because
+        # each site kept its own spelling-tolerant regex instead of asking one function.
+        lbl = field_label(raw)
+        # nbraw: wide-whitespace bytes (NBSP, the U+2000-U+200A block, \v, \f) folded to a
+        # plain space — for the occurrence split below. An INLINE **From:** tag can carry the
+        # same padding a line-opening one can ("- FR-1: alpha \xe2\x80\x94 **From :** hunch"),
+        # and split() needs the text pre-normalised so its own [ \t]* delimiter sees every
+        # occurrence, not just the ASCII-padded ones.
+        nbraw = raw
+        gsub(/\302\240|\342\200[\200-\212]|\013|\014/, " ", nbraw)
+        # bulleted_open (D3, widened D8): a list marker directly in front of the bold label —
+        # "- **Functional Requirements:**" — fails field_label() too (it requires ** at line
+        # start, no marker) so req_group never changes and, unguarded, the line would fall
+        # straight through to the plain per-bullet "no From: tag" check at the bottom, which
+        # cannot tell "this bullet IS the malformed opener" from "this bullet lacks a tag" and
+        # would report the wrong reason. Reported here instead, once, the instant it is seen —
+        # the same standing as the near-miss opener below, independent of req_group/section
+        # state and of whatever else the section does or does not contain (D3). The label
+        # itself is read through field_label() (D8) after stripping the marker, so a padded
+        # bulleted opener ("- ** Functional Requirements:**") is not left as a ninth hole.
+        bulleted_open = 0
+        if (raw ~ /^[ \t]*([-*+]|[0-9]+\.)[ \t]+\*\*/) {
+          blbl = raw
+          sub(/^[ \t]*([-*+]|[0-9]+\.)[ \t]+/, "", blbl)
+          blbl = field_label(blbl)
+          if (blbl == "Functional Requirements" || blbl == "Non-Functional Requirements" || blbl == "Constraints") \
+            bulleted_open = 1
+        }
+        if (bulleted_open) {
+          UNTAGGED++
+          record_field_hit(where, opening_words(raw), \
+              "requirement group opener is a bulleted label, not inline bold text; the FIELD_PATTERN in markdown_parser.py does not match a list marker before it")
+        }
+        if (raw ~ /^[ \t]*\*\*(Functional Requirements|Non-Functional Requirements|Constraints):\*\*/) {
+          req_group = "req"
+          req_scan_bullets = 1
+          req_close_loc = ""
+        } else if (lbl == "Functional Requirements" || lbl == "Non-Functional Requirements" || lbl == "Constraints") {
+          # D5/D7/D8: any padding at all around the label — [ \t], or the wide Unicode
+          # whitespace D7 added — reaches here through field_label() (D8) once the EXACT,
+          # zero-padding form immediately above has already failed to match. markdown_parser.py
+          # FIELD_PATTERN plus name.strip() collects this as a real requirement group in
+          # production — codex-flow receives its bullets as genuine requirements — so
+          # req_group becomes "req", the same state a valid opener sets, and an inline From:
+          # tag on a bullet beneath it is scored as inside-a-group rather than misplaced (the
+          # false FROM: blocker this fix removes). This opener is ALSO reported below,
+          # unconditionally (D3: independent of whether a valid group exists elsewhere in the
+          # section), so its own hit already tells the author where to look. What does NOT
+          # carry over is req_scan_bullets: it stays 0, so a bullet beneath the near-miss
+          # opener with no tag at all is not individually flagged too — scoring every bullet
+          # beneath it would scale the same defect by bullet count instead of stating it once.
+          req_group = "req"
+          req_scan_bullets = 0
+          req_close_loc = ""
+          UNTAGGED++
+          record_field_hit(where, opening_words(raw), \
+              "requirement group opener has whitespace around the label inside **...**; markdown_parser.py accepts it but this scanner does not check bullets beneath it for a missing From: tag")
+        } else if (lbl == "From") {
+          # misplaced — handled as occurrence 1 below; group state unchanged.
+        } else if (lbl != "") {
+          req_group = "other"
+          req_scan_bullets = 0
+          if (was_req) req_close_loc = opening_words(raw)
+        }
+
+        # Every bold From: occurrence on the line is validated independently — no first-match
+        # or last-match rule (U17). split() on the padding-tolerant label (D8) yields one
+        # piece of trailing text per occurrence, correctly scoped between consecutive
+        # occurrences, over nbraw so an inline occurrence padded with wide whitespace is found
+        # the same as an ASCII-padded or exact one.
+        n = split(nbraw, occ, /\*\*[ \t]*From[ \t]*:\*\*/)
+        for (i = 2; i <= n; i++) {
+          val = occ[i]
+          misplaced = ((i == 2) && (lbl == "From")) || (req_group != "req")
+          if (misplaced) {
+            FROM++
+            if ((i == 2) && (lbl == "From")) {
+              record_field_hit(where, opening_words(raw), "From: label opens the line — must be inline (C3)")
+            } else if (req_close_loc != "") {
+              # M3: the tag is genuinely outside the requirement group — that firing is
+              # correct, the bullet really did vanish from _collect_bullets() — but the group
+              # was closed by an earlier bold label, not by this bullet, so the hit is
+              # recorded against that label. Pointing at the tagged bullet instead reads as
+              # "strip this tag", which is the wrong fix.
+              record_field_hit(where, req_close_loc, "requirement group closed by this label; a From: tag below it is outside the group")
+            } else {
+              record_field_hit(where, opening_words(raw), "From: label outside a requirement group")
+            }
+          } else if (!from_valid(val)) {
+            FROM++
+            record_field_hit(where, opening_words(raw), "unrecognised or incomplete From: value")
+          }
+        }
+
+        # A requirement bullet with no From: tag at all — independent of the validation
+        # above, since an invalid or misplaced tag still counts as "has a tag" here. Gated on
+        # req_scan_bullets, not req_group == "req" directly (H1): both a valid opener and the
+        # near-miss set req_group to "req" so From: validation treats them alike, but only
+        # the valid opener also sets req_scan_bullets, so a bullet beneath the near-miss is
+        # not individually flagged here. Also excludes bulleted_open (D3): that line IS the
+        # malformed opener, already reported above under its own reason — an unclosed valid
+        # group from earlier in the section can leave req_scan_bullets true here too, and
+        # without this exclusion the same line would be double-counted a second time as an
+        # untagged bullet instead. D8 (the reviewer pairing constraint): reuses n from the
+        # split above (n <= 1 means no occurrence at all was found) rather than a second,
+        # separately-spelled presence test — two independent tests for "does a From: tag
+        # exist here" can disagree on a padded tag (one recognising it, the other not),
+        # double-counting the same bullet as both invalid AND untagged; reusing the same
+        # split result makes that impossible by construction.
+        if (req_scan_bullets && !bulleted_open && raw ~ /^[ \t]*([-*+]|[0-9]+\.)[ \t]/) {
+          if (n <= 1) {
+            UNTAGGED++
+            record_field_hit(where, opening_words(raw), "requirement bullet with no From: tag")
+          }
+        }
+      }
+
       # Two sections with the same heading text would merge into one row and misreport the
       # profile, so the repeat gets a suffix. "TOTAL" is reserved in BEGIN for the same
       # reason: a section by that name would collide with the summary row.
@@ -501,9 +983,16 @@ for f in "$@"; do
     printf '%s\n' "$OUT"
     if [ $rc -ne 0 ]; then
         echo failed >> "$STATUS"
-    elif ! printf '%s' "$OUT" | grep -q '^TOTAL[ 	]'; then
+    elif ! grep -q '^TOTAL[ 	]' <<<"$OUT"; then
         # An interpreter that exits 0 without emitting a table has not measured anything.
         # `command -v` cannot catch this: /bin/echo and /bin/true both pass it.
+        #
+        # A `printf | grep -q` PIPE here (M3) misdiagnoses a real, valid measurement as this
+        # same failure: TOTAL prints early and grep -q exits the instant it matches, and once
+        # the design-field detail block that follows pushes the remainder past the 64 KiB pipe
+        # buffer, the still-writing printf gets SIGPIPE — 141 under `set -o pipefail` above —
+        # which this `!` then reads as "no table". A here-string has no live writer to signal:
+        # bash spools it to a temp file before grep ever starts, so grep exiting early is inert.
         echo notable >> "$STATUS"
     fi
 done

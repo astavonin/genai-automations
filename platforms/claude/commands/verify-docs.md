@@ -110,10 +110,20 @@ bash ~/.claude/scripts/doc-metrics.sh "<issue-folder>/analysis.md"
 
 **Exit contract, identical to the citation scan.** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result: a missing file, an unsubstituted placeholder, NUL bytes, a missing or failing `awk`, an `awk` that produced no table, or an unclosed fence. That last one matters most — everything after an unclosed fence is invisible to the count, so a zero register total there would be a lie. Exit `127` means `sync-configs.sh install` has not run. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
 
-Read three things from the output. The first two are mechanical; only the third needs judgement:
+Read four things from the output. The first three are mechanical; only the fourth needs judgement:
 
 - **`REGISTER: N hit(s)` must be 0 — blocks.** The tool names the section, the token, and a word window for each. The detector list is non-exhaustive, so zero clears the gate without proving the rule is met (see `~/.claude/agents/architecture-research-planner.md` → Prose Register). Two forms are exempt in the tool and will not appear: a fenced block, and a token wrapped in backticks or quotes, which is a mention rather than a use. Table cells and blockquotes are **not** exempt — a defensive sentence in a table cell is still defensive.
 - **`CEILING: N slot(s) over ceiling` must be 0 — blocks, but only for the `design.md` run.** Ceilings exist for Detailed Design, Test Requirements, and the whole document; every other section reports a target and an advisory verdict with a `-` ceiling. A p75 ceiling on all eight sections blocked 23 of 39 existing documents, over half of them on a small section carrying no bloat. `over-target` is **not** a blocker: it means past the median, and is discharged by one line of justification naming what the extra words buy. Report the two or three largest overshoots, not every row. The tool prints the numbers; do not restate them here or anywhere else.
+- **`COST:`, `MISSES:`, `FROM:`, `UNTAGGED:` — the design-field counters, read together, on the `design.md` run only.** They print unconditionally right after `UNSLOTTED:`, checking `**Cost:**`/`**Misses:**` presence in every `### Option` block of §7 and an inline `From:` tag on every §3 requirement bullet — presence only, never the figure or the miss itself.
+
+  | Counter | Classification | Meaning |
+  |---|---|---|
+  | `COST:` | warning | an option block, or a whole Trade-offs section, has no `**Cost:**` line — the document predates the field |
+  | `UNTAGGED:` | warning | a §3 requirement bullet has no `From:` tag, or a requirement group opener is malformed (wrong heading level, a bulleted label, or whitespace inside `**...**` around the label) — the document predates the field or the opener needs fixing |
+  | `MISSES:` | blocker | a `**Cost:**` line has no `**Misses:**` value — the field exists and is incomplete |
+  | `FROM:` | blocker | a `From:` tag is misplaced (line-start, or outside a requirement group) or carries an unrecognised value — the field exists and is wrong |
+
+  A non-zero counter prints a detail block underneath naming the section, a locator, and a reason for each hit — report the two or three worst, not every row, same as the CEILING guidance above.
 - **Cross-section duplication spot-check — warning.** Take the two highest-word sections and look for a fact stated in both. This is the weakest check here: it needs whole-document awareness that does not survive a fix round, so treat a clean result as unproven rather than as evidence there is no duplication. When you do find a duplicate, the fix is to delete the restatement and keep the statement at its point of decision — never to relocate it.
 
 The tool owns the target and ceiling numbers and prints them per row, so there is no table to cross-check against and nothing to keep in step.
@@ -166,8 +176,9 @@ Produce a compact report in the main conversation (not a file unless the user as
 6. A citation-scan hit that survives triage against the exemption list.
 7. A broken `§N.M` cross-reference, a diagram contradicting prose, or a resolution summary in the review-request doc that contradicts the current doc content.
 8. A `design.md` whose table shows no `5. Detailed Design` row — the section was renamed past recognition, so its ceiling never applied.
+9. Either of the two design-field counters the table in Step 2 classifies as a blocker, greater than 0, **on the `design.md` run only**.
 
-Warnings: `over-target` rows, terminology drift, cosmetic inconsistency, review-report status-marker drift, and the duplication spot-check.
+Warnings: `over-target` rows, terminology drift, cosmetic inconsistency, review-report status-marker drift, the duplication spot-check, and either of the two design-field counters the Step 2 table classifies as a warning, greater than 0 on the `design.md` run.
 
 ### Step 4 — Fix blockers
 

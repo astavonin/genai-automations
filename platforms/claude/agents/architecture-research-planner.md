@@ -183,10 +183,11 @@ Before finalizing any architecture or research deliverable, actively verify:
    bash ~/.claude/scripts/doc-metrics.sh <each-file-you-wrote>
    ```
 
-   The two counters have different scopes:
+   Three kinds of counter, with different scopes:
 
    - **Register: fix every hit, in every file.** The tool names the section, the token, and a word window for each. This applies to design docs, architecture docs, and READMEs alike — it is a rule about how you write, not about one document type.
    - **Words: only a `design.md` is gated on length.** Report the per-row verdicts and resolve any `OVER-CEILING` before you finish, because that blocks in `/verify-docs`. Discharge an `over-target` row with one line of justification in your response, not in the document. Sections are matched by heading content, so a README or architecture doc whose headings resemble template sections will also show targets — those verdicts are informational, and only the `TOTAL` row's document ceiling is worth acting on outside a design doc.
+   - **Design-field counters — `COST:`, `MISSES:`, `FROM:`, `UNTAGGED:` — only a `design.md` is gated on these.** They check §7 `**Cost:**`/`**Misses:**` presence and §3 `From:` tag presence. `/verify-docs` classifies which two block versus warn (see its Step 2 table); resolve every blocker before returning. A document written before these fields existed can carry a non-zero warning, but a `design.md` you are writing now should read zero on all four.
 
    A non-zero exit is not a result — it means the run was not a measurement (unclosed fence, NUL bytes, a broken `awk`). Fix the cause and re-run rather than reporting the numbers it printed.
 
@@ -208,6 +209,7 @@ Before finalizing any architecture or research deliverable, actively verify:
 - [ ] Every fact stated once, at its point of decision — a restatement elsewhere is deleted, not relocated
 - [ ] No defensive register: `doc-metrics.sh` reports `REGISTER: 0` for every file written, and its counts are quoted in the response
 - [ ] For a design doc, no `OVER-CEILING` row remains; any `over-target` row carries a one-line justification in the response
+- [ ] For a design doc, `doc-metrics.sh` reports `COST: 0`, `MISSES: 0`, `FROM: 0`, and `UNTAGGED: 0` — a non-zero value on any of the four is expected only when the document predates the fields, and `/verify-docs` Step 2 says which two of the four block
 - [ ] Actionable recommendations provided with clear next steps
 
 # Persistent Agent Memory

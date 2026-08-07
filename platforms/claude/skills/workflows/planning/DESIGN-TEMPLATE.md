@@ -59,14 +59,20 @@ What problem does this solve? Why now?
 
 **Repository:** `/absolute/path/to/repo`
 
+*(Every Functional Requirement, Non-Functional Requirement, and Constraint bullet below ends with an inline `From:` tag, written as bold Markdown — two asterisks, not a single-backtick mention — placed at the end of the bullet. Never write it as a bold label opening its own line: that form breaks codex-flow's requirement parser. Five values, each naming something a reader other than the author can retrieve except the last: `ticket <id>`, `incident <date>`, `decision <date>`, `spec <name>`, `analysis`.)*
+
+*(`decision <date>` applies only where `analysis.md` → `## Clarifications` records that question with a real Decision, not an assumption default; everything else the author reasoned out alone — including a review finding first raised in a review report — carries `analysis`.)*
+
+*(The five backtick-quoted values in the paragraph above are read by a test: `tests/verify-doc-metrics.sh` extracts them and compares them against `doc-metrics.sh`'s own accepted set. Reword the surrounding prose freely, but keep all five values on that one paragraph and re-run the suite afterwards.)*
+
 **Functional Requirements:**
-- ...
+- ... — **From:** analysis
 
 **Non-Functional Requirements:**
-- ...
+- ... — **From:** analysis
 
 **Constraints:**
-- ...
+- ... — **From:** analysis
 
 **Verification:**
 
@@ -158,11 +164,17 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 
 ## 7. Trade-offs and Alternatives
 
+*(Every option below declares `Cost:` and `Misses:`. The cheapest option wins. A costlier option is admissible only when every cheaper option's `Misses:` names a §3 Functional Requirement, Non-Functional Requirement, or Constraint whose `From:` value is one of the four that override. `analysis` does not override, and an item carrying no tag does not either. An argument that is not a §3 item cannot be the reason the cheap option loses — a quality that genuinely matters goes into §3 as a requirement first, where it is visible and challengeable. When nothing in §3 separates the options and the trade is still live, escalate to the user rather than choosing.)*
+
 ### Option A — <Chosen Approach>
+**Cost:** ~N LOC production · ~M LOC test · K files · <new mechanism | reuses `<existing>`>
+**Misses:** <FR/NFR/Constraint it fails, or "none">
 **Pros:** ...
 **Cons:** ...
 
 ### Option B — <Alternative>
+**Cost:** ~N LOC production · ~M LOC test · K files · <new mechanism | reuses `<existing>`>
+**Misses:** <FR/NFR/Constraint it fails, or "none">
 **Pros:** ...
 **Cons:** ...
 

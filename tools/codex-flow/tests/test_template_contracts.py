@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from codex_flow.markdown_parser import _collect_bullets
+from codex_flow.markdown_parser import _collect_bullets, parse_implementation_request
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLANNING_SKILLS = REPO_ROOT / "platforms/claude/skills/workflows/planning"
@@ -62,6 +62,48 @@ def test_design_template_context_files_parse_as_paths() -> None:
             f"Context Files bullet {bullet!r} looks pinned (<hash>:path:line); the parser "
             "does not strip the prefix and the path will never resolve"
         )
+        # I3 / C2: Context Files bullets take no From: tag — that field is reserved for §3
+        # requirement bullets. A tag appended here parses as ordinary trailing text (no arrow,
+        # no backtick, no hex-looking head), so nothing above this line would catch it.
+        assert "From:" not in bullet, (
+            f"Context Files bullet {bullet!r} carries a From: tag; §5.2 reserves that field "
+            "for requirement bullets and C2 keeps Context Files bare paths"
+        )
+
+
+@pytest.mark.parametrize(
+    "heading_fragment",
+    ["**Functional Requirements:**", "**Non-Functional Requirements:**", "**Constraints:**"],
+)
+def test_design_template_requirement_bullets_carry_from_tag(heading_fragment: str) -> None:
+    """I2: every §3 requirement bullet must carry an inline From: tag.
+
+    A tag placed on its own line (a bold label opening the line) matches ``FIELD_PATTERN`` and
+    breaks ``_collect_bullets()`` — every requirement after it silently vanishes from what
+    ``codex-flow implement`` receives, with no error (C3).
+    """
+    bullets = _bullets_under(DESIGN_TEMPLATE, heading_fragment)
+
+    assert bullets, f"{heading_fragment} has no parseable bullets"
+    for bullet in bullets:
+        assert "From:" in bullet, (
+            f"requirement bullet {bullet!r} under {heading_fragment} carries no From: tag"
+        )
+
+
+def test_design_template_parses_as_implementation_request() -> None:
+    """I4: the shipped template is itself a valid, parseable implementation request.
+
+    A From: tag placed on its own line breaks ``_collect_bullets()`` silently — the
+    requirement list comes back empty and ``parse_implementation_request()`` raises instead of
+    returning a populated request. Parsing the real template end to end proves the whole
+    document, not just one bullet list in isolation (the I2 fixture's blast radius).
+    """
+    request = parse_implementation_request(DESIGN_TEMPLATE)
+
+    assert request.functional_requirements, "no Functional Requirements survived parsing"
+    joined = " ".join(request.functional_requirements)
+    assert "From:" in joined, "the From: tag text is not present in the parsed requirement"
 
 
 def test_review_request_constraints_bullets_are_parsed() -> None:
