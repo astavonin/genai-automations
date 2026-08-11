@@ -108,7 +108,7 @@ HITS=$(printf '%s\n' "$FOUND" | while IFS= read -r f; do
 
       END {
         # An unclosed fence hides every following line, so a clean result would be a lie.
-        # BLOCKs rather than warning, matching doc-metrics.sh: a warning on stdout with no
+        # BLOCKs rather than warning, matching doc-metrics: a warning on stdout with no
         # BLOCKER token was invisible to every caller convention in this config.
         if (fence) {
           printf "BLOCKER: unclosed %s fence in %s — lines after it were not scanned.\n", delim, F > "/dev/stderr"

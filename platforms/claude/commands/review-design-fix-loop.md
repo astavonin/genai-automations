@@ -74,8 +74,10 @@ Invoke **architecture-research-planner agent** with:
 - **Instruction — this command does not grow the document by default.** The unit is one invocation of the fix loop, not one Step 2 pass and not one finding: Step 3 re-enters Step 2 on every CHANGES REQUESTED, and a per-pass budget would forbid a legitimate addition in the third pass even when the first two removed more than it adds. Take one measurement before the first Step 2 and one after the last, and target a total no higher than the one you started from:
 
   ```bash
-  bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+  doc-metrics <path-to-design.md>
   ```
+
+  **Exit contract:** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result; exit `127` means the package is not installed — `pip install -e ./tools/docgate`. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
 
   The exception is a genuine gap: a finding reporting missing information is resolved by adding it, and that pass legitimately grows. Name the finding IDs that justified the growth in your response. What this rule blocks is the other case — resolving an ambiguity or a contradiction by appending a clarification, where the words are added and the defect stays. If the total grew and no finding reported a gap, find the append and replace it with a rewrite before you finish.
 
@@ -174,7 +176,7 @@ Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md
 Both numbers come from the `TOTAL` row of one run before Step 2 and one after the last fix pass:
 
 ```bash
-bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+doc-metrics <path-to-design.md>
 ```
 
 The delta enforces nothing here — Step 2 carries the net-non-growth instruction and `/verify-docs` carries the register gate — but it makes growth visible on every run. `wc -l` cannot: the repo bans manual line wrapping, so one paragraph is one line and a fix pass that adds 400 words to an existing paragraph shows a delta of 0. An earlier attempt at this rule reported `-0%` lines against a real `-2.1%` word change for exactly that reason. Prose words also exclude table rows, so converting a bloated paragraph into a table — the compression the rules ask for — registers as the reduction it is instead of as growth.

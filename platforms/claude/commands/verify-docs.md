@@ -51,11 +51,11 @@ Read each file. Focus on:
 - `docs/` — architecture / user-facing docs
 - `planning/**/issues/*/` — design documents and review reports (check status marker consistency)
 
-**Both scans in Step 2 take paths, so pass the `docs/` files explicitly** — `citation-scan.sh` takes a folder and `doc-metrics.sh` takes files, and neither receives this list unless you hand it over. A `docs/` file edited by a code-review fix otherwise reaches the gate and is read by a human but measured by nothing:
+**Both scans in Step 2 take paths, so pass the `docs/` files explicitly** — `citation-scan.sh` takes a folder and `doc-metrics` takes files, and neither receives this list unless you hand it over. A `docs/` file edited by a code-review fix otherwise reaches the gate and is read by a human but measured by nothing:
 
 ```bash
 # For each tracked .md outside planning/ from the list above:
-bash ~/.claude/scripts/doc-metrics.sh docs/architecture.md   # read the REGISTER line only
+doc-metrics docs/architecture.md                             # read the REGISTER line only
 bash ~/.claude/scripts/citation-scan.sh docs                 # a folder, not a file
 ```
 
@@ -99,16 +99,16 @@ Two invocations, because the two counters have different scopes:
 # which the exit contract below then reads as a blocker. An issue folder legitimately has
 # no design.md before Phase 2.
 if [ -f "<issue-folder>/design.md" ]; then
-    bash ~/.claude/scripts/doc-metrics.sh "<issue-folder>/design.md"
+    doc-metrics "<issue-folder>/design.md"
 fi
 
 # Register only. Named explicitly rather than globbed: a glob re-measures design.md and
 # pulls in review reports, whose finding IDs and reviewer prose are not the fix agent's to
 # rewrite. Skip any that is absent.
-bash ~/.claude/scripts/doc-metrics.sh "<issue-folder>/analysis.md"
+doc-metrics "<issue-folder>/analysis.md"
 ```
 
-**Exit contract, identical to the citation scan.** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result: a missing file, an unsubstituted placeholder, NUL bytes, a missing or failing `awk`, an `awk` that produced no table, or an unclosed fence. That last one matters most — everything after an unclosed fence is invisible to the count, so a zero register total there would be a lie. Exit `127` means `sync-configs.sh install` has not run. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
+**Exit contract.** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result: no file given, an unsubstituted placeholder, a path that is not a file or not readable, content that is not valid UTF-8, NUL bytes, setext headings, unclosed YAML frontmatter, or an unclosed fence. That last one matters most — everything after an unclosed fence is invisible to the count, so a zero register total there would be a lie. Exit `127` means the package is not installed — `pip install -e ./tools/docgate`. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
 
 Read four things from the output. The first three are mechanical; only the fourth needs judgement:
 
@@ -166,12 +166,12 @@ Produce a compact report in the main conversation (not a file unless the user as
 - [file] — no issues
 ```
 
-**Blockers are exactly this list** — do not derive the set from "what a reviewer would flag". The register and ceiling gates are deliberately kept out of reviewer prompts (review pressure drives growth), so no reviewer will ever raise them and a reviewer-anticipation test silently classifies them as non-blocking:
+**Blockers are exactly this list** — do not derive the set from "what a reviewer would flag". The register and ceiling gates are kept out of reviewer prompts (review pressure drives growth), so no reviewer will ever raise them and a reviewer-anticipation test silently classifies them as non-blocking:
 
-1. A non-zero exit from `citation-scan.sh` or `doc-metrics.sh` — the run is not a measurement.
+1. A non-zero exit from `citation-scan.sh` or `doc-metrics` — the run is not a measurement.
 2. `REGISTER:` greater than 0, on `design.md` or `analysis.md`.
 3. `CEILING:` greater than 0 **on the `design.md` run only** — no other file is gated on length.
-4. In a design or user-facing doc: a `## Writing Rules` heading, or a `Writing Rules` row in the `doc-metrics.sh` table (the mechanical signal — it survives the heading being renamed), or an inline `RESOLVED` marker or finding ID. Review reports carry finding IDs by construction and are out of scope for this item.
+4. In a design or user-facing doc: a `## Writing Rules` heading, or a `Writing Rules` row in the `doc-metrics` table (the mechanical signal — it survives the heading being renamed), or an inline `RESOLVED` marker or finding ID. Review reports carry finding IDs by construction and are out of scope for this item.
 5. A stale `TBD`/`TODO` the Q&A session was meant to resolve, or an `OPEN` row resolved in prose but not in its table cell.
 6. A citation-scan hit that survives triage against the exemption list.
 7. A broken `§N.M` cross-reference, a diagram contradicting prose, or a resolution summary in the review-request doc that contradicts the current doc content.

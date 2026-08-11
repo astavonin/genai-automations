@@ -100,7 +100,7 @@ detector list (matched whole-word, case-insensitive):
 deliberately|intentionally|by design|which is what makes|worth noting|it should be noted|note that|importantly|crucially|essentially|fundamentally|in other words|that said|of course
 ```
 
-The list above is fenced so it does not trip its own detector. `~/.claude/scripts/doc-metrics.sh` owns the authoritative copy. `tests/verify-doc-metrics.sh` asserts all three copies of the list — the script, this file, and the Codex authoring skill — are byte-identical and appear exactly once each, so editing one without the others fails the suite rather than drifting silently.
+The list above is fenced so it does not trip its own detector. `tools/docgate` owns the authoritative copy, in `docgate/metrics.py`. `tests/verify-config-consistency.sh` asserts all three copies of the list — that module, this file, and the Codex authoring skill — are byte-identical and that the two prose copies appear exactly once each, so editing one without the others fails the suite rather than drifting silently.
 
 **The rule outranks the list, which is non-exhaustive by construction** — banning one token yields substitutes. A zero count is necessary, not sufficient: rewriting a listed token as "the choice here was made advisedly" leaves the count clean and the rule broken. Two exemptions the tool applies for you: a token inside a fenced block, and a token wrapped in backticks or quotes — a mention rather than a use, which is how a document discusses the rule. A token merely sitting inside a longer quoted sentence is still a use and still counts. Table cells and blockquotes are **not** exempt: a defensive sentence is defensive wherever it sits, and both were otherwise a way to satisfy the gate without changing the prose.
 
@@ -180,7 +180,7 @@ Before finalizing any architecture or research deliverable, actively verify:
 7. **Measure the prose you just wrote and report the numbers.** Run the tool on every Markdown file you created or modified and quote the results back in your response:
 
    ```bash
-   bash ~/.claude/scripts/doc-metrics.sh <each-file-you-wrote>
+   doc-metrics <each-file-you-wrote>
    ```
 
    Three kinds of counter, with different scopes:
@@ -207,9 +207,9 @@ Before finalizing any architecture or research deliverable, actively verify:
 - [ ] Design document is structured and ready for team review
 - [ ] Evidence-based analysis grounded in actual codebase findings, cited as file + symbol — no unpinned line numbers, no line references into planning docs
 - [ ] Every fact stated once, at its point of decision — a restatement elsewhere is deleted, not relocated
-- [ ] No defensive register: `doc-metrics.sh` reports `REGISTER: 0` for every file written, and its counts are quoted in the response
+- [ ] No defensive register: `doc-metrics` reports `REGISTER: 0` for every file written, and its counts are quoted in the response
 - [ ] For a design doc, no `OVER-CEILING` row remains; any `over-target` row carries a one-line justification in the response
-- [ ] For a design doc, `doc-metrics.sh` reports `COST: 0`, `MISSES: 0`, `FROM: 0`, and `UNTAGGED: 0` — a non-zero value on any of the four is expected only when the document predates the fields, and `/verify-docs` Step 2 says which two of the four block
+- [ ] For a design doc, `doc-metrics` reports `COST: 0`, `MISSES: 0`, `FROM: 0`, and `UNTAGGED: 0` — a non-zero value on any of the four is expected only when the document predates the fields, and `/verify-docs` Step 2 says which two of the four block
 - [ ] Actionable recommendations provided with clear next steps
 
 # Persistent Agent Memory

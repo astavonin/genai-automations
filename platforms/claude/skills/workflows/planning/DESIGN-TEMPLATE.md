@@ -13,8 +13,10 @@
 **Length: a target and a ceiling per section.** Run the tool — it prints both, plus your delta and a verdict per row:
 
 ```bash
-bash ~/.claude/scripts/doc-metrics.sh <path-to-design.md>
+doc-metrics <path-to-design.md>
 ```
+
+**Exit contract:** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result; exit `127` means the package is not installed — `pip install -e ./tools/docgate`. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it.
 
 - `ok` — at or under the section's target.
 - `over-target` — past the target. Advisory. Discharge it with one line of justification naming what the extra words buy.
@@ -63,7 +65,7 @@ What problem does this solve? Why now?
 
 *(`decision <date>` applies only where `analysis.md` → `## Clarifications` records that question with a real Decision, not an assumption default; everything else the author reasoned out alone — including a review finding first raised in a review report — carries `analysis`.)*
 
-*(The five backtick-quoted values in the paragraph above are read by a test: `tests/verify-doc-metrics.sh` extracts them and compares them against `doc-metrics.sh`'s own accepted set. Reword the surrounding prose freely, but keep all five values on that one paragraph and re-run the suite afterwards.)*
+*(The five backtick-quoted values in the paragraph above are read by a test: `tests/verify-config-consistency.sh` extracts them and compares them against `doc-metrics`'s own accepted set. Reword the surrounding prose freely, but keep all five values on that one paragraph and re-run the suite afterwards.)*
 
 **Functional Requirements:**
 - ... — **From:** analysis

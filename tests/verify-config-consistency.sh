@@ -33,10 +33,10 @@ PAGETYPE="$CLAUDE/skills/workflows/page-type/SKILL.md"
 APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 
 # Bump when adding or removing an assertion. Asserted at the end so a block that silently
-# skips itself shows up as a count mismatch instead of a green run — the sibling suites
-# (verify-doc-metrics.sh, verify-workflow-safety.sh) added this counter for the same reason;
-# this suite had none, which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=28
+# skips itself shows up as a count mismatch instead of a green run — the sibling suite
+# (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
+# which is finding T3 in planning/genai-automations/appendix-page-type.
+EXPECTED_TESTS=34
 
 PASS=0
 FAIL=0
@@ -738,6 +738,140 @@ else
         fail "quality-attributes SKILL.md carries the widened Minimality item, not a bare noun" \
              "the '- minimality:' bullet line ('$min_line') must carry both scope clauses ('the mechanism is no larger than ...' and 'the implementation is no larger than the approved design requires') — mirror absent, reduced to a bare noun, or reverted to public-API-surface-only scope"
     fi
+fi
+
+echo "== doc-metrics: shipped corpus measures, and the published constants match the package =="
+
+# The `doc-metrics` command (tools/docgate) owns the detector list, the accepted From: values
+# and every threshold; this config publishes prose copies of the first two. Both mirrors were
+# guarded by tests/verify-doc-metrics.sh, which was retired with the shell script it tested —
+# its unit coverage moved to tools/docgate/tests/ and its cross-file assertions moved here.
+#
+# The Python side is read BY IMPORT, never by re-parsing the source: an assertion that greps
+# metrics.py pins a source line, while an import pins the value the tool actually uses.
+DESIGN_TEMPLATE="$CLAUDE/skills/workflows/planning/DESIGN-TEMPLATE.md"
+AGENT_DOC="$CLAUDE/agents/architecture-research-planner.md"
+CODEX_DOC="$ROOT/platforms/codex/skills/architecture-research-planner/SKILL.md"
+
+# Value of a `NAME: <n> ...` summary line in doc-metrics output. Empty when the command did
+# not run at all, which every caller below treats as a failure rather than as a zero.
+metric() { printf '%s\n' "$1" | $GREP -m1 "^$2:" | awk '{print $2}'; }
+
+# I1: the shipped template is the mechanism's own dogfood case — every Cost:/Misses: field is
+# present and every requirement bullet carries a real From: tag.
+tmpl_out=$(doc-metrics "$DESIGN_TEMPLATE" 2>&1); tmpl_rc=$?
+bad=""
+[ "$tmpl_rc" -eq 0 ] || bad="doc-metrics exited $tmpl_rc; "
+for counter in COST MISSES FROM UNTAGGED; do
+    v=$(metric "$tmpl_out" "$counter")
+    [ "$v" = "0" ] || bad="$bad$counter=${v:-<no line>}; "
+done
+if [ -z "$bad" ]; then
+    pass "the shipped DESIGN-TEMPLATE.md reports zero on all four design-field counters"
+else
+    fail "the shipped DESIGN-TEMPLATE.md reports zero on all four design-field counters" \
+         "$bad$(printf '\n%s' "$tmpl_out" | tail -8)"
+fi
+
+# I2: three copies of the detector list — the package constant plus the two authoring skills.
+# Discovery is by the loose `deliberately|...` line shape, so a fourth publication site joins
+# the comparison by existing rather than by being remembered; the exact-match count then
+# catches a detector added to one copy alone, in either direction.
+detector_list=$(python3 -c 'from docgate.metrics import REGISTER_DETECTOR_LIST; print(REGISTER_DETECTOR_LIST)' 2>/dev/null)
+if [ -z "$detector_list" ]; then
+    fail "the detector list is published verbatim in exactly the two authoring skills" \
+         "importing REGISTER_DETECTOR_LIST from docgate.metrics produced nothing — is tools/docgate installed?"
+else
+    bad=""
+    for doc in "$AGENT_DOC" "$CODEX_DOC"; do
+        n=$($GREP -c -x -F "$detector_list" "$doc" || true)
+        [ "$n" = "1" ] || bad="$bad${doc#"$ROOT"/}: $n verbatim copy(ies), want 1; "
+    done
+    declared=$(printf '%s\n%s\n' "${AGENT_DOC#"$ROOT"/}" "${CODEX_DOC#"$ROOT"/}" | sort)
+    discovered=$($GREP -rl -xE 'deliberately\|.*' --include='*.md' "$ROOT/platforms" 2>/dev/null \
+        | sed "s#^$ROOT/##" | sort)
+    [ "$declared" = "$discovered" ] || bad="${bad}publication sites differ: $(diff <(printf '%s\n' "$declared") <(printf '%s\n' "$discovered") | tr '\n' ' '); "
+    if [ -z "$bad" ]; then
+        pass "the detector list imported from docgate.metrics is published verbatim, exactly once, in exactly the two authoring skills"
+    else
+        fail "the detector list imported from docgate.metrics is published verbatim, exactly once, in exactly the two authoring skills" "$bad"
+    fi
+fi
+
+# I3: the five From: values are documented once, in DESIGN-TEMPLATE.md §3 guidance. Extraction
+# is bound to the "Five values" line alone — the same paragraph carries an earlier `From:`
+# mention and the adjacent decision-vs-analysis line repeats `analysis` and adds `assumption`,
+# either of which a read of every backtick token in the guidance would miscount as a sixth.
+pkg_from=$(python3 -c 'from docgate.metrics import FROM_VALUE_KINDS; print("\n".join(sorted(FROM_VALUE_KINDS)))' 2>/dev/null)
+tmpl_line=$($GREP -m1 -F 'Five values,' "$DESIGN_TEMPLATE")
+if [ -z "$pkg_from" ]; then
+    fail "the From: value list in DESIGN-TEMPLATE.md §3 equals docgate.metrics' accepted set" \
+         "importing FROM_VALUE_KINDS from docgate.metrics produced nothing — is tools/docgate installed?"
+elif [ -z "$tmpl_line" ]; then
+    fail "the From: value list in DESIGN-TEMPLATE.md §3 equals docgate.metrics' accepted set" \
+         "no 'Five values,' line found in ${DESIGN_TEMPLATE#"$ROOT"/}"
+else
+    tmpl_from=$(printf '%s' "$tmpl_line" | $GREP -oE '`[a-z]+' | tr -d '`' | sort -u)
+    if [ "$tmpl_from" = "$pkg_from" ]; then
+        pass "the From: value list in DESIGN-TEMPLATE.md §3 equals docgate.metrics' accepted set"
+    else
+        fail "the From: value list in DESIGN-TEMPLATE.md §3 equals docgate.metrics' accepted set" \
+             "$(diff <(printf '%s\n' "$tmpl_from") <(printf '%s\n' "$pkg_from") | sed 's/^</  only in template: /; s/^>/  only in package: /')"
+    fi
+fi
+
+# I4: the corpus this tool governs must itself be measurable. Four config files once carried a
+# ``` block nesting another ```, which inverts fence parity and makes the run exit BLOCKER —
+# invisible in review, since an unbalanced fence reads as ordinary Markdown.
+#
+# The `== <path> ==` header count is asserted alongside the exit code because exit 0 and zero
+# BLOCKERs are also what a tool that measured NOTHING reports: a stub exiting 0, or one that
+# only ever reads its first argument, passes the other two checks unchanged.
+corpus_files=()
+while IFS= read -r -d '' f; do corpus_files+=("$f"); done \
+    < <(find "$ROOT/platforms" -name '*.md' -print0 | sort -z)
+if [ "${#corpus_files[@]}" -eq 0 ]; then
+    fail "every Markdown file under platforms/ measures at exit 0" "found no .md files under platforms/"
+else
+    out=$(doc-metrics "${corpus_files[@]}" 2>&1); rc=$?
+    blockers=$(printf '%s\n' "$out" | $GREP -c '^BLOCKER' || true)
+    measured=$(printf '%s\n' "$out" | $GREP -c '^== ' || true)
+    if [ "$rc" -eq 0 ] && [ "$blockers" -eq 0 ] && [ "$measured" -eq "${#corpus_files[@]}" ]; then
+        pass "all ${#corpus_files[@]} Markdown file(s) under platforms/ measure at exit 0"
+    else
+        fail "all ${#corpus_files[@]} Markdown file(s) under platforms/ measure at exit 0" \
+             "exit=$rc, $blockers BLOCKER line(s), $measured of ${#corpus_files[@]} measured: $(printf '%s\n' "$out" | $GREP '^BLOCKER' | head -5)"
+    fi
+fi
+
+# I5: the tool is a command on PATH, not a script under ~/.claude/scripts/. A site left on the
+# old name is silently un-runnable after tools/docgate replaces it, so check both halves: every
+# invoking site carries the bare command, and the retired filename appears nowhere.
+invoking_sites="commands/verify-docs.md commands/design.md commands/review-design-fix-loop.md agents/architecture-research-planner.md skills/workflows/planning/DESIGN-TEMPLATE.md"
+bad=""
+n_invoking=0
+for rel in $invoking_sites; do
+    n_invoking=$((n_invoking + 1))
+    $GREP -qE '(^|[[:space:]`])doc-metrics([[:space:]`]|$)' "$CLAUDE/$rel" \
+        || bad="$bad$rel (no bare \`doc-metrics\` invocation); "
+done
+old_name=$($GREP -rl 'doc-metrics\.sh' "$ROOT/platforms" 2>/dev/null | sed "s#^$ROOT/##" | tr '\n' ' ')
+[ -n "$old_name" ] && bad="${bad}retired filename doc-metrics.sh still named in: $old_name"
+if [ -z "$bad" ]; then
+    pass "all $n_invoking invoking site(s) call the bare doc-metrics command, and doc-metrics.sh is named nowhere under platforms/"
+else
+    fail "all $n_invoking invoking site(s) call the bare doc-metrics command, and doc-metrics.sh is named nowhere under platforms/" "$bad"
+fi
+
+# I6: the agent doc fences its own detector list so publishing it is a mention, not a use.
+# I4 only proves the file measures; nothing else proves the fence still holds.
+agent_out=$(doc-metrics "$AGENT_DOC" 2>&1)
+agent_reg=$(metric "$agent_out" REGISTER)
+if [ "$agent_reg" = "0" ]; then
+    pass "the agent doc publishing the detector list does not trip its own detector"
+else
+    fail "the agent doc publishing the detector list does not trip its own detector" \
+         "REGISTER=${agent_reg:-<no line>} :: $(printf '%s\n' "$agent_out" | tail -8)"
 fi
 
 echo

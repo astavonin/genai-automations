@@ -20,7 +20,7 @@ Two distinct rules in this config use the word "register". They do not overlap a
 | Rule | Governs | Enforcement |
 |---|---|---|
 | **Output register** (this file) | Conversational text returned to the user — status, findings, summaries, agent results | None; behavioural |
-| **Prose register** (`~/.claude/agents/architecture-research-planner.md` → "Prose Register") | Text written *into* design and planning documents — the defensive-phrasing detector list | `~/.claude/scripts/doc-metrics.sh`, blocking via `/verify-docs` (`REGISTER: N hit(s)` must be 0) |
+| **Prose register** (`~/.claude/agents/architecture-research-planner.md` → "Prose Register") | Text written *into* design and planning documents — the defensive-phrasing detector list | `doc-metrics`, blocking via `/verify-docs` (`REGISTER: N hit(s)` must be 0) |
 
 Satisfying one does not satisfy the other. A design document passes the prose-register gate and still needs this file's rules for whatever is said *about* it in conversation. Do not apply this file's brevity limits to document bodies — a design doc, review report, analysis, or brief is a deliverable, and its length is set by its own template. Brevity governs what you *say about* the document, not what is *in* it.
 

@@ -121,7 +121,7 @@ Design docs follow the 8-section template at `~/.claude/skills/workflows/plannin
 
 Files-changed tables are **not** part of design docs — they emerge during implementation. §6 states what must be covered and at which level; the tests themselves are written during implementation.
 
-Documents written to the older 7-section numbering, with Trade-offs at §6 and Open Questions at §7, still exist. `doc-metrics.sh` matches its length targets by heading content rather than by number, so those documents are scored against the same slots — but new documents use the numbering above.
+Documents written to the older 7-section numbering, with Trade-offs at §6 and Open Questions at §7, still exist. `doc-metrics` matches its length targets by heading content rather than by number, so those documents are scored against the same slots — but new documents use the numbering above.
 
 ## Architecture Reviews
 

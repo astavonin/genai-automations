@@ -23,6 +23,7 @@
       "Bash(jq:*)",
       "Bash(codex:*)",
       "Bash(codex-flow:*)",
+      "Bash(doc-metrics:*)",
       "Bash(timeout:*)",
       "Bash(script:*)",
       "Bash(docker:*)",

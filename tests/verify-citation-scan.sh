@@ -122,7 +122,7 @@ assert_class "nested fence inside a ledger block stays exempt" \
     'x\n~~~markdown\n## 2026-07-30 boom\n```\nsrc/nested.cc:2\n```\n~~~'               none
 # An unclosed fence hides every line after it, so a clean result would be a lie. This
 # BLOCKs rather than warning: a warning on stdout with no BLOCKER token was invisible to
-# every caller convention in this config, and doc-metrics.sh treats the same case as fatal.
+# every caller convention in this config, and doc-metrics treats the same case as fatal.
 unc="$TMPDIR_ROOT/unclosed"; mkdir -p "$unc"
 printf 'x\n```\nsrc/runaway.cc:99\n' > "$unc/design.md"
 out=$(bash "$SCRIPT" "$unc" 2>&1); rc=$?
