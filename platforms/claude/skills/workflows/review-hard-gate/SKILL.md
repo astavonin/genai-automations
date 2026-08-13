@@ -15,7 +15,7 @@ Mandatory gate block that prevents sending the agent launch message until all re
 
 ## Caller Must Specify
 
-- **`test_coverage`** — `yes` (review-code, review-mr, review-fix) or `no` (review-design). Determines whether the test-coverage agent (Step F) is required in addition to the 3 reviewers. Fix reviews require it: Step F is the primary enforcement of the observed-failure regression gate, alongside the three consensus reviewers and the Step H manual pass.
+- **`test_coverage`** — `yes` (review-code, review-mr, review-fix) or `no` (review-design, review-spec). Determines whether the test-coverage agent (Step F) is required in addition to the 3 reviewers. Fix reviews require it: Step F is the primary enforcement of the observed-failure regression gate, alongside the three consensus reviewers and the Step H manual pass.
 
 ## Gate Block to Include (verbatim, before the agent launch step)
 

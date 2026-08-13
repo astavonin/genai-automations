@@ -71,3 +71,9 @@ Run against real infrastructure available in standard CI (e.g., vivid virtual de
 *(Deferred to article N — requires <dependency>)*
 — or —
 *(N/A — article does not require on-device validation)*
+
+---
+
+## Rules
+
+- **`Draft` is what authoring produces; `/review-spec` is the only writer of `Approved`.** This entry states the rule for both spec templates; `APPENDIX-SPEC-TEMPLATE.md` points here rather than restating it, and reads "spec" below as its own page. `/spec` leaves the header at `Draft` however finished the spec reads, and an `APPROVED` `/review-spec` flips it; a review returning `CHANGES REQUESTED` or `REJECTED` clears an `Approved` it finds back to `Draft`. The field records a review rather than the author's own judgment that the work is done, which is what it recorded before that command existed. A spec still reading `Approved` from then is re-run through `/review-spec`, not grandfathered. The two values remain distinct from the review-gate marker `CLAUDE.md` §4 defines (`APPROVED | CHANGES REQUESTED | REJECTED`) — that marker lives in `spec-review.md`, and this field never carries one of its values. `tests/verify-workflow-safety.sh` scopes its gate to review files by explicit path rather than by scanning every `**Status:**` occurrence, so the two do not collide.

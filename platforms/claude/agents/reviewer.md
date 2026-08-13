@@ -92,7 +92,7 @@ Where `<STATE>` is one of exactly three values — all uppercase, no emoji, no v
 - `CHANGES REQUESTED`
 - `REJECTED`
 
-This marker is machine-readable and load-bearing: `/review-design` and `/review-code` both verify its presence using `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring the review complete. A review file without the canonical marker will cause compaction gates to skip. See design §4 for the full convention.
+This marker is machine-readable and load-bearing: `/review-design`, `/review-code`, and `/review-spec` all verify its presence using `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` before declaring the review complete. A review file without the canonical marker will cause compaction gates to skip. See design §4 for the full convention.
 
 **Canonical output format (the H1 title line, then the Status line immediately after, no blank line between):**
 

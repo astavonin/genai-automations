@@ -35,7 +35,7 @@ Backup of AI platform configurations:
 Python packages that support the workflow.
 
 - **`codex-flow/`** — runs Codex implementation and review jobs from a request document. Installed separately; `pytest tests/` from that directory.
-- **`docgate/`** — publishes the `doc-metrics` command: per-section prose-word, defensive-register, and design-field metrics for Markdown. `pip install -e ./tools/docgate`; `pytest tests/` from that directory.
+- **`docgate/`** — publishes two commands: `doc-metrics` (per-section prose-word, defensive-register, and design-field metrics for Markdown) and `spec-verify` (re-runs an appendix spec's §5 verification rows and checks its §2↔§5 claim graph). `pip install -e ./tools/docgate`; `pytest tests/` from that directory.
 
 **Which Codex config governs which path — this distinction matters, and it differs per mode.** The authority is `codex_flow/runner.py` (see the `sandbox == "danger-full-access"` branch): review mode passes `--ignore-user-config --ignore-rules`, implementation mode does not.
 

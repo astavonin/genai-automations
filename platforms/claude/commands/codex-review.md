@@ -86,4 +86,4 @@ When invoked standalone by the user, the codex-review output is the deliverable;
 
 - The output file path is determined by the `Output File` field in the review request document — `codex-flow` resolves it relative to the repository.
 - `codex-flow` aborts if Codex modifies any file other than the output file — the read-only guarantee is enforced automatically.
-- To integrate Codex findings into a full consensus review, use `/review-code`, `/review-design`, `/review-mr`, or `/review-fix` instead.
+- To integrate Codex findings into a full consensus review, use `/review-code`, `/review-design`, `/review-mr`, `/review-fix`, or `/review-spec` instead.

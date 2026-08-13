@@ -58,7 +58,7 @@ Pass/fail rules for this page. Phrased so a reviewer can fail a row, not aspire 
 - **SR4:** Specification claims cite the numbered section (RFC §N, ITU-T §N, ISO clause N).
 - **SR5:** A device or peripheral is named only after its presence is confirmed. Absence of evidence is recorded as absence, not omitted.
 - **SR6:** The claimed value or token appears literally in the §5 captured output, or the Conclusion names the line that rules the claim in or out. `ls /dev/video*` returning node numbers does not establish which blocks those nodes are — that needs `v4l2-ctl --list-devices`.
-- **SR7:** Every §5 row records where and when it ran. An unattributed paste cannot be told from a recollection.
+- **SR7:** Every §5 row carries all six fields — `Establishes`, `Method`, `Ran on`, `Run date`, `Side effects`, `Conclusion` — each with a real value rather than a placeholder. An unattributed paste cannot be told from a recollection, and a row with no `Conclusion` states nothing anyone can check.
 - **SR8:** Every claim ID appears in exactly one §2 table, and every `Verified by` names a §5 row whose `Establishes` lists that ID.
 
 ---
@@ -88,6 +88,7 @@ Indent captured output four spaces rather than fencing it, so a stray fence in t
 **Method:** on-device | kernel source | documentation lookup | specification
 **Ran on:** <target device and how reached, or "authoring host", or the document consulted>
 **Run date:** <YYYY-MM-DD>
+**Side effects:** none | mutating — <what changes>
 
 ```bash
 <exact command>
@@ -106,9 +107,10 @@ Output — mandatory for every method. For a documentation lookup, quote the pas
 - **Claims before sources.** Decide what must be true for the dependents, then find out whether it is. Writing down what the sources happen to say produces a page that is accurate and useless.
 - **Run the check; do not recall the answer.** The failure this contract exists to stop is a confident, plausible, fabricated fact — a device that does not exist, an alignment that was never measured. Recall reproduces those perfectly.
 - **A negative result is a result.** "No such device is present" is a claim worth recording, with the command that showed it. Absence found once and not written down gets re-fabricated later.
+- **Declare what a row changes.** A row that reconfigures the board, clears a buffer, or starts a capture says so in `Side effects:`, and a verifier never re-runs it.
 - **Prior research is not evidence.** An `analysis.md` in the same folder predates this contract. Re-verify anything carried across, and check the Known-defects table in `planning/book/appendix/status.md` first.
 - **Numbered sections are load-bearing.** `/write` reads §2 and §5 as verified facts and §4 as binding definitions. Do not rename or renumber them.
-- **The header's `**Status:** Draft | Approved` is a spec-authoring marker, not the review-gate marker `CLAUDE.md` §4 defines (`APPROVED | CHANGES REQUESTED | REJECTED`).** The two share the `**Status:**` prefix by convention with `SPEC-TEMPLATE.md`, which uses the identical field. `tests/verify-workflow-safety.sh` scopes its gate to review files by explicit path, not by scanning every `**Status:**` occurrence, so this field is inert to it today — do not repurpose it to carry a review-gate value, and do not assume a future gate expanding its file set would leave it alone.
+- **`Draft` is what authoring produces; `/review-spec` is the only writer of `Approved`.** `~/.claude/skills/workflows/planning/SPEC-TEMPLATE.md` → `## Rules` states the rule for both templates; it governs this page unchanged, and is not restated here.
 
 ## When to use
 

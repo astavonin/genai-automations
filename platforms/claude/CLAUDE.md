@@ -136,7 +136,7 @@ Every command's name and description is already injected into context as the ava
 Classify anything in the listing by this rule rather than by a stored list:
 
 - **Phase commands** — `/start`, `/research`, `/design`, `/review-design`, `/implement`, `/review-code`, `/verify`, `/complete`. These eight advance the workflow; see Workflow Execution below.
-- **Workflow commands with no phase slot** — `/refresh` (reload this config after drift), `/comment`, `/review-article`.
+- **Workflow commands with no phase slot** — `/refresh` (reload this config after drift), `/comment`, `/review-article`, `/review-spec`.
 - **Utilities** — everything else defined in `~/.claude/commands/`.
 
 

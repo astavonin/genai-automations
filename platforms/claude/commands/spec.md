@@ -58,7 +58,7 @@ If `planning/book/todos.md` exists:
 Read ~/.claude/skills/workflows/article-review/TODOS.md
 ```
 
-Derive the identifier and match entries per `~/.claude/skills/workflows/page-type/SKILL.md` → "Identifier derivation and TODO matching", which states both branches — step 0a for an **appendix** page, steps 1–4 for a `main` page. For an **appendix** page each matched entry is a claim the page must establish. A `main` page whose part cannot be determined skips the TODO scan and proceeds — do not halt; an appendix page has no part and that is not a skip condition. Follow the Type B Predicate and Article Identifier Derivation rules in TODOS.md to extract open entries. Type A (inline placeholder) TODOs are intentionally not extracted here — placeholders belong in the draft, not the spec; only Type B items become spec requirements.
+Derive the identifier and match entries per `~/.claude/skills/workflows/page-type/SKILL.md` → "Identifier derivation and TODO matching", which states both branches — step 0a for an **appendix** page, steps 1–4 for a `main` page. For an **appendix** page each matched entry is a claim the page must establish. A `main` page whose part cannot be determined skips the TODO scan and proceeds — do not halt; an appendix page has no part and that is not a skip condition. Follow the Type B Predicate and Article Identifier Derivation rules in TODOS.md to extract open entries. Type A (inline placeholder) TODOs are not extracted here — placeholders belong in the draft, not the spec; only Type B items become spec requirements.
 
 Pass extracted Type B items to the agent in Step 3 as additional requirements context with instruction: "These open TODOs must be resolved by this article — incorporate their resolution as Functional Requirements, Non-Functional Requirements, or Test Requirements in the appropriate spec sections. Do not list them as a separate TODO section."
 
@@ -131,8 +131,16 @@ Pass to the agent:
 
 ### Step 4: Post-write
 
-1. Ask the user if they want to `open <path>` the spec file.
-2. Push planning to backup:
+1. Confirm the header reads `**Status:** Draft`. `/spec` leaves it there however finished the spec looks — `/review-spec` is the only writer of `Approved`, and the field is meant to record a review rather than the author's decision to stop editing. `SPEC-TEMPLATE.md` → `## Rules` states the rule for both templates; `APPENDIX-SPEC-TEMPLATE.md` points there.
+2. Run the spec's own evidence. The board is reachable here by construction — the spec was just written against it — and a `main` spec scans nothing and prints that reason.
+
+   ```bash
+   spec-verify "<issue-folder>"
+   ```
+
+   `0` means the scan ran or had nothing to scan; any non-zero exit is a blocker, and exit `127` means the package is not installed (`pip install -e ./tools/docgate`). A non-zero `FAIL:` count stops this command: report the failing rows and the token each lost, and hand them back for re-running on the board, since a `FAIL` is discharged by re-capturing §5 and never by editing the `Conclusion:` until it matches. A non-zero `SKIP:` count reports and does not stop.
+3. Ask the user if they want to `open <path>` the spec file.
+4. Push planning to backup:
    ```
    Read ~/.claude/skills/workflows/push-planning/SKILL.md
    ```

@@ -1,6 +1,6 @@
 ---
 name: page-type
-description: Shared fragment — single source for the book workflow's two page types (main article, reference appendix page). Owns the path forms, the status file, the spec template, identifier derivation, the TODO match rule, the companion-repo policy, and the unverified-claim marker. Read by spec, write, review-article, review-article-fix-loop, and the writer agent; article-review/TODOS.md, planning/BRIEF-TEMPLATE.md, planning/APPENDIX-SPEC-TEMPLATE.md, and review-planning-update/SKILL.md also point back to it.
+description: Shared fragment — single source for the book workflow's two page types (main article, reference appendix page). Owns the path forms, the status file, the spec template, identifier derivation, the TODO match rule, the companion-repo policy, and the unverified-claim marker. Read by spec, write, review-article, review-article-fix-loop, review-spec, and the writer agent; article-review/TODOS.md, planning/BRIEF-TEMPLATE.md, planning/APPENDIX-SPEC-TEMPLATE.md, and review-planning-update/SKILL.md also point back to it.
 allowed-tools: Bash, Glob, Grep, Read
 compatibility: claude-code
 metadata:
@@ -88,6 +88,7 @@ Listed so an editor knows what else to update. Each holds a one-line summary and
 | `~/.claude/commands/write.md` | resolution, status file, companion policy, marker propagation |
 | `~/.claude/commands/review-article.md` | resolution, status file, companion policy, marker check, issue-folder argument |
 | `~/.claude/commands/review-article-fix-loop.md` | resolution (via `/review-article`'s issue-folder argument), annotation-check branching |
+| `~/.claude/commands/review-spec.md` | obtaining the issue-folder path, both path forms, the rejection rule |
 | `~/.claude/agents/writer.md` | page type passed in the activation token; appendix branch |
 | `~/.claude/skills/workflows/article-review/SCOPES.md` | the appendix review criteria keyed to page type |
 | `~/.claude/skills/workflows/article-review/TODOS.md` | identifier derivation and TODO matching, both types |

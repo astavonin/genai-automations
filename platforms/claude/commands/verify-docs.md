@@ -128,6 +128,20 @@ Read four things from the output. The first three are mechanical; only the fourt
 
 The tool owns the target and ceiling numbers and prints them per row, so there is no table to cross-check against and nothing to keep in step.
 
+**Spec fact scan.** An appendix `spec.md` §5 records the command behind every claim; this re-runs the ones declared free of side effects, fetches the documents the rest cite, and checks each `Conclusion:` token against fresh output. It reaches the board over ssh at the host each row's `Ran on:` names, so a run away from that network reports transport skips rather than failures. A folder holding no `spec.md`, and a main spec, each scan nothing and print that reason.
+
+```bash
+# Resolved issue folder from Step 1.
+spec-verify "<issue-folder>"
+```
+
+**Exit contract.** `0` means the scan ran or had nothing to scan — read its output. Any non-zero exit is a blocker, not a clean result: a bad argument, an unsubstituted placeholder, an unresolvable folder, an unreadable file, a `spec.md` carrying neither template's header field, or an appendix spec with no parseable §5. Exit `127` means the package is not installed — `pip install -e ./tools/docgate`. Exit status never encodes `FAIL` rows, so do not wire `&&` to it.
+
+Read two counters from the summary:
+
+- **`FAIL: N row(s) or graph break(s)` must be 0 — blocks.** A row fails when a token its `Conclusion:` turns on is gone from fresh output — the fact decayed, or the output was written rather than captured — or when a §5 field is missing or the §2↔§5 claim graph breaks. Step 4 excepts this one from the fix agent.
+- **`SKIP: N row(s)` is a warning.** A skipped row verified nothing: it declared itself mutating, its `Method:` has no resolver, its `Ran on:` fits no shape, or the transport did not answer. `TOKENS:` and `COVERS:` state what the run reached and what it never checks, so `FAIL: 0` over an all-skip run is not a clean result.
+
 **Terminology consistency:**
 - Component names used consistently across all files (e.g., "Update Manager" vs bare "Manager" in a context where a "Build Manager" also exists — flag ambiguous unqualified uses)
 - Mode/state names consistent across all docs (e.g., `partial-update`, `full-update`, `rollback`)
@@ -168,7 +182,7 @@ Produce a compact report in the main conversation (not a file unless the user as
 
 **Blockers are exactly this list** — do not derive the set from "what a reviewer would flag". The register and ceiling gates are kept out of reviewer prompts (review pressure drives growth), so no reviewer will ever raise them and a reviewer-anticipation test silently classifies them as non-blocking:
 
-1. A non-zero exit from `citation-scan.sh` or `doc-metrics` — the run is not a measurement.
+1. A non-zero exit from `citation-scan.sh`, `doc-metrics`, or `spec-verify` — the run is not a measurement.
 2. `REGISTER:` greater than 0, on `design.md` or `analysis.md`.
 3. `CEILING:` greater than 0 **on the `design.md` run only** — no other file is gated on length.
 4. In a design or user-facing doc: a `## Writing Rules` heading, or a `Writing Rules` row in the `doc-metrics` table (the mechanical signal — it survives the heading being renamed), or an inline `RESOLVED` marker or finding ID. Review reports carry finding IDs by construction and are out of scope for this item.
@@ -177,12 +191,15 @@ Produce a compact report in the main conversation (not a file unless the user as
 7. A broken `§N.M` cross-reference, a diagram contradicting prose, or a resolution summary in the review-request doc that contradicts the current doc content.
 8. A `design.md` whose table shows no `5. Detailed Design` row — the section was renamed past recognition, so its ceiling never applied.
 9. Either of the two design-field counters the table in Step 2 classifies as a blocker, greater than 0, **on the `design.md` run only**.
+10. `FAIL:` greater than 0 **on the `spec.md` run only** — no other file has a fact contract to re-run. Report it and stop; Step 4 says why this one never reaches the fix agent.
 
-Warnings: `over-target` rows, terminology drift, cosmetic inconsistency, review-report status-marker drift, the duplication spot-check, and either of the two design-field counters the Step 2 table classifies as a warning, greater than 0 on the `design.md` run.
+Warnings: `over-target` rows, terminology drift, cosmetic inconsistency, review-report status-marker drift, the duplication spot-check, either of the two design-field counters the Step 2 table classifies as a warning, greater than 0 on the `design.md` run, and a non-zero `SKIP:` count on the `spec.md` run.
 
 ### Step 4 — Fix blockers
 
 Fix blockers using **architecture-research-planner agent** (required for all `planning/**/issues/*/` edits per the standard rule). For `docs/` files, architecture-research-planner is also preferred. Propose warnings to the user — fix only if confirmed.
+
+**Item 10 is the exception — stop and report, and never hand it to the fix agent.** The cheapest automated repair for a `Conclusion:` token absent from fresh output is rewriting that `Conclusion:` until it matches, which manufactures the evidence the scan exists to catch. A spec `FAIL` is discharged by re-running the command on the board and re-capturing §5 into the row, which the user does with the hardware in front of them.
 
 ## Constraints
 

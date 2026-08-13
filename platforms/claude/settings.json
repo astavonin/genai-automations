@@ -24,6 +24,7 @@
       "Bash(codex:*)",
       "Bash(codex-flow:*)",
       "Bash(doc-metrics:*)",
+      "Bash(spec-verify:*)",
       "Bash(timeout:*)",
       "Bash(script:*)",
       "Bash(docker:*)",

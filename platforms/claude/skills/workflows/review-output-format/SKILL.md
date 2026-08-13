@@ -11,7 +11,7 @@ metadata:
 
 # Review Output Format — Shared Fragment
 
-Markdown report template for **code reviews** and **fix reviews**. Design reviews use a different template (see `review-design.md`).
+Markdown report template for **code reviews** and **fix reviews**. Design and spec reviews use their own templates (see `review-design.md` and `review-spec.md`).
 
 ## Caller Must Specify
 
@@ -51,7 +51,7 @@ Markdown report template for **code reviews** and **fix reviews**. Design review
 
 ## Reverified Findings
 
-Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted by code, fix, and MR reviews. Design reviews also run Step G and carry an equivalent section — see the template in `~/.claude/commands/review-design.md`, which is authoritative for that report shape.
+Single-agent Claude findings and Codex-only findings that survived Step G adversarial reverification (both verifiers returned `VERDICT: CONFIRMED`; any REFUTED or unparseable-after-retry is discarded — the latter with a warning to the main conversation). Include even if 0 — write "None." This section is emitted by code, fix, and MR reviews. Design and spec reviews also run Step G and carry an equivalent section — see the templates in `~/.claude/commands/review-design.md` and `~/.claude/commands/review-spec.md`, each authoritative for its own report shape.
 
 - **V1** [severity] [Reverified] Description...
 

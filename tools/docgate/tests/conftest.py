@@ -16,10 +16,16 @@ from typing import Callable
 
 import pytest
 
-from docgate.cli import main
+from docgate.cli import main, spec_main
+from docgate.specverify import SENTINEL, Runner, SpecDocument, parse_spec
 
 # Column index for field(), matching the rendered table order.
 WORDS, SHARE, REGISTER, TARGET, CEILING, VERDICT = range(1, 7)
+
+#: The two frozen appendix specs the acceptance and defect runs read.
+FIXTURES = Path(__file__).parent / "fixtures"
+CLEAN_SPEC = FIXTURES / "clean-spec.md"
+DEFECT_SPEC = FIXTURES / "defect-spec.md"
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,65 @@ def run(*arguments: object) -> Result:
     with redirect_stdout(out), redirect_stderr(err):
         code = main([str(argument) for argument in arguments])
     return Result(out.getvalue(), err.getvalue(), code)
+
+
+def spec_run(*arguments: object) -> Result:
+    """Invoke the spec-verify entry function in process and capture both streams."""
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = spec_main([str(argument) for argument in arguments])
+    return Result(out.getvalue(), err.getvalue(), code)
+
+
+def load_spec(path: Path) -> SpecDocument:
+    """Parse one frozen fixture into its document model."""
+    return parse_spec(path.read_text(encoding="utf-8"), str(path))
+
+
+def verdicts(output: str) -> dict[str, str]:
+    """Read the rendered per-row lines as {row id: verdict}, last line per ID winning."""
+    found: dict[str, str] = {}
+    for line in output.splitlines():
+        cells = line.split("\t")
+        if len(cells) >= 2 and cells[1] in ("PASS", "FAIL", "SKIP"):
+            found[cells[0]] = cells[1]
+    return found
+
+
+def reasons(output: str) -> dict[str, str]:
+    """Read the rendered per-row lines as {row id: reason}, last line per ID winning."""
+    found: dict[str, str] = {}
+    for line in output.splitlines():
+        cells = line.split("\t")
+        if len(cells) >= 3 and cells[1] in ("PASS", "FAIL", "SKIP"):
+            found[cells[0]] = cells[2]
+    return found
+
+
+def mirror_runner(
+    document: SpecDocument,
+    *,
+    without_token: str = "",
+    without_sentinel: tuple[str, ...] = (),
+) -> Runner:
+    """Return a seam replying with each row's own recorded output plus the sentinel.
+
+    The positive half of the acceptance run: a comparison inverted anywhere in the token
+    check turns this green run red, which no negative case can detect on its own.
+    """
+    lookup = {"\n".join(row.commands): row for row in document.rows if row.commands}
+
+    def _run(host: str, script: str) -> str:
+        del host
+        row = next(row for commands, row in lookup.items() if commands and commands in script)
+        text = row.recorded_output
+        if without_token:
+            text = text.replace(without_token, "")
+        if row.row_id in without_sentinel:
+            return text
+        return f"{text}\n{SENTINEL}\n"
+
+    return _run
 
 
 def field(output: str, label: str, column: int) -> str:
@@ -114,6 +179,21 @@ def totals(measure: Callable[[str], Result]) -> Callable[[str], tuple[str, str]]
         return field(result.output, "TOTAL", WORDS), summary(result.output, "REGISTER")
 
     return _totals
+
+
+@pytest.fixture
+def spec_folder(tmp_path: Path) -> Callable[..., Path]:
+    """Return a factory writing one `spec.md` into a fresh folder and yielding the folder."""
+    counter = itertools.count()
+
+    def _folder(body: str | None = None, name: str = "spec.md") -> Path:
+        folder = tmp_path / f"issue{next(counter)}"
+        folder.mkdir()
+        if body is not None:
+            (folder / name).write_text(body, encoding="utf-8")
+        return folder
+
+    return _folder
 
 
 @pytest.fixture

@@ -31,6 +31,7 @@ dev = [
 
 [project.scripts]
 doc-metrics = "docgate.cli:main"
+spec-verify = "docgate.cli:spec_main"
 
 [tool.setuptools.packages.find]
 include = ["docgate", "docgate.*"]

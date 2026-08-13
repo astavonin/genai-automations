@@ -96,18 +96,14 @@ RFC number). Findings without a cited source are invalid.
 
 ### Scope 2A — Reference appendix pages *(Agent 1 and Agent 2, additional criteria — Scope 2 above still applies in full)*
 
-Applies when the page type is `appendix` per `~/.claude/skills/workflows/page-type/SKILL.md`. An A-page has no companion implementation, so Scope 1 (Code Accuracy, Agent 1) does not apply to it — but Scope 2's five criteria above (external library, language, hardware/OS, protocol, performance claims) apply exactly as they do to a `main` page, because an A-page's claims are made of nothing else. Scope 2A adds five criteria specific to the fact-contract structure: traceability to the spec's §2 claims table (`APPENDIX-SPEC-TEMPLATE.md`).
+Applies when the page type is `appendix` per `~/.claude/skills/workflows/page-type/SKILL.md`. An A-page has no companion implementation, so Scope 1 (Code Accuracy, Agent 1) does not apply to it — but Scope 2's five criteria above (external library, language, hardware/OS, protocol, performance claims) apply exactly as they do to a `main` page, because an A-page's claims are made of nothing else. Scope 2A adds three criteria specific to the fact-contract structure: traceability to the spec's §2 claims table (`APPENDIX-SPEC-TEMPLATE.md`).
+
+**The numbering keeps a gap at 3 and 4.** Those two criteria graded the spec's §3 Source Requirements and its §2↔§5 claim graph; `/review-spec` and `spec-verify` now own both, and this scope grades the draft against the spec. Criterion 5 keeps its number — renumbering it would break the `terminology-binding` label mapping below. Both deleted numbers are spelled bare here, never in the prefixed `<scope>.<n>` form the Codex bullets and label rows use: `tests/verify-config-consistency.sh` counts those two sites by scanning the file for that form, so writing them prefixed in this sentence adds a phantom pair and reds the assertion that measures the gap.
 
 1. **Every factual assertion in the draft traces to a §2 claim, except a claim hedged with `[VERIFY: ...]`.** A `[VERIFY:]` claim has no §2 row by construction (`page-type/SKILL.md` → "The unverified-claim marker" — it is set by `/write` "when carrying a claim no §2 row covers"); criterion 2 below checks whether it is properly hedged instead. An assertion with no claim behind it and no `[VERIFY:]` hedge is the defect class this contract exists to catch.
    Severity: **High**.
 
 2. **Every claim marked `[UNVERIFIED: ...]` or `[VERIFY: ...]` is absent from the draft or explicitly hedged in it.** Presenting either as established is the A4 failure repeating — a fabricated claim published as established fact, with no verification behind it (not to be confused with the Completeness finding-ID slot `**A4**` in `/review-article`'s own Output template, an unrelated use of the same token). A `[VERIFY:]` claim is sourced from `analysis.md`, the file the A4 fabrication came from, and is exactly as unverified as an `[UNVERIFIED:]` row until someone checks it.
-   Severity: **High**.
-
-3. **Every §3 Source Requirement holds for every row in the verified §2 claims table.** SR1 — no claim from memory — is the rule the contract exists to enforce; SR6 (the claimed token appears in the captured output) is the one that catches evidence which does not discriminate. **The unverified claims table is exempt from SR1** by construction — a `[UNVERIFIED: ...]` row's missing source is the point, not a defect; do not raise this criterion against it (criterion 2 above covers the unverified table instead: the claim must be hedged or absent from the draft).
-   Severity: **High**.
-
-4. **§2 ↔ §5 referential integrity.** Every `Verified by` names a §5 row whose `Establishes` lists that claim; every claim ID appears in exactly one §2 table. A dangling or empty `Verified by` means the claim is unverified regardless of which table it sits in.
    Severity: **High**.
 
 5. **§4 Terminology Contract definitions bind.** A main article citing this page for a definition must find the same definition here.
@@ -265,8 +261,6 @@ lists or free text in that section. Each bullet names which page type(s) it appl
 - **Performance characteristic claims about external systems (2.5, both page types):** check official benchmarks, documentation, or published papers; cite source URL or paper reference. Severity: Medium unless presented as a hard guarantee, in which case High.
 - **Claim traceability (2A.1, appendix only):** every factual assertion in the draft traces to a `spec.md` §2 claim; an assertion with no claim behind it is the defect class this contract exists to catch. Severity: High.
 - **Unverified claims hedged (2A.2, appendix only):** every claim marked `[UNVERIFIED: ...]` or `[VERIFY: ...]` in the spec/brief is absent from the draft or explicitly hedged in it; presenting either as established repeats the A4 failure. Severity: High.
-- **Source Requirements hold (2A.3, appendix only):** every `spec.md` §3 Source Requirement (SR1–SR8) holds for every row in its verified §2 claims table; the unverified table is exempt from SR1 by construction. Severity: High.
-- **§2↔§5 referential integrity (2A.4, appendix only):** every `Verified by` names a §5 row whose `Establishes` lists that claim ID; every claim ID appears in exactly one §2 table. Severity: High.
 - **Terminology Contract binding (2A.5, appendix only):** a main article citing this A-page for a definition finds the same definition in its §4. Severity: Medium.
 - **Language-neutrality (3.7, both page types):** identify sections where understanding requires Rust-specific knowledge that isn't necessary to the constraint being explained (unexplained lifetime parameters, GATs, macro syntax, `impl Trait` where plain English would be clearer); quote the passage. Severity: Medium if a section is Rust-primary rather than concept-primary; High if the article is unreadable for a C++ or Zig systems engineer at the audience baseline.
 - **Pipeline framing in section headers (3.8, both page types):** section headers name pipeline concepts, not Rust artifacts; quote the header and state whether it identifies a pipeline concept or a code artifact. Severity: Medium if pervasive; Low if occasional.
@@ -293,6 +287,4 @@ Used during aggregation to deduplicate Codex findings against Claude findings.
 | `style-guide` | Scope 3.9 — Style guide compliance |
 | `claim-traceability` | Scope 2A.1 — Claim traceability |
 | `unverified-marker` | Scope 2A.2 — Unverified claims hedged |
-| `source-requirements` | Scope 2A.3 — Source Requirements hold |
-| `claim-referential-integrity` | Scope 2A.4 — §2↔§5 referential integrity |
 | `terminology-binding` | Scope 2A.5 — Terminology Contract binding |

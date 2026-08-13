@@ -38,6 +38,8 @@ What must not change:
 
 Contents of `<issue-folder>/observed-failures.md`, pasted verbatim — or the literal line `No ledger exists for this work.` when there is none, or `No ledger exists for this work — external MR.` for an MR we do not own. Codex receives only this document, so without this section it cannot distinguish an unguarded fix from a correctly waived one, and will flag a user-approved waiver as a missing test.
 
+**Fill this from the issue folder, never from this template's placeholder.** Run `ls <issue-folder>/observed-failures.md` before writing the section — the no-ledger line copied out of the boilerplate has twice reached a review whose subject carried recorded failures, and both times the reviewer raised it as High. When the folder genuinely has no ledger but a sibling folder does, or a known defect is out of scope, say so on the same line after the ` — ` suffix: the absence is only defensible when the reason travels with it.
+
 ~~~markdown
 # (paste ledger here, or: No ledger exists for this work.)
 ~~~

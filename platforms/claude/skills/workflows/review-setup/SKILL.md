@@ -1,6 +1,6 @@
 ---
 name: review-setup
-description: Shared fragment — reads the quality-attributes skills needed before running any review (design, code, fix, MR). Always the first step of every review command.
+description: Shared fragment — reads the quality-attributes skills needed before running any review (design, code, fix, MR, spec). Always the first step of every review command.
 allowed-tools: Bash
 compatibility: claude-code
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # Review Setup — Shared Fragment
 
-Read the quality-attributes skills before starting any review. This is the first step of every review command (`/review-design`, `/review-code`, `/review-fix`, `/review-mr`).
+Read the quality-attributes skills before starting any review. This is the first step of every review command (`/review-design`, `/review-code`, `/review-fix`, `/review-mr`, `/review-spec`).
 
 ## Steps
 

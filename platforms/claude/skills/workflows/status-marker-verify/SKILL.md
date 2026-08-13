@@ -1,6 +1,6 @@
 ---
 name: status-marker-verify
-description: Shared fragment — verify the **Status:** marker in a review file after writing it. Used by review-design and review-code before updating planning state.
+description: Shared fragment — verify the **Status:** marker in a review file after writing it. Used by review-design, review-code, review-article and review-spec.
 allowed-tools: Bash
 compatibility: claude-code
 metadata:

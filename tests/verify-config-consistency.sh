@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=34
+EXPECTED_TESTS=37
 
 PASS=0
 FAIL=0
@@ -151,6 +151,30 @@ if [ -z "$absent" ]; then
     pass "all 8 phase commands named in CLAUDE.md exist under commands/"
 else
     fail "all 8 phase commands named in CLAUDE.md exist under commands/" "missing:$absent"
+fi
+
+# The no-phase-slot bullet is the classification's other inline enumeration. /review-spec is
+# the newest member and the one with two ways to go wrong: named there with no command file
+# behind it (a classification pointing at nothing), or promoted into the phase-command bullet,
+# which asserts "these eight advance the workflow" and would then be counting nine.
+CLAUDE_MD_ROSTER="$CLAUDE/CLAUDE.md"
+noslot_line=$($GREP -m1 -F '**Workflow commands with no phase slot**' "$CLAUDE_MD_ROSTER")
+phase_line=$($GREP -m1 -F '**Phase commands**' "$CLAUDE_MD_ROSTER")
+bad=""
+if [ -z "$noslot_line" ] || [ -z "$phase_line" ]; then
+    bad="the command classification bullets were not found in CLAUDE.md"
+else
+    printf '%s' "$noslot_line" | $GREP -qF '`/review-spec`' \
+        || bad="the no-phase-slot bullet does not name /review-spec; "
+    printf '%s' "$phase_line" | $GREP -qF '`/review-spec`' \
+        && bad="${bad}/review-spec appears in the eight-phase-command bullet; "
+    [ -f "$CLAUDE/commands/review-spec.md" ] \
+        || bad="${bad}commands/review-spec.md is absent; "
+fi
+if [ -z "$bad" ]; then
+    pass "/review-spec is classified as a workflow command with no phase slot and its command file exists"
+else
+    fail "/review-spec is classified as a workflow command with no phase slot and its command file exists" "$bad"
 fi
 
 echo "== Book page-type activation token =="
@@ -283,6 +307,81 @@ elif [ "$tmpl_sr" = "$spec_sr" ]; then
 else
     fail "SR set agrees between APPENDIX-SPEC-TEMPLATE.md §3 and commands/spec.md" \
          "$(diff <(printf '%s\n' "$tmpl_sr") <(printf '%s\n' "$spec_sr"))"
+fi
+
+echo "== SP-9 section lists agree with the templates they name =="
+
+# Both SP-9 criteria in commands/review-spec.md hardcode their template's §1-§5 section list.
+# The block cannot point at the template instead — it is pasted whole into reviewer and Step G
+# verifier prompts, which hold no other document — so this is a real mirror, and SP-9 is the
+# only blocker-severity criterion in the command: a retitled or renumbered template section
+# silently changes what a spec review blocks on, in the one criterion that can stop an approval.
+#
+# Both sides extract by content, neither by position. Template side: its own `## N. Title`
+# headings. Command side: the first contiguous comma-separated `§N Title` run starting at §1,
+# which is immune to a reword of the lead-in ("The sections ... requires are present:") and
+# stops at the sentence's period — a lead-in-anchored match instead swallows the later
+# "a spec with no §2 has no claims" into the list. The pair is selected by the `planning/<name>`
+# path on the criterion line, not by order: `SPEC-TEMPLATE.md` is a suffix of
+# `APPENDIX-SPEC-TEMPLATE.md`, so a bare basename match returns the appendix line for both.
+REVIEW_SPEC="$CLAUDE/commands/review-spec.md"
+sp9_word='[A-Za-z][A-Za-z-]*( [A-Z][A-Za-z-]*)*'
+sp9_run="§1 $sp9_word(, §[2-5] $sp9_word)*"
+bad=""
+n_sp9=0
+for tmpl in APPENDIX-SPEC-TEMPLATE.md SPEC-TEMPLATE.md; do
+    n_sp9=$((n_sp9 + 1))
+    tmpl_sections=$($GREP -oE '^## [1-5]\. .+' "$CLAUDE/skills/workflows/planning/$tmpl" \
+        | sed -E 's/^## ([1-5])\. /§\1 /' | sort)
+    sp9_line=$($GREP -m1 -E "SP-9 —.*planning/$tmpl" "$REVIEW_SPEC")
+    crit_sections=$(printf '%s' "$sp9_line" | $GREP -oE "$sp9_run" | head -1 \
+        | tr ',' '\n' | sed 's/^ //' | sort)
+    n_tmpl_sec=$(printf '%s\n' "$tmpl_sections" | $GREP -c . || true)
+    n_crit_sec=$(printf '%s\n' "$crit_sections" | $GREP -c . || true)
+    if [ -z "$sp9_line" ]; then
+        bad="$bad$tmpl: no SP-9 criterion line names it; "
+    elif [ "$n_tmpl_sec" -eq 0 ]; then
+        bad="$bad$tmpl: no '## N. Title' headings extracted from the template; "
+    elif [ "$n_crit_sec" -eq 0 ]; then
+        bad="$bad$tmpl: no section run extracted from its SP-9 criterion; "
+    elif [ "$tmpl_sections" != "$crit_sections" ]; then
+        bad="$bad$tmpl: $(diff <(printf '%s\n' "$tmpl_sections") <(printf '%s\n' "$crit_sections") \
+            | sed 's/^</only in template: /; s/^>/only in SP-9: /' | tr '\n' ' '); "
+    fi
+done
+if [ -z "$bad" ]; then
+    pass "both SP-9 section lists ($n_sp9 criteria) equal the §1-§5 headings of the template each names"
+else
+    fail "both SP-9 section lists equal the §1-§5 headings of the template each names" "$bad"
+fi
+
+echo "== the Approved-writer rule survives where APPENDIX-SPEC-TEMPLATE.md points =="
+
+# APPENDIX-SPEC-TEMPLATE.md's ## Rules does not restate the Draft/Approved rule — it points
+# at SPEC-TEMPLATE.md's ## Rules for it. That pointer is a backticked prose path, not a
+# `Read ~/.claude/<path>` directive, so the Read-pointer loop above does not cover it:
+# deleting the target entry leaves the appendix template pointing at a section that is gone
+# and takes /review-spec's sole-writer contract with it, in both templates at once.
+# Anchor on the entry's own claim, not on a heading or a bare basename — SPEC-TEMPLATE.md is
+# a suffix of APPENDIX-SPEC-TEMPLATE.md, and the appendix file names both paths.
+approved_rule='`/review-spec` is the only writer of `Approved`'
+bad=""
+spec_rules=$(awk '/^## Rules/{f=1;next} f && /^## /{f=0} f' \
+    "$CLAUDE/skills/workflows/planning/SPEC-TEMPLATE.md")
+printf '%s' "$spec_rules" | $GREP -qF "$approved_rule" \
+    || bad="SPEC-TEMPLATE.md ## Rules no longer states the sole-writer rule; "
+appendix_rule=$($GREP -m1 -F "$approved_rule" \
+    "$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md")
+if [ -z "$appendix_rule" ]; then
+    bad="${bad}APPENDIX-SPEC-TEMPLATE.md no longer carries the rule entry; "
+else
+    printf '%s' "$appendix_rule" | $GREP -qF 'planning/SPEC-TEMPLATE.md' \
+        || bad="${bad}APPENDIX-SPEC-TEMPLATE.md's rule entry no longer points at SPEC-TEMPLATE.md; "
+fi
+if [ -z "$bad" ]; then
+    pass "SPEC-TEMPLATE.md ## Rules holds the Approved-writer rule the appendix template points at"
+else
+    fail "SPEC-TEMPLATE.md ## Rules holds the Approved-writer rule the appendix template points at" "$bad"
 fi
 
 echo "== page-type/SKILL.md Consumers-table completeness =="
@@ -646,9 +745,14 @@ echo "== Scope 2A criteria, Codex bullets, and label-mapping rows agree =="
 # that disagrees between the criteria and the Codex-facing copy means Claude and Codex grade
 # an appendix draft against different rules inside the same review.
 SCOPES="$CLAUDE/skills/workflows/article-review/SCOPES.md"
-# Criteria severities: bound extraction to the Scope 2A section only — its 5 numbered
+# Criteria severities: bound extraction to the Scope 2A section only — its numbered
 # criteria share the "N. **...**" shape with every other scope's numbered list, so an
 # unbounded extraction silently grabs the wrong scope's items instead of failing loudly.
+#
+# Criteria 3 and 4 moved to /review-spec, so the surviving numbers are 1, 2 and 5 — a gap,
+# not a range. The two extraction regexes (`^[1-5]\.` and `2A\.[1-5] — `) still bound the
+# same span and need no edit; only the enumerated loop and the expected count follow the
+# deletion. Renumbering 5 to 3 would silently rewrite the `terminology-binding` mapping.
 scope2a_section=$(awk '/^### Scope 2A/{f=1} f && /^## Scope 3/{f=0} f' "$SCOPES")
 crit_sev=$(printf '%s\n' "$scope2a_section" | $GREP -oE '^[1-5]\.|Severity: \*\*[A-Za-z]+\*\*' \
     | sed 's/\*//g' | paste -d' ' - - | sort -n | sed -E 's/^[0-9]+\. //')
@@ -657,7 +761,7 @@ crit_sev=$(printf '%s\n' "$scope2a_section" | $GREP -oE '^[1-5]\.|Severity: \*\*
 # severity crosses the first unrelated period in the bullet's own prose (e.g. "spec.md"),
 # so it never reaches the real "Severity:" token.
 bullet_sev=""
-for n in 1 2 3 4 5; do
+for n in 1 2 5; do
     line=$($GREP -E "\(2A\.$n, appendix only\)" "$SCOPES")
     sev=$(printf '%s' "$line" | $GREP -oE 'Severity: [A-Za-z]+' | tail -1)
     bullet_sev="$bullet_sev$sev
@@ -666,15 +770,19 @@ done
 bullet_sev=$(printf '%s' "$bullet_sev" | sed '/^$/d')
 label_rows=$($GREP -oE '2A\.[1-5] — ' "$SCOPES" | sort -u)
 n_crit=$(printf '%s\n' "$crit_sev" | $GREP -c . || true)
-n_bullet=$(printf '%s\n' "$bullet_sev" | $GREP -c . || true)
+# Counted from the file, not from the loop above. Deriving this count from `for n in 1 2 5`
+# made it measure the loop instead of the document: a leftover bullet for a deleted criterion
+# is invisible to it, so the partial deletion this assertion exists to catch passed green.
+# `n_label` was already an unbounded scan; this is the same shape.
+n_bullet=$($GREP -cE '\(2A\.[0-9]+, appendix only\)' "$SCOPES" || true)
 n_label=$(printf '%s\n' "$label_rows" | $GREP -c . || true)
-if [ "$n_crit" -ne 5 ] || [ "$n_bullet" -ne 5 ] || [ "$n_label" -ne 5 ]; then
-    fail "Scope 2A has 5 criteria, 5 Codex bullets, and 5 label-mapping rows" \
+if [ "$n_crit" -ne 3 ] || [ "$n_bullet" -ne 3 ] || [ "$n_label" -ne 3 ]; then
+    fail "Scope 2A has 3 criteria, 3 Codex bullets, and 3 label-mapping rows" \
          "criteria=$n_crit bullets=$n_bullet label-rows=$n_label"
 elif [ "$crit_sev" = "$bullet_sev" ]; then
-    pass "Scope 2A's 5 criteria, Codex bullets, and label-mapping rows agree in count and severity"
+    pass "Scope 2A's 3 criteria, Codex bullets, and label-mapping rows agree in count and severity"
 else
-    fail "Scope 2A's 5 criteria, Codex bullets, and label-mapping rows agree in count and severity" \
+    fail "Scope 2A's 3 criteria, Codex bullets, and label-mapping rows agree in count and severity" \
          "$(diff <(printf '%s\n' "$crit_sev") <(printf '%s\n' "$bullet_sev"))"
 fi
 
