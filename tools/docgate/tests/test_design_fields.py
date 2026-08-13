@@ -834,3 +834,180 @@ def test_a_pending_column_past_the_next_rows_cells_still_blocks(measure) -> None
 
     assert summary(output, "COST") == "0"
     assert summary(output, "MISSES") == "1"
+
+
+def test_a_table_separator_row_does_not_answer_for_the_misses_value(measure) -> None:
+    # A Markdown alignment row is a table row. Accepting its dashes as the declared value
+    # passed the canonical table spelling while still blocking the separator-less one,
+    # which is not valid Markdown — the gate blocked only the shape nobody writes.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        "| **Cost:** | **Misses:** |\n|---|---|\n| ~1 LOC | |\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "COST") == "0"
+    assert summary(output, "MISSES") == "1"
+    assert detail_rows(output)[0][1:] == [
+        "Option A",
+        "no Misses: value in this option block",
+    ]
+
+
+def test_a_populated_value_row_after_a_separator_still_resolves(fields) -> None:
+    # The other direction of the same fix: skipping the separator must not also break the
+    # chain to the real value row beneath it.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        "| **Cost:** | **Misses:** |\n|:---|---:|\n| ~1 LOC | none |\n"
+    )
+
+    assert fields(body) == ("0", "0", "0", "0")
+
+
+@pytest.mark.parametrize("rule", ["|-|-|", "|--|--|", "| :- | -: |", "|:---:|:---:|"])
+def test_a_delimiter_row_of_any_dash_width_does_not_answer_for_the_value(
+    measure, rule: str
+) -> None:
+    # GFM admits one dash per delimiter cell. Matching only the three-dash form left the
+    # narrower spellings failing open — an enumerated width standing in for a normalizing
+    # rule, which is the defect class the port to Python exists to stop.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        f"| **Cost:** | **Misses:** |\n{rule}\n| ~1 LOC | |\n"
+    )
+
+    assert summary(measure(body).output, "MISSES") == "1"
+
+
+def test_a_row_of_empty_cells_is_not_a_delimiter_row(measure) -> None:
+    # all() over no cells is True, so without the populated guard an empty row reads as a
+    # separator and is skipped whole — the pending column would then survive to be
+    # answered by a later row instead of being cleared by this one.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        "| **Cost:** | **Misses:** |\n| | |\n| ~1 LOC | none |\n"
+    )
+
+    assert summary(measure(body).output, "MISSES") == "1"
+
+
+def test_a_lone_dash_beside_a_populated_cell_is_still_a_declared_value(measure) -> None:
+    # The other side of the width split: a row carrying real content is not a delimiter
+    # row, so a short dash cell in it reads as a deliberate "none" rather than as absence.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        "| **Cost:** | **Misses:** |\n|---|---|\n| ~1 LOC | - |\n"
+    )
+
+    assert summary(measure(body).output, "MISSES") == "0"
+
+
+def test_a_separator_cell_at_the_pending_column_is_not_the_remembered_value(measure) -> None:
+    # The row-level skip cannot cover this: the row carries a real value in the other
+    # column, so it is not a separator row, and only the pending-column guard keeps the
+    # dashes from answering for the label remembered on the row above.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n"
+        "| **Cost:** | **Misses:** |\n| ~1 LOC | --- |\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "MISSES") == "1"
+
+
+def test_a_separator_cell_beside_the_misses_label_is_not_its_value(measure) -> None:
+    # Same-row form: the label's adjacent-cell lookahead reaches a dashes cell without
+    # the row as a whole being a separator, so the row-level skip cannot catch it.
+    body = "## 7. Trade-offs and Alternatives\n\n### Option A\n| **Cost:** | **Misses:** | --- |\n"
+
+    output = measure(body).output
+
+    assert summary(output, "MISSES") == "1"
+
+
+def test_an_unclosed_requirement_group_does_not_reach_the_next_slot3_section(measure) -> None:
+    # Every other leak case closes the group with a label first, which hides the reset:
+    # the group must end at the SECTION boundary even with no closing label at all.
+    body = (
+        "## 3. Implementation Context\n\n**Functional Requirements:**\n"
+        "- FR-1: a thing — **From:** analysis\n\n"
+        "## More Implementation Context\n\n- stray bullet — **From:** analysis\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "FROM") == "1"
+    assert detail_rows(output)[0][2] == "From: label outside a requirement group"
+
+
+def test_a_second_option_block_without_either_field_warns_rather_than_blocks(measure) -> None:
+    # The per-block Cost reset. Without it the second block inherits the first block's
+    # satisfied Cost and reports the MISSES blocker instead of the COST warning —
+    # a warning silently promoted to the blocker /verify-docs acts on.
+    body = (
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n**Cost:** ~1 LOC\n**Misses:** none\n\n"
+        "### Option B\n**Pros:** fast\n**Cons:** slow\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "COST") == "1"
+    assert summary(output, "MISSES") == "0"
+    assert detail_rows(output)[0][1:] == ["Option B", "no Cost: line in this option block"]
+
+
+REASON_CASES = [
+    (
+        "no Cost: line",
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n**Misses:** none\n",
+        "no Cost: line in this option block",
+    ),
+    (
+        "no Misses: value",
+        "## 7. Trade-offs and Alternatives\n\n### Option A\n**Cost:** ~1 LOC\n**Misses:**\n",
+        "no Misses: value in this option block",
+    ),
+    (
+        "no option block",
+        "## 7. Trade-offs and Alternatives\n\nProse only, no option heading.\n",
+        "no ### option block opened in this section",
+    ),
+    (
+        "heading opener",
+        "## 3. Implementation Context\n\n### Functional Requirements\n- FR-1: a thing\n",
+        "requirement group opener written as a heading, not inline bold text",
+    ),
+    (
+        "bulleted opener",
+        "## 3. Implementation Context\n\n- **Functional Requirements:**\n- FR-1: a thing\n",
+        "requirement group opener is a bulleted label, not inline bold text; the "
+        "FIELD_PATTERN in markdown_parser.py does not match a list marker before it",
+    ),
+    (
+        "unrecognised From: value",
+        "## 3. Implementation Context\n\n**Functional Requirements:**\n"
+        "- FR-1: a thing — **From:** hearsay\n",
+        "unrecognised or incomplete From: value",
+    ),
+    (
+        "From: label opens the line",
+        "## 3. Implementation Context\n\n**Functional Requirements:**\n"
+        "- FR-1: a thing — **From:** analysis\n**From:** analysis\n",
+        "From: label opens the line — must be inline",
+    ),
+]
+
+
+@pytest.mark.parametrize("name,body,want", REASON_CASES, ids=[c[0] for c in REASON_CASES])
+def test_each_detail_reason_is_pinned_to_its_exact_wording(
+    measure, name: str, body: str, want: str
+) -> None:
+    # The detail block is the feature's whole operator-facing output. Swapping two reason
+    # strings left the suite green while every hit named the field that was already there,
+    # sending the author to fix the wrong one. Distinctness alone survives a swap.
+    output = measure(body).output
+
+    assert detail_rows(output)[0][2] == want

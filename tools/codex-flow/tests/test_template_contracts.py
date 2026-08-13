@@ -80,7 +80,7 @@ def test_design_template_requirement_bullets_carry_from_tag(heading_fragment: st
 
     A tag placed on its own line (a bold label opening the line) matches ``FIELD_PATTERN`` and
     breaks ``_collect_bullets()`` — every requirement after it silently vanishes from what
-    ``codex-flow implement`` receives, with no error (C3).
+    ``codex-flow implement`` receives, with no error.
     """
     bullets = _bullets_under(DESIGN_TEMPLATE, heading_fragment)
 

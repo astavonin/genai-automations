@@ -25,9 +25,13 @@ Known limits, none of which affect a document following DESIGN-TEMPLATE.md:
   - Section rows are addressed by exact name, not by prefix: a section called TOTAL is
     renamed to "TOTAL (2)", but a caller matching /^TOTAL/ still sees both it and the
     summary row. Match the whole first field.
-  - A bare Misses: label in a table remembers its column until the next TABLE ROW, not
-    the next line, so a later unrelated table in the same option block can supply the
-    value across intervening blank and prose lines.
+  - A bare Misses: label in a table remembers its column until the next NON-SEPARATOR
+    TABLE ROW, not the next line, so a later unrelated table in the same option block
+    can supply the value across intervening blank and prose lines.
+  - A row whose every cell is dashes is read as a table delimiter at any dash width, so
+    "| - | - |" written as a deliberate "none, none" row declares nothing. Fail-closed:
+    the block reports MISSES rather than passing. A dash cell beside populated content
+    still counts as a value.
   - Blockquote nesting depth is not tracked, only whether the fence was quoted at all, so
     a fence opened at ">>" stays open at ">" and a line visible at the outer depth reads
     as fenced content.
@@ -167,6 +171,18 @@ _BULLETED_BOLD = re.compile(r"^[ \t]*([-*+]|[0-9]+\.)[ \t]+\*\*")
 # markdown_parser.py collects as a From: field is found here too.
 _FROM_LABEL = re.compile(r"\*\*\s*From\s*:\*\*")
 _SLOT7_FIELD_CELL = re.compile(r"^\*\*(Cost|Misses):\*\*")
+# A Markdown alignment row is a table row, so both Misses: lookaheads would otherwise
+# accept its dashes as the declared value — passing the canonical table spelling while
+# still blocking the separator-less one, which is not valid Markdown.
+#
+# The two widths differ deliberately. GFM admits one dash per delimiter cell, so the
+# ROW test takes the full range: a row whose every cell is dashes carries no value at
+# any width, and skipping it is fail-closed — the pending column survives and the next
+# row must supply the value. A LONE cell reached by a lookahead, with real content
+# elsewhere in its row, is ambiguous: "-" or "--" beside a populated Cost cell reads as
+# a deliberate "none", so only the unmistakable three-or-more form is refused there.
+_DELIMITER_ROW_CELL = re.compile(r"^:?-+:?$")
+_SEPARATOR_CELL = re.compile(r"^:?-{3,}:?$")
 _COST_ANCHOR = re.compile(r"^[ \t]*\*\*Cost:\*\*")
 _MISSES_ANCHOR = re.compile(r"^[ \t]*\*\*Misses:\*\*")
 _MISSES_VALUE = re.compile(r"^.*\*\*Misses:\*\*")
@@ -189,7 +205,7 @@ _PADDED_OPENER = (
     "markdown_parser.py accepts it but this scanner does not check bullets beneath it "
     "for a missing From: tag"
 )
-_FROM_OPENS_LINE = "From: label opens the line — must be inline (C3)"
+_FROM_OPENS_LINE = "From: label opens the line — must be inline"
 _FROM_AFTER_CLOSER = (
     "requirement group closed by this label; a From: tag below it is outside the group"
 )
@@ -414,6 +430,16 @@ def _from_value_is_valid(value: str) -> bool:
     return False
 
 
+def _is_separator_row(cells: Sequence[str]) -> bool:
+    """Report whether an already-split table row is an alignment separator.
+
+    Every non-empty cell must be dashes, optionally colon-anchored: one `---` cell beside
+    a real value makes an ordinary row, not a separator.
+    """
+    populated = [cell.strip() for cell in cells if cell.strip()]
+    return bool(populated) and all(_DELIMITER_ROW_CELL.match(cell) for cell in populated)
+
+
 class _Analyzer:
     """Accumulates one document's measurement, one line at a time."""
 
@@ -579,6 +605,12 @@ class _Analyzer:
             # only ever see whichever field opens the FIRST cell, so a Cost: and Misses:
             # sharing one row, or a label-row/value-row layout, left the other invisible.
             cells = raw.split("|")
+            # Skipped WHOLE, before the pending column is resolved and before this row's
+            # own labels are scanned: an alignment row carries no value, and consuming
+            # the pending column here would let the separator answer for the value row
+            # beneath it. The one-row wait below then means the next non-separator row.
+            if _is_separator_row(cells):
+                return
             # Resolved FIRST, against this row's cell at the remembered column, before
             # this row's own labels are scanned, and cleared whether it resolves or not.
             # The wait is for the next TABLE ROW rather than the next line: blank and
@@ -588,7 +620,11 @@ class _Analyzer:
             if self._misses_pending_column > 0:
                 if self._misses_pending_column <= len(cells):
                     pending = cells[self._misses_pending_column - 1].strip()
-                    if pending and not _SLOT7_FIELD_CELL.match(pending):
+                    if (
+                        pending
+                        and not _SLOT7_FIELD_CELL.match(pending)
+                        and not _SEPARATOR_CELL.match(pending)
+                    ):
                         self._option_misses = True
                 self._misses_pending_column = 0
             for position, cell in enumerate(cells, start=1):
@@ -619,7 +655,7 @@ class _Analyzer:
         # label/value pair.
         if not value and position < len(cells):
             neighbour = cells[position].strip()
-            if not _SLOT7_FIELD_CELL.match(neighbour):
+            if not _SLOT7_FIELD_CELL.match(neighbour) and not _SEPARATOR_CELL.match(neighbour):
                 value = neighbour
         if value:
             self._option_misses = True
@@ -838,7 +874,8 @@ class _Analyzer:
 
         self._close_option_block()
         self._close_slot7_section()
-        self._close_slot3_section()
+        # No _close_slot3_section() here: it only clears state read during the scan, and
+        # the scan is over. Slot 3 has no end-of-document counterpart to slot 7's warning.
 
         report = Report(
             path=self._path,
