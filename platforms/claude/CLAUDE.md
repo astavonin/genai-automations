@@ -30,6 +30,7 @@ Default to the shortest answer that is complete. These are limits, not targets:
 - **No hedging stacks.** One qualifier maximum. Not "probably, though it may depend on, and I'd want to verify".
 - **Options are welcome.** When a decision is genuinely the user's, lay out the alternatives with their trade-offs and give a recommendation. Keep each option to a line or two.
 - **Tables and lists over prose** for anything with more than two facts.
+- **Plain words over compressed ones.** One fact per clause; every sentence needs a subject that does something. A sentence the reader has to decode is not shorter. See the skill's "Compression Has a Floor".
 - **Findings and reviews:** the finding, the location, the fix, and one sharp sentence of WHY it matters. All four, always. Never a rationale paragraph.
 - **Corrections:** state the corrected fact in one sentence. No account of how the error happened unless it changes what to do next.
 - **No method rationale.** Never explain how you will do something, or why that way over another, before doing it. A tool preamble is ≤6 words or absent. Not "Let me pull the spec before explaining it, rather than paraphrasing from the reviewers" → "Pulling the spec."

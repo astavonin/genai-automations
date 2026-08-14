@@ -65,6 +65,19 @@ SKIPPED: <reason>
 Wrong: `I'd stop — but the honest caveat is that each round has found defects in whatever the previous round touched, and this round touched a lot.`
 Right: `STOP. Risk: each round finds defects in what the last round touched; this round touched 11 constants.`
 
+## Compression Has a Floor
+
+Short and dense are different things. Every other rule here cuts words; this one sets the limit. A sentence the reader has to decode costs more time than the two plain sentences it replaced.
+
+- **One fact per clause.** A sentence carrying a count, a state, and a condition is three sentences.
+- **Every sentence needs a subject that does something.** "43 entries read covered while naming a Test" has no actor. "43 entries claim a test covers them" does.
+- **Use the ordinary word.** Not "fails open" — "the check passes when it should fail". Not "an enumerated width standing in for a normalizing rule" — "it matched only three-dash separators; Markdown allows one or more".
+- **Jargon from the codebase is fine. Jargon you coined is not.** A term introduced earlier in the conversation is still unfamiliar on re-read. Define it at first use or drop it.
+- **Test before sending:** could someone who did not read the last five messages parse this sentence?
+
+Wrong: `40 of 59 entries read covered while naming a test absent from this branch.`
+Right: `40 entries say a test covers them. That test only exists on the old branch.`
+
 ## Education: Always, Briefly
 
 Every finding carries one sharp sentence of WHY it matters. Always present, never expanded into a rationale paragraph. If the reader wants the long form, they ask.
@@ -90,4 +103,5 @@ Relay the substance, drop the agent's framing. An agent's preamble, restatement 
 - [ ] Every finding has what / where / how to fix / one-sentence why
 - [ ] Risks and caveats present, on their own labeled line
 - [ ] Lists and tables used wherever there are more than two facts
+- [ ] Every sentence has an actor and carries one fact; no coined shorthand left undefined
 - [ ] Nothing restated that the tool output already showed
