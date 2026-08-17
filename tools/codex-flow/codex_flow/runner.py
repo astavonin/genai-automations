@@ -41,7 +41,7 @@ IGNORED_REVIEW_ARTIFACT_SUFFIXES = {
 IGNORED_REVIEW_ARTIFACT_NAMES = {
     ".coverage",
 }
-DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
 DEFAULT_REASONING_EFFORT = "xhigh"
 VALID_CODEX_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
 DISABLED_EXTERNAL_TOOL_FEATURES = (
