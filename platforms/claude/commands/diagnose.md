@@ -92,6 +92,7 @@ Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
 Resolve `<issue-folder>` by that procedure (including the orphan fallback for unlinked fixes) and echo the resolved path. Then append one entry per root cause to `<issue-folder>/observed-failures.md`, creating the file and its orphan folder if absent, using the entry format in the regression-test fragment:
 - Fill `Observed in`, `Root cause`, and `Test` from the Regression Test specification
 - Write `**Status:** open` — the entry is recorded, not yet resolved. `/implement` replaces this line when the fix lands. Do not copy the template's `<open | covered | ...>` placeholder literally.
+- **Check the root cause against this work before writing the entry.** If it belongs to different work — another issue, or a later step of the same rollout — name that owner in the entry as `**Belongs to:** <work>` and tell the user in one line. Still write the entry: the four statuses have no value meaning "someone else's", and dropping the entry loses a real failure, which is worse than the wrong ledger holding it. The `/verify` gate will block on it, and naming the owner is what lets the user move or waive it instead of overriding by hand. This has already happened once — a step-2 ledger took a step-5 root cause, `/verify` blocked, and the disposition was written by hand with no waiver category.
 
 Then push the ledger to backup so it survives a machine switch — a ledger that exists only locally cannot anchor a gate that fires days later:
 

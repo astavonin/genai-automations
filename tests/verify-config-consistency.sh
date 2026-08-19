@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=40
+EXPECTED_TESTS=41
 
 PASS=0
 FAIL=0
@@ -1038,6 +1038,21 @@ if [ -n "$span" ] \
 else
     fail "/verify's attribution step resolves the base, sees unstaged files, and documents the no-source skip" \
          "$(printf '%s' "${span:-<no step 8 span found>}" | head -4)"
+fi
+
+# S4: diagnose.md Step 5's attribution check (step 3c). Bound to the bullet, not the file --
+# "Belongs to" also appears in this suite's own comments and could appear in Step 6's prose.
+# The withhold-nothing rule is the load-bearing half: an earlier design dropped the entry, and
+# three reviewers rated losing a real observed failure as High.
+DIAGNOSE_DOC="$CLAUDE/commands/diagnose.md"
+bullet=$(awk '/Check the root cause against this work/{f=1} f{print; exit}' "$DIAGNOSE_DOC")
+if [ -n "$bullet" ] \
+    && printf '%s' "$bullet" | $GREP -q '\*\*Belongs to:\*\*' \
+    && printf '%s' "$bullet" | $GREP -q 'Still write the entry'; then
+    pass "diagnose.md Step 5 attributes a root cause and still records it when it belongs elsewhere"
+else
+    fail "diagnose.md Step 5 attributes a root cause and still records it when it belongs elsewhere" \
+         "bullet: ${bullet:-<no attribution bullet found>}"
 fi
 
 echo
