@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=37
+EXPECTED_TESTS=39
 
 PASS=0
 FAIL=0
@@ -983,6 +983,46 @@ if [ "$agent_reg" = "0" ]; then
 else
     fail "the agent doc publishing the detector list does not trip its own detector" \
          "REGISTER=${agent_reg:-<no line>} :: $(printf '%s\n' "$agent_out" | tail -8)"
+fi
+
+# === Discovered-work scope ask (mechanism-proportionality step 3a) =========================
+#
+# One rule, two implementation paths that cannot see each other: agents/coder.md reaches no
+# Codex path (build_implementation_prompt loads six bundled resources and that file is not
+# among them), and the bundled resource is outside sync-configs.sh's include list. So the
+# only thing holding the two copies together is these two assertions.
+#
+# Both bind to the clause, not the file. A file-level grep for "discovered work" is satisfied
+# by any prose mentioning it — including a comment like this one — which is the defect four
+# review rounds of step 2 kept finding.
+
+CODER_DOC="$CLAUDE/agents/coder.md"
+EXT_IMPL="$ROOT/tools/codex-flow/codex_flow/resources/skills/workflows/external-implementation/SKILL.md"
+
+# S1: coder.md item 3 carries both halves on the item line — the origin-independent scope
+# rule and the size figure. A reversion to "matches the approved design (no scope creep)"
+# keeps the noun "scope" and loses both.
+item3=$($GREP -m 1 '^3\. \*\*Scope:\*\*' "$CODER_DOC" || true)
+if [ -n "$item3" ] \
+    && printf '%s' "$item3" | $GREP -q 'whether or not you originated it' \
+    && printf '%s' "$item3" | $GREP -q 'git diff --stat'; then
+    pass "coder.md item 3 carries the origin-independent scope rule and the size figure"
+else
+    fail "coder.md item 3 carries the origin-independent scope rule and the size figure" \
+         "item 3 line: ${item3:-<no '3. **Scope:**' line found>}"
+fi
+
+# S2: the bundled mirror carries the same rule and routes it to open_issues on the prefix
+# line itself. That file already has four other open_issues sentences, so a file-level check
+# for the token would stay green with this one deleted.
+ext_line=$($GREP -m 1 'Scope: BLOCKED' "$EXT_IMPL" || true)
+if [ -n "$ext_line" ] \
+    && printf '%s' "$ext_line" | $GREP -q 'open_issues' \
+    && $GREP -q 'whether or not you originated it' "$EXT_IMPL"; then
+    pass "the bundled external-implementation skill mirrors the scope ask and routes it to open_issues"
+else
+    fail "the bundled external-implementation skill mirrors the scope ask and routes it to open_issues" \
+         "Scope: BLOCKED line: ${ext_line:-<not found>}"
 fi
 
 echo

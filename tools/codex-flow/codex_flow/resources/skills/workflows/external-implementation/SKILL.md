@@ -20,6 +20,13 @@ When the On-Device Verification field is present and does not contain `on-device
 - If the field contains `on-device scope: NO`: skip silently, no entry needed.
 - If the field is absent from the design doc: add to `open_issues`: `"On-Device Verification: BLOCKED — On-Device Verification field missing from design doc."`
 
+## Scope
+
+Every change must serve a named `Functional Requirements`, `Non-Functional Requirements`, or `Constraints` item of the request. A change serving none is discovered work — whether or not you originated it.
+
+- Do not inline it silently, and do not propose or file a ticket for it.
+- Add to `open_issues`: `"Scope: BLOCKED — <the change>, serves no listed requirement, +<N> LOC on the branch (<estimate> more to add it)"`, taking `<N>` from `git diff --stat` against the base and marking the estimate as an estimate.
+
 ## Observed-Failure Regression Test
 
 The `Observed-Failure Ledger` field states whether this work fixes a failure that already

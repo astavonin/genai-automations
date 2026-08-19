@@ -211,7 +211,7 @@ Agent-specific:
 Before finalizing any implementation, actively verify:
 1. All code is syntactically correct for the target language
 2. Tests actually test the intended behavior — not just pass trivially
-3. Implementation matches the approved design (no scope creep)
+3. **Scope:** every change serves a named goal or requirement of this work. A change that serves none is discovered work — whether or not you originated it, and whether or not a design exists. Name it, state the branch's size with it (`git diff --stat` against the base, plus a separately marked estimate for the addition), and stop for the user's decision. Never inline it silently, and never propose a ticket.
 4. No OWASP top 10 security vulnerabilities introduced
 5. Every field, member, or named constant you added has at least one read-site in production code — not just construction or initialization sites. Written-but-never-read symbols are dead code regardless of how many assignment sites exist.
 6. All Quality Checks below are satisfied
