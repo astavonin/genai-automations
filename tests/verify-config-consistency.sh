@@ -408,20 +408,23 @@ echo "== Article-review commands avoid hardcoded milestone-form issue-folder pat
 # and then passed as a parameter VALUE to another skill (e.g. status-marker-verify's
 # `review_file`) is functionally wrong for an appendix page, not just a readability shortcut —
 # the receiving skill has no way to know either command's internal path convention. Check both
-# files against the general pattern rather than one exact historical literal, so a *different*
-# hardcoded milestone path anywhere in either file is still caught.
+# files against the general pattern — any `milestone-XX` segment immediately followed by
+# `/issues/<NNN-name>`, book-prefixed or not — rather than one exact historical literal:
+# copying a sibling loop's own milestone-form report path (`planning/<goal>/milestone-XX/
+# issues/<NNN-name>/...`) is a realistic regression a single fixed literal does not catch,
+# since that form has no `book/` segment and different brackets around `<name>`.
 FIXLOOP="$CLAUDE/commands/review-article-fix-loop.md"
 REVIEWARTICLE="$CLAUDE/commands/review-article.md"
 bad=""
 for f in "$FIXLOOP" "$REVIEWARTICLE"; do
     [ -f "$f" ] || { bad="$bad$f (file absent)\n"; continue; }
-    n=$($GREP -c 'planning/book/milestone-XX-<name>/issues/<NNN-name>' "$f" || true)
+    n=$($GREP -cE 'milestone-XX[^/]*/issues/<NNN-name>' "$f" || true)
     [ "$n" -gt 0 ] && bad="$bad${f#"$ROOT"/}: $n hardcoded occurrence(s)\n"
 done
 if [ -z "$bad" ]; then
-    pass "neither review-article.md nor review-article-fix-loop.md hardcodes the milestone-form issue-folder path — both use <issue-folder>"
+    pass "neither review-article.md nor review-article-fix-loop.md hardcodes a milestone-form issue-folder path — both use <issue-folder>"
 else
-    fail "neither review-article.md nor review-article-fix-loop.md hardcodes the milestone-form issue-folder path" "$(printf "%b" "$bad")"
+    fail "neither review-article.md nor review-article-fix-loop.md hardcodes a milestone-form issue-folder path" "$(printf "%b" "$bad")"
 fi
 
 # FIXLOOP's annotation-coherence check must still exempt an appendix draft from the

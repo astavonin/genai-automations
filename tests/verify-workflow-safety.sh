@@ -28,7 +28,7 @@ SELF_PROBE=0
 # Bump when adding or removing an assertion. Asserted at the end so a section that silently
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite added
 # the same counter after exactly that defect, and the abort this suite hit is that shape.
-EXPECTED_TESTS=54
+EXPECTED_TESTS=63
 
 TMPDIR_ROOT=$(mktemp -d)
 PASS=0
@@ -710,6 +710,436 @@ WARNING_OUT=$(run_push_fragment "$T/bin/projctl" 2>&1)
 echo "$WARNING_OUT" | $GREP -q 'workflow-safety' \
     && pass "push_fragment: warning contains 'workflow-safety'" \
     || fail "push_fragment: warning missing 'workflow-safety'"
+
+# ---------------------------------------------------------------------------
+# Section 8: fix-loop cap mechanism — the shared fragment plus the three fix loops
+# ---------------------------------------------------------------------------
+# Every assertion here is static document agreement: nothing executes a command file, so
+# what can be checked is that the fragment and the three loops that read it still say what
+# they must for the cap to fire once, at the right count, and hand off to the right block.
+echo ""
+echo "=== 8. Fix-loop cap mechanism (fragment + three fix loops) ==="
+
+FRAGMENT="$CLAUDE_DIR/skills/workflows/fix-loop-round/SKILL.md"
+LOOP_CODE="$CLAUDE_DIR/commands/review-code-fix-loop.md"
+LOOP_DESIGN="$CLAUDE_DIR/commands/review-design-fix-loop.md"
+LOOP_ARTICLE="$CLAUDE_DIR/commands/review-article-fix-loop.md"
+ITERATE_CMD="$CLAUDE_DIR/commands/review-iterate.md"
+FIXLOOPS="$LOOP_CODE $LOOP_DESIGN $LOOP_ARTICLE"
+
+# Text between a heading line matching $2 and the next heading matching $3, both exclusive.
+# Scoping to one block is what makes a mutation elsewhere in the file invisible to the wrong
+# assertion — a stray "Step 4" in some other step must not trip a check that is about Step 3.
+section_between() {
+    awk -v start="$2" -v stop="$3" '
+        $0 ~ start { f=1; next }
+        f && $0 ~ stop { exit }
+        f { print }
+    ' "$1"
+}
+
+# Each fix loop's Step 3 must read the fragment BEFORE launching its own review pass — a
+# fragment read after the launch sentence runs the review pass once as that sentence's own
+# instruction and a second time as the fragment's position 2, which is the doubled pass this
+# mechanism exists to remove. Step 3 must also name no destination of its own for a verdict
+# and increment nothing itself — the fragment's position 1 is the only increment site, and a
+# loop that keeps its own increment fires the cap after two cycles, not three. Each loop's
+# preamble must still initialise `iteration` on its own line, since it is now the only thing
+# the cap is decided from. The fragment's own position 1 is checked too, not just what the
+# loops do or do not repeat from it — a table row that stops naming the increment leaves
+# `iteration` at 0 forever, and every non-APPROVED verdict then matches "below the cap" with
+# every other assertion here green, which is ledger entry 1's observed symptom restored by a
+# one-cell edit.
+#
+# Design §5.3 states what Step 3 is left holding: its launch sentence, its prior-review
+# pass-through, the fragment `Read` pointer, and nothing that routes on a verdict or touches
+# `iteration`. A grep for one destination phrase ('return to Step 2') or one increment phrase
+# only proves those exact words are absent — a synonym ('restart the fix at Step 2', 'Bump
+# `iteration` by one', 'Advance the round counter by one') passes the same broken loop through
+# untouched. Asserting the shape instead — strip the `Read` pointer line and the disclosure
+# sentence, anchored on both its own start and its own end so text appended to that same
+# unwrapped line survives the strip instead of leaving with it — and require the remainder
+# name no `Step [0-9]`, no `iteration`, and no `counter` — catches every phrasing this repo
+# has actually produced, not a closed set of every possible paraphrase.
+# H2's guard: everywhere outside Step 3, the ONLY lines that may name iteration/counter are a
+# fixed set verified against each file — the frontmatter description, the H1 summary, the
+# Preamble, and the cap/summary message templates. A verb-list blacklist (reset|increment|
+# bump|advance ...) is a closed set ordinary English slips past — "Set `iteration` to 0" or
+# "Zero the round counter" name neither verb. Whitelisting by full exact line text closes that:
+# any line outside Step 3 naming iteration/counter that is not one of the verified lines fails,
+# whatever verb — or none — it uses. Matching by exact text rather than substring is also what
+# catches a reworded Preamble: rewording it to bury a reset ("...and is reset to 0 at the start
+# of each fix pass") no longer equals the whitelisted line, so it is no longer exempted by
+# virtue of merely being "the Preamble line".
+allowed_counter_lines() {   # allowed_counter_lines <file> -> that file's whitelisted lines naming iteration/counter, one per line
+    case "$1" in
+        "$LOOP_CODE") cat <<'EOF'
+description: Run initial code review, fix all findings, re-review until APPROVED or the iteration cap, then print the report
+Run the full code review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED or the iteration cap → report.
+**Preamble:** Initialize `iteration = 0` before Step 0. This counter is set exactly once at command start and is never reset mid-run.
+Code review loop paused — iteration cap reached
+Iterations completed: [iteration]
+Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+EOF
+            ;;
+        "$LOOP_DESIGN") cat <<'EOF'
+description: Run initial design review, fix all findings, re-review until APPROVED or the iteration cap, then print the report
+Run the full design review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED or the iteration cap → report.
+**Preamble:** Initialize `iteration = 0` and `design_modified = false` before Step 1. These are set exactly once at command start and never reset mid-run. Invariant: `**Revision:**` in `design.md` is incremented at most once per invocation — in Step 5 (or any earlier terminal stop path) — contingent on `design_modified = true`.
+Iterations completed: [iteration]
+Design review loop paused — iteration cap reached
+Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+EOF
+            ;;
+        "$LOOP_ARTICLE") cat <<'EOF'
+description: Run initial article review, fix all High and Medium findings, re-review until APPROVED or the iteration cap, then print the report
+Run the full article review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED or the iteration cap → report.
+**Preamble:** Initialize `iteration = 0` before Step 1. Set exactly once at command start; never reset mid-run.
+Iterations completed: [iteration]
+Article review loop paused — iteration cap reached
+Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+EOF
+            ;;
+    esac
+}
+
+# The one whitelisted line that also has to positively exist — the others are permitted, but
+# this one is required, since a caller could delete its Preamble line entirely and this file's
+# candidate-line scan would then have nothing left to flag as unrecognised.
+preamble_whitelist_line() {   # preamble_whitelist_line <file> -> that file's expected Preamble line
+    allowed_counter_lines "$1" | $GREP -F '**Preamble:**'
+}
+
+counter_mutation_lines() {   # counter_mutation_lines <file> -> lines outside Step 3 naming iteration/counter that are not on the file's whitelist
+    local allowed
+    allowed=$(allowed_counter_lines "$1")
+    awk '
+        /^### Step 3:/ { skip=1; next }
+        skip && /^### / { skip=0 }
+        !skip { print }
+    ' "$1" | $GREP -iE '\b(iteration|counter)\b' | while IFS= read -r line; do
+        printf '%s\n' "$allowed" | $GREP -qxF "$line" || printf '%s\n' "$line"
+    done
+}
+bad=""
+for f in $FIXLOOPS; do
+    step3=$(section_between "$f" '^### Step 3:' '^### ')
+    printf '%s' "$step3" | $GREP -qF 'Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md' \
+        || bad="$bad${f#"$CLAUDE_DIR"/}: Step 3 missing the fragment Read pointer; "
+    read_line=$(printf '%s\n' "$step3" | $GREP -n 'Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md' | head -1 | cut -d: -f1)
+    follow_line=$(printf '%s\n' "$step3" | $GREP -n '^Follow `/review-' | head -1 | cut -d: -f1)
+    if [ -z "$read_line" ] || [ -z "$follow_line" ] || [ "$read_line" -ge "$follow_line" ]; then
+        bad="$bad${f#"$CLAUDE_DIR"/}: Step 3's fragment Read does not precede the review-pass launch sentence; "
+    fi
+    # Anchored on both ends, matching the disclosure strip beside it: a `grep -vF` substring
+    # strip deletes the WHOLE line it matches, so text appended onto the same unwrapped Read
+    # line — an increment or a destination clause riding along with it — left with the line
+    # it hid inside, unseen by the shape check below.
+    step3_shape=$(printf '%s\n' "$step3" \
+        | $GREP -vE '^Read ~/\.claude/skills/workflows/fix-loop-round/SKILL\.md$' \
+        | $GREP -vE '^\*\*This file is parsed by two tests\.\*\*.*without re-running both is how this drifts silently\.$')
+    printf '%s' "$step3_shape" | $GREP -qE 'Step [0-9]|iteration|counter' \
+        && bad="$bad${f#"$CLAUDE_DIR"/}: Step 3 names a destination step, touches iteration, or touches a counter outside the fragment; "
+    mut=$(counter_mutation_lines "$f")
+    n_mut=$(printf '%s\n' "$mut" | $GREP -c . || true)
+    if [ "$n_mut" -ne 0 ]; then
+        bad="$bad${f#"$CLAUDE_DIR"/}: iteration/counter named outside Step 3 by $n_mut line(s) not on the whitelist: $(printf '%s' "$mut" | tr '\n' '|'); "
+    fi
+    if ! $GREP -qxF "$(preamble_whitelist_line "$f")" "$f"; then
+        bad="$bad${f#"$CLAUDE_DIR"/}: Preamble no longer carries the whitelisted \`iteration = 0\` initialisation line; "
+    fi
+done
+# The fragment's `## The Round` position table is one copy read by every loop (§5.1) — its
+# row 1 is the counter's only increment site. Scanning the whole fragment for the first
+# `^| 1 |` line, rather than this table specifically, lets a decoy row placed earlier in the
+# fragment win first-match and stand in for the real one; scoping to the section and requiring
+# exactly the three rows in order closes that.
+round_section=$(section_between "$FRAGMENT" '^## The Round' '^## ')
+pos_rows=$(printf '%s\n' "$round_section" | $GREP -E '^\| [0-9]+ \|')
+n_pos_rows=$(printf '%s\n' "$pos_rows" | $GREP -c . || true)
+pos1=$(printf '%s\n' "$pos_rows" | sed -n '1p')
+pos2=$(printf '%s\n' "$pos_rows" | sed -n '2p')
+pos3=$(printf '%s\n' "$pos_rows" | sed -n '3p')
+if [ "$n_pos_rows" -ne 3 ] || [ "$pos1" != '| 1 | increment `iteration` |' ] \
+   || [ "$pos2" != '| 2 | run the review pass |' ] || [ "$pos3" != '| 3 | branch on the result |' ]; then
+    bad="${bad}fragment's \`## The Round\` position table is not exactly rows 1-3 in order (increment iteration, run the review pass, branch on the result) — found $n_pos_rows row(s): 1='$pos1' 2='$pos2' 3='$pos3'; "
+fi
+if [ -z "$bad" ]; then
+    pass "each fix loop's Step 3 reads the fragment before launching its review pass, names no destination, increments nothing, each preamble initialises iteration, and the fragment's own position 1 is the sole increment site"
+else
+    fail "each fix loop's Step 3 reads the fragment before launching its review pass, names no destination, increments nothing, each preamble initialises iteration, and the fragment's own position 1 is the sole increment site" "$bad"
+fi
+
+# The fragment's three not-APPROVED rows must stay in stall, below-cap, at-or-above-cap
+# order — a stall row moved below either cap row is unreachable while the loop still has
+# cycles left, losing the unresolved-area name that is the whole content of the stall
+# message. Each row's Condition and Next cells are extracted as their own columns and
+# compared by exact value, not searched for anywhere in the row — a whole-row substring
+# search is satisfied by a Condition cell that has been widened to swallow every iteration
+# count while still containing the search term, or by a Next cell that keeps a heading's name
+# as trailing prose while actually routing elsewhere ("Step 2, not the calling loop's
+# `### Cap-pause`"). There must also be exactly one APPROVED row and exactly four rows in the
+# table overall: the two verdict-token greps below only see rows whose Verdict cell already
+# reads `APPROVED` or `not APPROVED`, so a decoy row under a third token (`REJECTED`,
+# `CHANGES REQUESTED`) is invisible to both counts and grows the table underneath them; the
+# structural row count catches it regardless of what token the decoy carries.
+# Positional from the start ($4), mirroring middle_cell's $3 below — NOT from the end
+# ($(NF-1)). A row with any cell count other than exactly 3 body cells agrees with a
+# start-anchored and an end-anchored read only by accident; the NF==5 gate the branch-table
+# assertion applies to every counted row (below) is what catches a wrong cell count, so this
+# function can stay positional instead of guessing from the end where "last" might land on
+# whatever cell a malformed row happens to have there.
+last_cell() {   # last_cell <table-row> -> the row's Next cell, trimmed
+    printf '%s' "$1" | awk -F'|' '{c=$4; gsub(/^[ \t]+|[ \t]+$/, "", c); print c}'
+}
+# Mirrors last_cell but reads the Condition column — always field 3 in this table's fixed
+# Verdict | Condition | Next shape.
+middle_cell() {   # middle_cell <table-row> -> the row's Condition cell, trimmed
+    printf '%s' "$1" | awk -F'|' '{c=$3; gsub(/^[ \t]+|[ \t]+$/, "", c); print c}'
+}
+# Everything between the table's header and the first line that is not itself a table row —
+# independent of what any row's Verdict cell says, so an inserted row is counted even when its
+# Verdict token matches neither of the greps below.
+branch_table_rows() {
+    awk '
+        /^\| Verdict \| Condition \| Next \|$/ { f=1; next }
+        f && /^\|/ { print; next }
+        f { exit }
+    ' "$FRAGMENT" | $GREP -v '^|---'
+}
+n_table_rows=$(branch_table_rows | $GREP -c . || true)
+# Every counted row must be exactly 3 body cells — 5 fields under -F'|' (leading empty,
+# Verdict, Condition, Next, trailing empty). A row with a different cell count is what let
+# last_cell's old end-anchored $(NF-1) read the wrong column and still agree with the
+# expected value by accident; failing the count here means a malformed row is caught on the
+# count, before last_cell or middle_cell ever reads it at all.
+bad_field_count=""
+while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    nf=$(printf '%s' "$row" | awk -F'|' '{print NF}')
+    [ "$nf" -eq 5 ] || bad_field_count="$bad_field_count(nf=$nf: '$row') "
+done <<EOF
+$(branch_table_rows)
+EOF
+approved_rows=$($GREP -n '^| APPROVED |' "$FRAGMENT" | sed -E 's/^[0-9]+://')
+n_approved=$(printf '%s\n' "$approved_rows" | $GREP -c . || true)
+approved_row=$(printf '%s\n' "$approved_rows" | sed -n '1p')
+rows=$($GREP -n '^| not APPROVED |' "$FRAGMENT" | sed -E 's/^[0-9]+://')
+n_rows=$(printf '%s\n' "$rows" | $GREP -c . || true)
+stall_row=$(printf '%s\n' "$rows" | sed -n '1p')
+below_row=$(printf '%s\n' "$rows" | sed -n '2p')
+cap_row=$(printf '%s\n' "$rows" | sed -n '3p')
+if [ "$n_table_rows" -eq 4 ] && [ -z "$bad_field_count" ] && [ "$n_rows" -eq 3 ] && [ "$n_approved" -eq 1 ] \
+   && [ "$(middle_cell "$stall_row")" = 'stall condition met' ] \
+   && [ "$(last_cell "$stall_row")" = "the calling loop's \`### Stall stop\`" ] \
+   && [ "$(middle_cell "$below_row")" = '`iteration` below the cap' ] \
+   && [ "$(last_cell "$below_row")" = 'Step 2' ] \
+   && [ "$(middle_cell "$cap_row")" = '`iteration` at or above the cap' ] \
+   && [ "$(last_cell "$cap_row")" = "the calling loop's \`### Cap-pause\`" ] \
+   && [ "$(last_cell "$approved_row")" = 'Step 5' ]; then
+    pass "fragment's branch table has exactly 4 rows — 1 APPROVED and 3 not-APPROVED in order stall, below cap, at-or-above cap — each row exactly 3 body cells, each Condition and Next cell matched by exact value, not substring"
+else
+    fail "fragment's branch table has exactly 4 rows — 1 APPROVED and 3 not-APPROVED in order stall, below cap, at-or-above cap — each row exactly 3 body cells, each Condition and Next cell matched by exact value, not substring" \
+         "n_table_rows=$n_table_rows bad_field_count='$bad_field_count' n_rows=$n_rows n_approved=$n_approved approved='$approved_row' stall='$stall_row' below='$below_row' cap='$cap_row'"
+fi
+
+# The cap row itself must read "at or above the cap" — equality would let an overshooting
+# counter run one round past the pause. Whitespace-tolerant: an exact literal-string match
+# reports the wrong cause (a stray extra space) as if the wording itself had regressed.
+if printf '%s' "$cap_row" | $GREP -qE 'not APPROVED[[:space:]]*\|[[:space:]]*`iteration`[[:space:]]*at or above the cap'; then
+    pass "fragment's cap row reads 'at or above the cap', not 'equal to'"
+else
+    fail "fragment's cap row reads 'at or above the cap', not 'equal to'" \
+         "cap row: '$cap_row'"
+fi
+
+# "final clean review" must be gone from all three loops, including frontmatter — a
+# surviving mention in the description is a promise the body no longer keeps.
+hits=""
+for f in $FIXLOOPS; do
+    $GREP -qi 'final clean review' "$f" && hits="$hits${f#"$CLAUDE_DIR"/} "
+done
+if [ -z "$hits" ]; then
+    pass "'final clean review' (case-insensitive) is absent from all three fix loops, including frontmatter"
+else
+    fail "'final clean review' (case-insensitive) is absent from all three fix loops, including frontmatter" \
+         "found in: $hits"
+fi
+
+# Every Step <N> / Steps <N> and <M> reference inside a fix loop, other than one qualified
+# by another command's name ("Step 7 in `/review-code`"), must resolve to a "### Step <N>"
+# heading in that same file. Every step number the fragment itself names (its Next column
+# routes to Step 5 and Step 2) must resolve in each of the three loops that read it. A
+# partial deletion leaves a dangling reference; a fragment routing a verdict to a step no
+# loop has is the same failure from the other side.
+# Recognises Step <N>, Steps <N> and/or <M>, the comma list Steps <N>, <M>, <K>, and the
+# en/em-dash or hyphen range Steps <N>-<M> — the forms design.md §5.4 names. A qualified
+# reference ("Step 0 of `/review-design`") has only its qualified span erased, not its whole
+# line: dropping the whole line used to blank any co-located local reference on the same
+# unwrapped paragraph, which is what let a reworded local Step number pass unseen.
+extract_step_nums() {   # extract_step_nums <file> -> one referenced step number per line
+    sed -E 's/Steps? [0-9]+(, ?[0-9]+| and [0-9]+| or [0-9]+|[–—-][0-9]+)* (in|of) `\/[^`]*`//g' "$1" \
+        | $GREP -oE 'Steps? [0-9]+(, ?[0-9]+| and [0-9]+| or [0-9]+|[–—-][0-9]+)*' \
+        | while IFS= read -r ref; do
+            if printf '%s' "$ref" | $GREP -qE '[–—-]'; then
+                # Range form: expand N-M inclusive rather than keeping only the two endpoints.
+                lo=$(printf '%s' "$ref" | $GREP -oE '[0-9]+' | head -1)
+                hi=$(printf '%s' "$ref" | $GREP -oE '[0-9]+' | tail -1)
+                seq "$lo" "$hi"
+            else
+                printf '%s' "$ref" | $GREP -oE '[0-9]+'
+            fi
+        done | sort -u
+}
+existing_step_headings() {   # existing_step_headings <file> -> one heading's step number per line
+    $GREP -oE '^### Step [0-9]+' "$1" | $GREP -oE '[0-9]+' | sort -u
+}
+bad=""
+for f in $FIXLOOPS; do
+    refs=$(extract_step_nums "$f")
+    headings=$(existing_step_headings "$f")
+    unresolved=$(comm -23 <(printf '%s\n' "$refs") <(printf '%s\n' "$headings") 2>/dev/null | $GREP -v '^$' || true)
+    [ -n "$unresolved" ] && bad="$bad${f#"$CLAUDE_DIR"/}: references Step(s) $(printf '%s' "$unresolved" | tr '\n' ',')  with no matching heading; "
+done
+frag_refs=$(extract_step_nums "$FRAGMENT")
+for f in $FIXLOOPS; do
+    headings=$(existing_step_headings "$f")
+    missing=$(comm -23 <(printf '%s\n' "$frag_refs") <(printf '%s\n' "$headings") 2>/dev/null | $GREP -v '^$' || true)
+    [ -n "$missing" ] && bad="$bad${f#"$CLAUDE_DIR"/}: fragment names Step(s) $(printf '%s' "$missing" | tr '\n' ',') this loop has no heading for; "
+done
+if [ -z "$bad" ]; then
+    pass "every Step <N> reference in the fix loops resolves to a heading, and every step the fragment names resolves in all three loops"
+else
+    fail "every Step <N> reference in the fix loops resolves to a heading, and every step the fragment names resolves in all three loops" "$bad"
+fi
+
+# Each loop must hold "### Cap-pause" and "### Stall stop" under the exact names the
+# fragment's branch table routes to, and each loop's Cap-pause must run its own cleanup and
+# revision steps before review-planning-update, giving review-planning-update all five
+# parameters (issue_folder included) — the shape the fragment fixes once and no loop restates.
+bad=""
+$GREP -qF '`### Cap-pause`' "$FRAGMENT" || bad="${bad}fragment does not route to \`### Cap-pause\` by name; "
+$GREP -qF '`### Stall stop`' "$FRAGMENT" || bad="${bad}fragment does not route to \`### Stall stop\` by name; "
+for f in $FIXLOOPS; do
+    $GREP -qE '^### Cap-pause' "$f" || bad="$bad${f#"$CLAUDE_DIR"/}: no ### Cap-pause heading; "
+    $GREP -qE '^### Stall stop' "$f" || bad="$bad${f#"$CLAUDE_DIR"/}: no ### Stall stop heading; "
+done
+
+# The fragment's §5.2 obligation is "all five parameters" — issue_folder, approved_phase,
+# review_label, approved_next, escalation — not issue_folder alone. Each is written as
+# `name = value` at the call site, so a bare name-prefix match finds every one regardless of
+# its per-loop value.
+rpu_params_missing() {   # rpu_params_missing <cap-block-text> -> missing param names, space-separated
+    local block="$1" missing="" p
+    for p in issue_folder approved_phase review_label approved_next escalation; do
+        printf '%s' "$block" | $GREP -qF "$p = " || missing="$missing$p "
+    done
+    printf '%s' "$missing"
+}
+
+cap_code=$(section_between "$LOOP_CODE" '^### Cap-pause' '^### ')
+printf '%s' "$cap_code" | $GREP -qF 'review-planning-update/SKILL.md' \
+    || bad="${bad}review-code-fix-loop.md Cap-pause: does not run review-planning-update; "
+missing=$(rpu_params_missing "$cap_code")
+[ -n "$missing" ] && bad="${bad}review-code-fix-loop.md Cap-pause: review-planning-update missing parameter(s): $missing; "
+printf '%s' "$cap_code" | $GREP -qF 'design-revision-bump' \
+    && bad="${bad}review-code-fix-loop.md Cap-pause: runs design-revision-bump, which this loop does not own; "
+
+cap_design=$(section_between "$LOOP_DESIGN" '^### Cap-pause' '^### ')
+bump_line=$(printf '%s\n' "$cap_design" | $GREP -n 'design-revision-bump' | head -1 | cut -d: -f1)
+rpu_line=$(printf '%s\n' "$cap_design" | $GREP -n 'review-planning-update/SKILL.md' | head -1 | cut -d: -f1)
+if [ -z "$bump_line" ] || [ -z "$rpu_line" ] || [ "$bump_line" -ge "$rpu_line" ]; then
+    bad="${bad}review-design-fix-loop.md Cap-pause: design-revision-bump does not run before review-planning-update; "
+fi
+missing=$(rpu_params_missing "$cap_design")
+[ -n "$missing" ] && bad="${bad}review-design-fix-loop.md Cap-pause: review-planning-update missing parameter(s): $missing; "
+
+cap_article=$(section_between "$LOOP_ARTICLE" '^### Cap-pause' '^### ')
+rm_line=$(printf '%s\n' "$cap_article" | $GREP -n 'rm -f /tmp/article-review-todos-before.txt' | head -1 | cut -d: -f1)
+rpu_line2=$(printf '%s\n' "$cap_article" | $GREP -n 'review-planning-update/SKILL.md' | head -1 | cut -d: -f1)
+if [ -z "$rm_line" ] || [ -z "$rpu_line2" ] || [ "$rm_line" -ge "$rpu_line2" ]; then
+    bad="${bad}review-article-fix-loop.md Cap-pause: TODO-snapshot rm does not run before review-planning-update; "
+fi
+missing=$(rpu_params_missing "$cap_article")
+[ -n "$missing" ] && bad="${bad}review-article-fix-loop.md Cap-pause: review-planning-update missing parameter(s): $missing; "
+
+if [ -z "$bad" ]; then
+    pass "each loop's ### Cap-pause and ### Stall stop headings exist under the fragment's routed names, and each Cap-pause runs its cleanup before review-planning-update with all five parameters"
+else
+    fail "each loop's ### Cap-pause and ### Stall stop headings exist under the fragment's routed names, and each Cap-pause runs its cleanup before review-planning-update with all five parameters" "$bad"
+fi
+
+# review-design-fix-loop.md only: Step 3 must carry the Draft→Approved header edit, the
+# Protocol Deviations status-header bullet must positively name Step 3 as where that edit
+# happens (not merely lack one literal negative phrase — a differently-worded prohibition,
+# e.g. "must not be set during a re-review pass", still contradicts Step 3 while containing
+# neither "never" nor the old wording), and ## Agents must not restate the Steps-1-and-3 set
+# a third time.
+step3_design=$(section_between "$LOOP_DESIGN" '^### Step 3:' '^### ')
+agents_section=$(section_between "$LOOP_DESIGN" '^## Agents' '^## ')
+# Scoped to the one bullet, not the whole Protocol Deviations section — "Gate that remains
+# active" a few lines down names an unrelated open-questions "prohibition", which a
+# section-wide grep for that word would wrongly credit to this bullet.
+status_bullet=$($GREP -E '^- \*\*Skip\*\* the design doc status header' "$LOOP_DESIGN")
+# The `## Agents` clause for `**Status:**` is checked by what it points AT, not by a list of
+# forbidden phrasings it must avoid — "in Step 1 and Step 3" and "in Steps 1, 3" both restate
+# the set without matching a `Steps? 1 and (3|4)` literal, so a phrase-list negative lets
+# either through. Requiring the clause to name the Protocol Deviations bullet is immune to how
+# a restatement is worded, because a genuine pointer is not a restatement of the set at all.
+status_agent_clause=$(printf '%s\n' "$agents_section" | $GREP -F '`**Status:**`')
+bad=""
+printf '%s' "$step3_design" | $GREP -qF '**Status:** Draft' \
+    && printf '%s' "$step3_design" | $GREP -qF '**Status:** Approved' \
+    || bad="${bad}Step 3 does not carry the Draft to Approved header edit; "
+printf '%s' "$status_bullet" | $GREP -qF 'APPROVED row in Step 3' \
+    || bad="${bad}Protocol Deviations status-header bullet does not positively name Step 3 as the re-review set-site; "
+# A phrase list ('must not be set', 'never...re-review', 'forbid', 'prohibit') is a closed set
+# a differently-worded prohibition slips past — "not during a re-review pass" and "except
+# during a re-review pass" both forbid the edit without matching any of those four phrases.
+# Any negation in the same sentence as "re-review" is the shape of a prohibition regardless
+# of its wording; `[^.]*` keeps the match inside one sentence of this unwrapped bullet.
+printf '%s' "$status_bullet" \
+    | $GREP -qiE '(not|except|never|forbid|prohibit|cannot|no longer)[^.]*re-review|re-review[^.]*(not|except|never|forbid|prohibit|cannot)' \
+    && bad="${bad}Protocol Deviations status-header bullet still contains prohibition language for the header edit during re-review; "
+printf '%s' "$status_agent_clause" | $GREP -qF 'Protocol Deviations' \
+    || bad="${bad}## Agents' \`**Status:**\` clause does not point at the Protocol Deviations bullet; "
+if [ -z "$bad" ]; then
+    pass "review-design-fix-loop.md: Step 3 sets the header on APPROVED, no re-review prohibition survives under any negation wording, and ## Agents points at the Protocol Deviations bullet instead of restating the step set"
+else
+    fail "review-design-fix-loop.md: Step 3 sets the header on APPROVED, no re-review prohibition survives under any negation wording, and ## Agents points at the Protocol Deviations bullet instead of restating the step set" "$bad"
+fi
+
+# review-iterate.md's Protocol Deviations note must name Steps 1 and 3 — it describes
+# /review-design-fix-loop, whose Step 4 no longer exists.
+if $GREP -qF 'manages the header transition itself in Steps 1 and 3' "$ITERATE_CMD"; then
+    pass "review-iterate.md's Protocol Deviations note names Steps 1 and 3"
+else
+    fail "review-iterate.md's Protocol Deviations note names Steps 1 and 3" \
+         "expected phrase not found — check for a stale 'Steps 1 and 4'"
+fi
+
+# Every file in the disclosure set (the fragment and the three fix loops — review-iterate.md
+# is exempt) must carry its disclosure sentence, and that sentence — not just the file
+# anywhere — must name both suites that parse it. Reading the whole file let an incidental
+# mention anywhere stand in for the disclosure; the sentence is a single unwrapped paragraph
+# starting "This file is parsed by two tests.", so it is grepped as one line.
+bad=""
+for f in $FRAGMENT $FIXLOOPS; do
+    disclosure=$($GREP -E '^\*\*This file is parsed by two tests\.\*\*' "$f")
+    if [ -z "$disclosure" ]; then
+        bad="$bad${f#"$CLAUDE_DIR"/}: no disclosure sentence found; "
+        continue
+    fi
+    printf '%s' "$disclosure" | $GREP -qF 'verify-workflow-safety.sh' \
+        || bad="$bad${f#"$CLAUDE_DIR"/}: disclosure sentence does not name verify-workflow-safety.sh; "
+    printf '%s' "$disclosure" | $GREP -qF 'verify-config-consistency.sh' \
+        || bad="$bad${f#"$CLAUDE_DIR"/}: disclosure sentence does not name verify-config-consistency.sh; "
+done
+if [ -z "$bad" ]; then
+    pass "the fragment and all three fix loops carry a disclosure sentence naming both suites that parse them"
+else
+    fail "the fragment and all three fix loops carry a disclosure sentence naming both suites that parse them" "$bad"
+fi
 
 # ---------------------------------------------------------------------------
 # Summary

@@ -1,11 +1,11 @@
 ---
 name: review-code-fix-loop
-description: Run initial code review, fix all findings, re-review until APPROVED, then run one final clean review and print the report
+description: Run initial code review, fix all findings, re-review until APPROVED or the iteration cap, then print the report
 ---
 
 # Code Review Fix Loop Command
 
-Run the full code review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED → final clean review + report.
+Run the full code review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED or the iteration cap → report.
 
 ## Agents
 
@@ -18,13 +18,12 @@ Implementation exists on the branch. No existing review file required — this c
 
 ## Protocol Deviations
 
-When running any review pass in this command (Steps 1, 3, 4), deviate from the `/review-code` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+When running any review pass in this command (Steps 1 and 3), deviate from the `/review-code` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
 
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is Step 7 in `/review-code` that blocks until the user invokes `/verify`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
-- **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `code-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
 
 ## Actions
 
@@ -42,7 +41,7 @@ Resolve `<issue-folder>` once and echo it. Every later step reuses this exact st
 
 Follow `/review-code` with the deviations listed above. Writes `code-review.md`.
 
-If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
+If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3.
 
 If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2.
 
@@ -76,26 +75,40 @@ Passing the folder is not optional: `/verify-docs` cannot discover planning docs
 
 ### Step 3: Re-review
 
-Increment `iteration` (`iteration += 1`).
+```
+Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md
+```
 
 Follow `/review-code` with the deviations listed above. **Pass the current `code-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `code-review.md`.
 
-If result is `APPROVED`: proceed to Step 4.
+**This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file. Editing the step numbering, the headings, the pointer, or the launch sentence's opening word without re-running both is how this drifts silently.
 
-If result is `CHANGES REQUESTED` or `REJECTED`: return to Step 2.
+### Stall stop
 
-**Stall detection:** If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
+If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
 
-### Step 4: Final clean review
+### Cap-pause
 
-Follow `/review-code` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `code-review.md`.
-
-If this final clean review returns `APPROVED`: proceed to Step 5.
-
-If this final clean review returns `CHANGES REQUESTED` or `REJECTED`: push planning to backup (to preserve the review file), then report to the user and stop:
+Run the review-planning-update fragment (which includes push):
 ```
-Final clean review: CHANGES REQUESTED — N finding(s).
-The fix loop converged but the clean pass found new issues. Review the findings and invoke /review-code-fix-loop again to address them.
+Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
+```
+(`approved_phase = code review ✅`, `review_label = code review`, `approved_next = ready for MR`, `escalation = elevated`, `issue_folder = <issue-folder>`)
+
+Report to the user and stop. If the re-review that reached the cap returned `CHANGES REQUESTED`:
+```
+Code review loop paused — iteration cap reached
+Iterations completed: [iteration]
+N finding(s) open in planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md.
+Fix them manually, or re-invoke /review-code-fix-loop to continue.
+```
+
+If it returned `REJECTED`:
+```
+Code review loop paused — iteration cap reached
+Iterations completed: [iteration]
+planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md was rejected.
+Redesign is required — resolve via /design, then re-invoke /review-code-fix-loop.
 ```
 
 ### Step 5: Report and stop

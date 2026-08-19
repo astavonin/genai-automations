@@ -43,7 +43,7 @@ When running any review pass in this command (Steps 0 and 3), deviate from the i
 - **Skip** the push-planning step — Step 4 handles it
 - **Skip** the "ask user to open file" step — this command runs autonomously
 - **Skip** the "Phase gate (MANDATORY)" step — the command continues without user input (authorized by the Exception clause in CLAUDE.md Critical Rules for review iterate commands)
-- **Retain** the design doc `**Status:** Draft → Approved` header update (Step 6 of `/review-design`) — the invoked command manages this transition when the initial review (Step 0) OR the final review (Step 3) returns APPROVED; `/review-iterate` does not manage this header centrally. (Note: `/review-design-fix-loop` uses the opposite convention — it skips this step and manages the header transition itself in Steps 1 and 4. The two commands diverge here intentionally.)
+- **Retain** the design doc `**Status:** Draft → Approved` header update (Step 6 of `/review-design`) — the invoked command manages this transition when the initial review (Step 0) OR the final review (Step 3) returns APPROVED; `/review-iterate` does not manage this header centrally. (Note: `/review-design-fix-loop` uses the opposite convention — it skips this step and manages the header transition itself in Steps 1 and 3. The two commands diverge here intentionally.)
 
 ## Actions
 

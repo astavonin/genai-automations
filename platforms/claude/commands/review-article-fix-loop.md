@@ -1,11 +1,11 @@
 ---
 name: review-article-fix-loop
-description: Run initial article review, fix all High and Medium findings, re-review until APPROVED, then run one final clean review and print the report
+description: Run initial article review, fix all High and Medium findings, re-review until APPROVED or the iteration cap, then print the report
 ---
 
 # Article Review Fix Loop Command
 
-Run the full article review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED → final clean review + report.
+Run the full article review cycle autonomously: initial review → fix all findings → re-review → repeat until APPROVED or the iteration cap → report.
 
 ## Usage
 
@@ -23,18 +23,17 @@ Run the full article review cycle autonomously: initial review → fix all findi
 
 Both `spec.md` and `draft.md` must exist in the issue folder — the argument if one was given, else derived from the active issue in `planning/progress.md` (main articles only; an appendix page must be given explicitly, per `~/.claude/skills/workflows/page-type/SKILL.md` → "Obtaining the path"). `<issue-folder>` below means this resolved path. No existing `article-review.md` required — this command produces it. If either file is missing, stop and report which is absent.
 
-Every `/review-article` pass below (Steps 1, 3, 4) receives the same issue-folder-path argument this command was invoked with, if any.
+Every `/review-article` pass below (Steps 1 and 3) receives the same issue-folder-path argument this command was invoked with, if any.
 
 ## Protocol Deviations
 
-When running any review pass in this command (Steps 1, 3, 4), deviate from the `/review-article` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+When running any review pass in this command (Steps 1 and 3), deviate from the `/review-article` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
 
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Block until the user explicitly approves" step (the loop continues without user input — authorized by the Exception clause in CLAUDE.md Critical Rules)
-- **Skip** the "After Final Approval: Update todos.md" step — Step 5 of this command handles todos.md updates once at the end, not on every intermediate APPROVED pass
-- **Step 4 only — additionally skip:** the prior-review pre-read step. Do not read or pass the existing `article-review.md` to any agent in Step 4. Treat this pass as if no prior review file exists.
+- **Skip** the "After Final Approval: Update todos.md" step — Step 5 of this command handles todos.md updates once at the end
 
 ## Actions
 
@@ -47,7 +46,7 @@ When running any review pass in this command (Steps 1, 3, 4), deviate from the `
 
 Follow `/review-article` with the deviations listed above. Writes `article-review.md`.
 
-If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2–4.
+If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3.
 
 If result is `CHANGES REQUESTED`: proceed to Step 2.
 
@@ -134,15 +133,17 @@ rm -f /tmp/article-review-todos-before.txt
 
 ### Step 3: Re-review
 
-Increment `iteration` (`iteration += 1`).
+```
+Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md
+```
 
 Follow `/review-article` with the deviations listed above. **Pass the current `article-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `article-review.md`.
 
-If result is `APPROVED`: proceed to Step 4.
+**This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file, and that the `### Cap-pause` message below names its report under `<issue-folder>/article-review.md` rather than a hardcoded milestone-form path — any `milestone-XX` segment, not one fixed literal. Editing the step numbering, the headings, the pointer, the report path, or the launch sentence's opening word without re-running both is how this drifts silently.
 
-If result is `CHANGES REQUESTED`: return to Step 2.
+### Stall stop
 
-**Stall detection:** If the same root-cause area (same article section + same scope criterion — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, delete the snapshot, then run the review-planning-update fragment (which includes push):
+If the same root-cause area (same article section + same scope criterion — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, delete the snapshot, then run the review-planning-update fragment (which includes push):
 ```bash
 rm -f /tmp/article-review-todos-before.txt
 ```
@@ -159,13 +160,13 @@ Iterations completed: [iteration]
 Re-invoke /review-article-fix-loop after addressing the stalled finding manually.
 ```
 
-### Step 4: Final clean review
+### Cap-pause
 
-Follow `/review-article` with **all** deviations listed above, including the Step 4 addition (skip prior-review pre-read). Overwrites `article-review.md`.
+```bash
+rm -f /tmp/article-review-todos-before.txt
+```
 
-If this final clean review returns `APPROVED`: proceed to Step 5.
-
-If this final clean review returns `CHANGES REQUESTED`: run the review-planning-update fragment (which includes push):
+Run the review-planning-update fragment (which includes push):
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
@@ -173,8 +174,10 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Report to the user and stop:
 ```
-Final clean review: CHANGES REQUESTED — N finding(s).
-The fix loop converged but the clean pass found new issues. Review the findings and invoke /review-article-fix-loop again to address them.
+Article review loop paused — iteration cap reached
+Iterations completed: [iteration]
+N finding(s) open in <issue-folder>/article-review.md.
+Fix them manually, or re-invoke /review-article-fix-loop to continue.
 ```
 
 ### Step 5: Report and stop

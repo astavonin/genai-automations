@@ -81,15 +81,17 @@ Before spawning the agent, run a clarifying dialog in the main conversation.
 
 After the dialog, append a `## Clarifications` section to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md`. If that file does not exist, create it with just this section.
 
+**Date every entry as you write it, with today's date.** A §3 requirement tagged `From: decision <date>` resolves against its Clarifications entry and against nothing else — `planning/` is untracked, so no commit carries the date, and once the session ends it cannot be recovered. An undated entry leaves a later reader choosing between inventing a date and retagging the requirement `analysis`, and that tag class is what decides which option §7 may select.
+
 ```markdown
 ## Clarifications
 
 **Q: <question topic>**
 Options considered: <option A>, <option B>, <option C>.
-**Decision:** <chosen option> — <one-line reason>.
+**Decision:** <chosen option>, <YYYY-MM-DD> — <one-line reason>.
 
 **Q: <question topic>**
-**Decision:** assumption — <X> (user deferred; proceeding with this default).
+**Decision:** assumption, <YYYY-MM-DD> — <X> (user deferred; proceeding with this default).
 ```
 
 ### Step 4: Spawn architecture-research-planner
@@ -105,7 +107,7 @@ Pass to the agent:
 - For post-review fixes: the review report and the enumerated findings to address
 - The citation form stated under `## Output` below — file + symbol for code being designed, bare repo-relative paths in `**Context Files:**`, and no line reference into any planning doc
 - The writing rules from `DESIGN-TEMPLATE.md` → Writing Rules: one statement per fact with duplicates deleted rather than relocated, no self-history, no defensive register, and the per-section word targets. Instruct the agent to run `doc-metrics` on the finished doc and report the register total, the CEILING count, and the per-section verdicts in its response — a register total above 0 and a CEILING count above 0 are both `/verify-docs` blockers at step 1 of **After writing** below, so the agent clearing them before returning saves a round trip. Report the design-field counters printed after `UNSLOTTED:` too — `/verify-docs` classifies which of them block versus warn (see its Step 2 table), so clearing every blocker before returning saves a round trip. **Exit contract:** `0` means it ran — read the numbers. Any non-zero exit is a blocker, not a clean result; exit `127` means the package is not installed — `pip install -e ./tools/docgate`. Exit status never signals "over ceiling" or "register hits found", so do not wire `&&` to it
-- **Cost and provenance fields:** every `### Option` block in §7 declares `**Cost:**` and `**Misses:**` in the exact form `DESIGN-TEMPLATE.md` §7 shows. The cheapest option wins by default; when nothing in §3 separates the options and the trade is still live, escalate to the user rather than picking a costlier one. Every Functional Requirement, Non-Functional Requirement, and Constraint bullet in §3 ends with an inline `From:` tag, written as bold Markdown and placed at the end of the bullet — never as a bold label opening its own line, which breaks `codex-flow`'s requirement parser silently. The accepted tag values are `DESIGN-TEMPLATE.md` §3's own guidance, which `doc-metrics` enforces
+- **Cost and provenance fields:** every `### Option` block in §7 declares `**Cost:**` and `**Misses:**` in the exact form `DESIGN-TEMPLATE.md` §7 shows. The cheapest option wins by default; when nothing in §3 separates the options and the trade is still live, escalate to the user rather than picking a costlier one. Every Functional Requirement, Non-Functional Requirement, and Constraint bullet in §3 ends with an inline `From:` tag, written as bold Markdown and placed at the end of the bullet — never as a bold label opening its own line, which breaks `codex-flow`'s requirement parser silently. The accepted tag values are `DESIGN-TEMPLATE.md` §3's own guidance, which `doc-metrics` enforces. A `decision <date>` tag must carry a date some `## Clarifications` entry states; where the entry is undated the agent tags `analysis` instead of supplying a date the record does not have, since `doc-metrics` checks the tag's form and never whether the decision it names exists
 
 The agent produces `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md` following the template (all 8 sections required; sections 7–8 may be omitted only when there are genuinely no alternatives or open questions, with a one-line note explaining why). The On-Device Verification block follows the same rule: MANDATORY when on-device scope is confirmed, otherwise omitted with a one-line note containing `on-device scope: NO`.
 
