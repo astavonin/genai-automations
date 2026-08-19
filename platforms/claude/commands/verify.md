@@ -176,9 +176,27 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    **Step 7c — Device unavailable locally:**
    If no device is connected, flag explicitly: "On-device verification pending — run `<entry-point>` on a device or record passing CI/HIL device evidence before merge." Treat verification as incomplete — do not update planning state and do not proceed to `/complete` until CI evidence of a passing device run is produced and recorded in the issue folder (e.g., a CI log link in a `device-verification.md` file). This is a blocker, not an advisory.
 
+8. **Attribution — which requirement does each changed file serve?**
+
+   **Run this immediately after step 6, not in numbered order.** It needs two git commands and one document read, so it must not wait behind the test suite or a device run. The number is 8 only so steps 1–7 keep theirs.
+
+   Resolve the base the way `commands/verify-docs.md` → Step 1 does — `git symbolic-ref --quiet --short refs/remotes/origin/HEAD`, falling back to `git remote show origin`. Do not hardcode `origin/master`; step 2a above does, and it is wrong for a repo whose default is `main`. Then list the changed files:
+
+   ```bash
+   git diff --name-only "${BASE:?could not resolve the default branch}"
+   git ls-files --others --exclude-standard   # a new file is invisible to every git diff form until `git add`
+   ```
+
+   For each file, name the goal or requirement it serves. Take those from the design doc for this work if one exists — you have it in this session; do not go resolving a path for it — otherwise from the issue's Scope and Acceptance Criteria. **If there is neither, say so in one line and move on.** Unticketed hotfix and CI work is the common case, not an edge case, and firing against nothing would mark every file unattributed and teach the reader to ignore this.
+
+   A file serving nothing is **discovered work, not a defect**. Report it with the branch's `+N LOC` from `git diff --stat`, and do not report a full pass — the `## Planning State Update` rule below already withholds planning state when a check fails. Do not create a ticket or propose one: `/ticket` is user-invoked, so the split is the user's call and this check terminates in telling them.
+
+   Two files this does not reach: anything under `planning/` (gitignored, so no diff form counts it) and a file changed only on the remote since the branch point.
+
 ## Requirements
 
 - ✅ Linters discovered and available (MANDATORY - ask user if missing)
+- ✅ Every changed file serves a named goal or requirement, or is reported as discovered work — satisfied by the documented one-line skip when there is no design doc and no issue
 - ✅ Zero linter errors/warnings
 - ✅ Code formatting applied
 - ✅ C++ clangd analysis complete — no missing implementations, no suspicious short methods
@@ -198,8 +216,9 @@ If any check fails:
 4. **Static analysis issues:** Address security or code quality concerns
 5. **Missing regression coverage:** Write the test specified by the diagnosis, confirm it fails against the unfixed code, then record it in the ledger and re-run Step 6a. If the failure is genuinely untestable, ask the user to approve a waiver — do not proceed on your own judgement.
 6. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
-7. Re-run verification from step 1 (linters)
-8. Do NOT proceed to completion until all checks pass
+7. **Unattributed changed file:** report it with the branch's `+N LOC` and stop for the user's decision — split it out, or widen the design's goals to cover it. Do not create a ticket, and do not resolve it by inlining an explanation of why the file is fine.
+8. Re-run verification from step 1 (linters)
+9. Do NOT proceed to completion until all checks pass
 
 ## Execution Order is Critical
 

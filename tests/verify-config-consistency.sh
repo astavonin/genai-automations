@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=39
+EXPECTED_TESTS=40
 
 PASS=0
 FAIL=0
@@ -1023,6 +1023,21 @@ if [ -n "$ext_line" ] \
 else
     fail "the bundled external-implementation skill mirrors the scope ask and routes it to open_issues" \
          "Scope: BLOCKED line: ${ext_line:-<not found>}"
+fi
+
+# S3: /verify's attribution step (step 3b). Span-scoped, not file-scoped — `verify.md` already
+# carries `git diff` and `origin/master` elsewhere (step 2a), so a file-level grep for either
+# proves nothing about this step. The span runs from the step 8 opener to the next `## `.
+VERIFY_DOC="$CLAUDE/commands/verify.md"
+span=$(awk '/^8\. \*\*Attribution/{f=1} f&&/^## /{exit} f' "$VERIFY_DOC")
+if [ -n "$span" ] \
+    && printf '%s' "$span" | $GREP -q 'refs/remotes/origin/HEAD' \
+    && printf '%s' "$span" | $GREP -q 'ls-files --others' \
+    && printf '%s' "$span" | $GREP -q 'say so in one line'; then
+    pass "/verify's attribution step resolves the base, sees unstaged files, and documents the no-source skip"
+else
+    fail "/verify's attribution step resolves the base, sees unstaged files, and documents the no-source skip" \
+         "$(printf '%s' "${span:-<no step 8 span found>}" | head -4)"
 fi
 
 echo
