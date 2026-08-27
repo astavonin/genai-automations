@@ -69,6 +69,78 @@ It uses `python3.12` for the `pipx` environment by default. Override that if nee
 make install PIPX_PYTHON=/full/path/to/python3.12
 ```
 
+## When a Run Fails
+
+A failed run exits non-zero. **Read the message shape first — it says how far the run got, and
+the three stages have different recoveries.**
+
+### Stage 1 — rejected before Codex launched: `codex-flow: <validation message>`
+
+No `codex exec` in the message, and no run log, because validation happens before the run starts.
+
+```text
+codex-flow: Review request must include a filled-in Observed-Failure Ledger section
+```
+
+Fix the request document, then re-run. The usual cause is a section left as a template
+placeholder; `Observed-Failure Ledger` is the newest such section and the one a request written
+from memory most often lacks. **A previous run's output file is still on disk** — this stage runs
+before the output path is even resolved, so its presence proves nothing about this run.
+
+### Stage 2 — Codex launched but produced nothing usable: `codex-flow: codex exec <problem>`
+
+The `codex exec` prefix without an exit code. Each message names its own cause and all of them
+are permanent — re-running unchanged will not help.
+
+| Message | Cause |
+|---|---|
+| `codex exec failed to start: <os error>` | The `codex` binary is missing or not executable — reinstall the Codex CLI |
+| `codex exec did not expose expected process streams.` | The process started without stdio pipes; an environment problem, not a Codex one |
+| `codex exec completed without producing a final response.` | Codex exited cleanly without writing its structured answer |
+| `codex exec returned invalid JSON output.` | The final message was not JSON |
+| `codex exec returned a non-object JSON response.` | The final message was JSON but not an object |
+
+`failed to start` is the only one that leaves a previous run's output intact; the rest run after
+Codex started, which is when that file is removed.
+
+### Stage 3 — Codex ran and failed: `codex-flow: codex exec failed with exit code N: <reason>`
+
+`<reason>` is Codex's own error text. **The first line is the reason; later lines are context.**
+JSON error events and plain-text crash output both reach it, bounded to the last 20 lines and 500
+characters each.
+
+```text
+codex-flow: codex exec failed with exit code 1: Selected model is at capacity. Please try a different model.
+```
+
+| First line contains | Cause | Recovery |
+|---|---|---|
+| `at capacity`, `overloaded` | Transient provider capacity | Re-run unchanged. If a second attempt several minutes later also fails, stop and report it — the failure is no longer transient in any useful sense |
+| `model is not supported` | The pinned model is unavailable to this account — retired, or not entitled on the current plan | Update `DEFAULT_CODEX_MODEL` in `runner.py` |
+| `event carried no message` | Codex reported a failure carrying no text in a shape this version recognizes | Read the rollout transcript below; extend `CODEX_ERROR_MESSAGE_KEYS` or `CODEX_ERROR_FALLBACK_KEYS` if a new shape appears |
+| anything else, or no reason at all | Unclassified | Treat as permanent — re-run at most once, then read the rollout transcript below |
+
+A capacity error can strike mid-run, after Codex has already executed tool calls, so a long run
+that dies late is not evidence of a different cause.
+
+### Where the evidence lives
+
+The normalized progress events for every run are kept as JSONL under
+`$XDG_STATE_HOME/codex-flow/runs/<repo-key>/` (raw Codex JSON traces are not persisted — see
+Progress above). Codex keeps its own full transcript at
+`~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` — note the three nested date components —
+where the terminal `task_complete` event holds the raw provider error including
+`codex_error_info`. The rollout filenames are local time; codex-flow's run ids are UTC.
+
+```bash
+python3 -c "
+import json,sys
+for line in open(sys.argv[1]):
+    e=json.loads(line); p=e.get('payload') or {}
+    if p.get('type')=='task_complete': print(json.dumps(p.get('error'), indent=2))
+" ~/.codex/sessions/2026/08/27/rollout-<id>.jsonl
+```
+
 ## Ubuntu Codex Sandbox Fix
 
 On Ubuntu 23.10+ / 24.04 hosts, `codex-flow review` can fail before any local command runs with:

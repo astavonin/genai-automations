@@ -73,6 +73,8 @@ confirms the output file is ready.
 
 ### Step 3: Read and display results
 
+**If the run failed,** the completion notification's exit code is the authority — a file at the output path may be left over from an earlier round, since a request rejected during validation fails before that path is even resolved. Read the message shape and follow the matching stage in `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` → Step E "Codex-failure handler": stage 1 (`codex-flow: <validation message>`) means repair the request; stage 2 (`codex exec <problem>`, no exit code) is permanent, surface it; stage 3 (`codex exec failed with exit code N: <reason>`) means classify the first line of the reason, and only a capacity error is retried. Do not report the review as done.
+
 Read the output file produced by `codex-flow` (the path from the `Output File` field in the
 review request). Display the findings to the user.
 

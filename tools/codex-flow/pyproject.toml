@@ -45,6 +45,9 @@ codex_flow = ["resources/**/*.md"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+markers = [
+    "integration: drives a whole workflow with only the `codex` process replaced",
+]
 
 [tool.coverage.run]
 source = ["codex_flow"]

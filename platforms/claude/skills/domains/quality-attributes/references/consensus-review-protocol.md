@@ -154,24 +154,41 @@ Output: a deduplicated list of findings, each with:
 - Run `codex-flow review <review-request-path>` with `run_in_background: true`.
 - Wait for completion, then continue with Step E aggregation below.
 
-**Codex-failure handler:** Launching `codex-flow` is not the same as Codex running. It is launched with `run_in_background: true`, so the Bash tool reports success for the *launch* — a request that `codex-flow` then rejects produces a non-zero exit, a message on stderr, and **no output file at all**. Read the completion notification's exit code; do not treat launch success as run success.
+**Codex-failure handler:** Launching `codex-flow` is not the same as Codex running. It is launched with `run_in_background: true`, so the Bash tool reports success for the *launch*. **The completion notification's exit code is the authority** — a non-zero exit means no Codex review happened this round, whatever is on disk.
 
-Before aggregating, confirm the output exists and is non-empty:
+File existence is a weaker check and is only sound once Codex has started: `codex-flow` removes a previous run's output at that point, but a request rejected during validation fails earlier and leaves the prior round's file in place. Aggregating that file would record round N−1's findings as round N's independent cross-check — a fabricated "Codex agrees". So gate on the exit code first, then confirm the output is non-empty:
 
 ```bash
 test -s <codex-output-path> && echo "codex output present" || echo "CODEX FAILED — no output"
 ```
 
-If the output is missing or empty, **stop**. Do not proceed to Steps F–H, do not write the review file, and do not aggregate three agents as though this were a 3+1 consensus — silently downgrading the protocol is the failure mode this handler exists to prevent. Surface:
+If the exit code was non-zero, or the output is missing or empty, **stop**. Do not proceed to Steps F–H, do not write the review file, and do not aggregate three agents as though this were a 3+1 consensus — silently downgrading the protocol is the failure mode this handler exists to prevent. Surface:
 
 ```
 ⚠️  Codex cross-check failed — review is incomplete
     exit: <exit code from the background Bash notification>
     stderr: <the error line codex-flow printed>
-    recovery: fix the review request and re-run `codex-flow review <review-request-path>`
+    recovery: <the recovery selected from the tables below by that error line>
 ```
 
-The most common cause is a rejected review request: `codex-flow` validates required sections and refuses the whole run if one is missing or left as a template placeholder. `Observed-Failure Ledger` is the newest such section — a request written from a stale template or from memory will lack it. Fix the request document, then re-run. Annotating `Codex: ✗ not run` and continuing is **not** an acceptable resolution for any review type; that annotation exists for the case where Codex is genuinely unavailable, not for a request you can repair. Document reviews are the likeliest to hit this — they have no diff, so their request needs the explicit `No ledger exists for this work.` line.
+**The message shape says how far the run got.** Three stages, three recoveries — read the shape before deciding anything.
+
+**Stage 1 — `codex-flow: <validation message>`**, no `codex exec` in the message. The request document was rejected before Codex launched, so there is no run log either, and a previous round's output file is still on disk. `codex-flow` validates required sections and refuses the whole run if one is missing or left as a template placeholder. `Observed-Failure Ledger` is the newest such section — a request written from a stale template or from memory will lack it. Document reviews are the likeliest to hit this: they have no diff, so their request needs the explicit `No ledger exists for this work.` line. **Recovery: fix the request document, then re-run.**
+
+**Stage 2 — `codex-flow: codex exec <problem>`** with no exit code (`failed to start:`, `did not expose expected process streams.`, `completed without producing a final response.`, `returned invalid JSON output.`, `returned a non-object JSON response.`). Codex launched but produced nothing usable. All are permanent and none is a request defect. **Recovery: surface to the user with the message verbatim; do not re-run and do not edit the request.**
+
+**Stage 3 — `codex-flow: codex exec failed with exit code N: <reason>`.** Codex ran and failed. `<reason>` is Codex's own error text, and **its first line is the reason** — later lines are context.
+
+| First line contains | Cause | Recovery |
+|---|---|---|
+| `at capacity`, `overloaded` | Transient provider capacity | Re-run unchanged. If a second attempt several minutes later also fails, stop and surface it to the user — two spaced failures is the terminal state, not a third retry |
+| `model is not supported` | The pinned model is unavailable to this account — retired, or not entitled on the current plan | Permanent — surface to the user; `codex-flow`'s `DEFAULT_CODEX_MODEL` needs updating |
+| `event carried no message` | Codex reported a failure carrying no text in a shape `codex-flow` recognizes | Read the rollout transcript below, then surface to the user |
+| anything else, or no reason at all | Unclassified | Treat as permanent. Re-run at most once, then read `~/.codex/sessions/<YYYY>/<MM>/<DD>/rollout-*.jsonl` — three nested date components — and its terminal `task_complete` event, which holds the raw provider error including `codex_error_info` |
+
+A capacity error is not a broken request and repairing the request will not fix it; it can also strike mid-run, after Codex has already executed tool calls, so a long run that dies late is not evidence of a different cause.
+
+Annotating `Codex: ✗ not run` and continuing is **not** something you may decide on your own authority; that annotation exists for the case where Codex is genuinely unavailable, not for a request you can repair or a run you can retry. When a stage-2 or stage-3 recovery ends in "surface to the user", stop there and let them decide — the review is incomplete and that is their call, not yours.
 
 Once Codex has completed successfully, read its output:
 
