@@ -150,6 +150,16 @@ def spec_main(argv: list[str] | None = None) -> int:
         if kind == "main":
             return _no_scan(spec, "main spec (**Article:**) — appendix specs only, nothing to scan")
         document = specverify.parse_spec(text, str(spec))
+        # A contract whose §5 has outgrown the claims it carries may hold the rows in a
+        # sibling `evidence.md` and leave §5 an index. The two files are one document:
+        # claims come from spec.md, rows from wherever they are, and the §2↔§5 graph is
+        # checked across both. Merging here rather than in parse_spec keeps the parser
+        # single-file and leaves the split entirely optional.
+        evidence = folder / "evidence.md"
+        if evidence.is_file():
+            document = specverify.merge_rows(
+                document, specverify.parse_spec(specverify.read_text(str(evidence)), str(evidence))
+            )
         if not document.rows:
             raise MeasurementError(
                 f"no parseable §5 Verification Procedure in {spec}",

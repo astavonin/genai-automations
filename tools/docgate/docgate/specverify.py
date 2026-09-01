@@ -48,6 +48,7 @@ __all__ = [
     "fetch_document",
     "field_breaks",
     "graph_breaks",
+    "merge_rows",
     "normalise",
     "parse_spec",
     "raw_url",
@@ -423,6 +424,18 @@ def parse_spec(text: str, path: str) -> SpecDocument:
     if builder is not None:
         rows.append(builder.build())
     return SpecDocument(path, tuple(claims), tuple(rows))
+
+
+def merge_rows(contract: SpecDocument, evidence: SpecDocument) -> SpecDocument:
+    """Return `contract` with `evidence`'s §5 rows appended.
+
+    A contract may hold its verification rows in a sibling file and leave §5 an index,
+    which is the only supported reason for two documents to be one. The claims are the
+    contract's alone — `evidence`'s §2, if it somehow has one, is discarded rather than
+    merged, so a stray claims table in the evidence file cannot quietly widen the graph.
+    Rows keep their own `path`, so a failure is reported against the file it is in.
+    """
+    return SpecDocument(contract.path, contract.claims, contract.rows + evidence.rows)
 
 
 def _feed_claim_table(

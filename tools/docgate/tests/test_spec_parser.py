@@ -12,8 +12,10 @@ import pytest
 
 from conftest import CLEAN_SPEC, load_spec
 from docgate.specverify import (
+    SpecDocument,
     backtick_spans,
     cites_web_page,
+    merge_rows,
     normalise,
     parse_spec,
     raw_url,
@@ -447,12 +449,46 @@ _A3_SPEC = Path(
 )
 
 
+_A3_EVIDENCE = _A3_SPEC.with_name("evidence.md")
+
+
+def _load_a3() -> SpecDocument:
+    """Load the reference corpus, following the split when its rows live beside it.
+
+    A3 holds its §5 rows in `evidence.md` and leaves §5 an index, so loading `spec.md`
+    alone yields claims and no rows. Reading both here is what the CLI does, and it is
+    the only place the suite exercises `merge_rows` against a real document.
+    """
+    document = load_spec(_A3_SPEC)
+    if _A3_EVIDENCE.is_file():
+        document = merge_rows(document, load_spec(_A3_EVIDENCE))
+    return document
+
+
 @pytest.mark.skipif(not _A3_SPEC.is_file(), reason=f"reference corpus absent: {_A3_SPEC}")
 def test_the_reference_corpus_parses_without_raising() -> None:
     # No count is asserted: that spec is being rewritten, which is why the acceptance
     # corpus is a frozen fixture rather than this file.
-    document = load_spec(_A3_SPEC)
+    document = _load_a3()
 
     assert document.rows
     assert spec_kind(_A3_SPEC.read_text(encoding="utf-8")) == "appendix"
     assert all(row.value("Conclusion") for row in document.rows)
+
+
+@pytest.mark.skipif(
+    not _A3_EVIDENCE.is_file(), reason=f"reference corpus not split: {_A3_EVIDENCE}"
+)
+def test_merging_a_split_corpus_keeps_the_claims_and_takes_the_rows() -> None:
+    contract = load_spec(_A3_SPEC)
+    evidence = load_spec(_A3_EVIDENCE)
+    merged = _load_a3()
+
+    # The contract carries the claims and none of the rows; the evidence file is the
+    # mirror image. Asserting both halves is what would catch a split that left rows
+    # behind in spec.md and double-counted them after the merge.
+    assert contract.claims and not contract.rows
+    assert evidence.rows and not evidence.claims
+    assert merged.claims == contract.claims
+    assert merged.rows == evidence.rows
+    assert merged.path == contract.path
