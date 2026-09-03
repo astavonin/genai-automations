@@ -67,6 +67,7 @@ CODEX_ERROR_PAYLOAD_KEYS = ("error",)
 # one level up would outrank an explicit `message` below it.
 CODEX_ERROR_MESSAGE_KEYS = ("message", "reason", "details")
 CODEX_ERROR_FALLBACK_KEYS = ("text", "error_type", "code")
+CODEX_LINE_BREAK = re.compile(r"\s*[\r\n]+\s*")
 
 
 def run_implementation(request_path: Path, progress_config: ProgressConfig | None = None) -> Path:
@@ -234,15 +235,18 @@ def _invoke_codex(
         except OSError as err:
             raise WorkflowViolationError(f"codex exec failed to start: {err}") from err
 
-        if process.stdin is None or process.stdout is None:
-            raise WorkflowViolationError("codex exec did not expose expected process streams.")
-
         # Everything from here to `wait()` runs with a live child process. Any escape that does
-        # not reap it — an `on_started` that raises, an interrupt mid-stream — leaves Codex
-        # running against the repository after codex-flow has exited.
+        # not reap it — an `on_started` that raises, a stream that never materialized, an
+        # interrupt mid-stream — leaves Codex running against the repository after codex-flow
+        # has exited. The stream check belongs inside the guard for that reason, and after
+        # `on_started`, because by this point Codex has started and the documented contract is
+        # that a previous run's output does not survive it.
         try:
             if on_started is not None:
                 on_started()
+
+            if process.stdin is None or process.stdout is None:
+                raise WorkflowViolationError("codex exec did not expose expected process streams.")
 
             writer = threading.Thread(
                 target=_write_codex_stdin,
@@ -302,7 +306,9 @@ class CodexDiagnostics:
         `turn.failed` — and a retry loop repeats it further apart, so the comparison covers
         everything retained rather than only the previous entry, in either channel.
         """
-        stripped = detail.strip()[:MAX_CODEX_DIAGNOSTIC_STORED_CHARS]
+        # One JSON message can decode to many physical lines, which would render past the line
+        # budget however few entries are held — the cap counts entries, so entries must be lines.
+        stripped = CODEX_LINE_BREAK.sub(" ", detail.strip())[:MAX_CODEX_DIAGNOSTIC_STORED_CHARS]
         if stripped in self._fatal:
             return False
         if stripped in self._other:

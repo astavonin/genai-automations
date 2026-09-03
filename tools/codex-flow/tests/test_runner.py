@@ -1102,11 +1102,15 @@ def test_run_review_reports_a_codex_binary_that_cannot_start(
     assert "No such file or directory" in str(excinfo.value)
 
 
-def test_run_review_reports_missing_process_streams(
+def test_run_review_reaps_codex_when_it_exposes_no_streams(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The process started, so it must be reaped and the stale output must not survive it."""
     repository = tmp_path / "repo"
     repository.mkdir()
+    stale = repository / "planning/reviews/retry-review.md"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("# Review Output\n\nFindings from the previous round.\n", encoding="utf-8")
     request = tmp_path / "review.md"
     _write_review_request(request, repository)
 
@@ -1114,14 +1118,57 @@ def test_run_review_reports_missing_process_streams(
         stdin = None
         stdout = None
 
-    monkeypatch.setattr(
-        "codex_flow.runner.subprocess.Popen", lambda *args, **kwargs: _StreamlessProcess()
-    )
+        def __init__(self) -> None:
+            self.killed = False
+
+        def wait(self) -> int:
+            return 1
+
+        def kill(self) -> None:
+            self.killed = True
+
+    spawned: list[_StreamlessProcess] = []
+
+    def fake_popen(*args: object, **kwargs: object) -> _StreamlessProcess:
+        process = _StreamlessProcess()
+        spawned.append(process)
+        return process
+
+    monkeypatch.setattr("codex_flow.runner.subprocess.Popen", fake_popen)
 
     with pytest.raises(WorkflowViolationError) as excinfo:
         run_review(request)
 
     assert "did not expose expected process streams" in str(excinfo.value)
+    assert spawned[0].killed
+    assert not stale.exists()
+
+
+def test_run_review_counts_an_embedded_line_break_against_the_line_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A JSON message decodes to one entry, and the cap counts entries — so entries are lines."""
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    request = tmp_path / "review.md"
+    _write_review_request(request, repository)
+    sprawling = "\\n".join(
+        f"trace line {index}" for index in range(MAX_CODEX_DIAGNOSTIC_LINES + 10)
+    )
+
+    _install_fake_popen(
+        monkeypatch,
+        lambda command: None,
+        stdout_text=f'{{"type":"error","message":"{sprawling}"}}\n',
+        return_code=1,
+    )
+
+    with pytest.raises(WorkflowViolationError) as excinfo:
+        run_review(request)
+
+    reported = str(excinfo.value).splitlines()
+    assert len(reported) == 1
+    assert "trace line 0" in reported[0]
 
 
 @pytest.mark.parametrize(
