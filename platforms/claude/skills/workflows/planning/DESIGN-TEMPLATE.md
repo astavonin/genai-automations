@@ -36,8 +36,11 @@ Sections whose content is itself the completeness argument are never compressed:
 **Milestone:** `milestone-XX-<name>` · [%N](URL)
 **Feature:** [#N](URL)
 **Branch:** `feature/<branch-name>`
+**Class:** CI | TEST | PRODUCT-NEW | PRODUCT-SHIPPED
 **Status:** Draft | Approved | Superseded
 **Revision:** 1
+
+*(`Class` is the change class from `/design` Step 1a, copied from `analysis.md` → `## Change Class`. It is what reviewers grade this document against — see `~/.claude/skills/domains/architecture/SKILL.md` → Change Class. Leaving it unset makes the document reviewable only as `PRODUCT-NEW`, with compatibility findings graded at `PRODUCT-SHIPPED`, and is itself a review finding.)*
 
 ---
 
@@ -149,6 +152,8 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 
 ## 6. Test Requirements
 
+*(See `~/.claude/skills/domains/architecture/SKILL.md` → Change Class.)*
+
 ### Unit Tests
 *(Single-component tests with collaborators mocked or stubbed. List the specific behaviours and failure modes that must be covered — not file names.)*
 - ...
@@ -161,6 +166,10 @@ and any non-obvious invariants. Avoid method signatures, pseudocode, and file-le
 *(System- or user-flow-level tests that exercise the feature end-to-end. Omit with a one-line note if the feature has no user-facing or cross-service flow.)*
 
 *(Omit E2E subsection with a one-line note if no E2E tests are required for this feature)*
+
+### Tests Not Written
+*(Paths left untested by choice, one line each: the path, and what reaching it would cost. A declared gap is a decision the reviewer can argue with; an undeclared one reads as an oversight. Write "None" where every identified path is covered.)*
+- ...
 
 ---
 

@@ -2,6 +2,28 @@
 
 Use this checklist when conducting design and code reviews with the reviewer agent.
 
+## Change Class Calibration (read first — applies to both checklists)
+
+*(Copied from `~/.claude/skills/domains/architecture/SKILL.md` → Change Class, which remains authoritative for edits — this is the pasted copy every reviewer prompt actually reads.)*
+
+**Every item below is graded against the change's class, not against an absolute standard — except the observed-failure and test-volume carve-outs stated after the table.** The class is declared in the design doc header as `**Class:**` and corroborated in `analysis.md` under `## Change Class`, ordered `CI` < `TEST` < `PRODUCT-NEW` < `PRODUCT-SHIPPED`; its definition is `~/.claude/skills/domains/architecture/SKILL.md` → Change Class. Read it before assigning any severity.
+
+**Where the class comes from, and what a missing one costs, keys on whether an issue folder resolves — not on whether a design doc exists.** Both declaration sites live in that folder, and `analysis.md` → `## Change Class` is reachable whenever it does.
+
+- **`/review-design` and `/review-code`** own the declaration. Where the design header and `analysis.md` disagree, grade against the **higher** class and raise the disagreement as its own finding. Where neither declares one, or the header is left as the template's verbatim alternation (`CI | TEST | PRODUCT-NEW | PRODUCT-SHIPPED`), treat it as undeclared — review as `PRODUCT-NEW` and raise the missing declaration as a Medium finding.
+- **Every other review type** — `/review-fix`, `/review-mr`, `/review-spec` — takes the silent `PRODUCT-NEW` default and raises no finding. None of them is wired to read a declaration, and none can require one. A `CI` fix graded at `PRODUCT-NEW` is over-rigour rather than under-review, so this fails in the safe direction; wiring `/review-fix` to read `analysis.md` → `## Change Class` is a worthwhile follow-up, not a gap that blocks.
+
+| Class | Downgrade to Low | Still blocks |
+|---|---|---|
+| `CI` | unhandled improbable conditions, missing fallbacks and retries, absent recovery paths, hypothetical race windows | a failure that is silent rather than loud, a leaked secret, a destructive action without a guard |
+| `TEST` | absent coverage of a path needing heavy scaffolding to reach — provided the gap is stated in design §6 → Tests Not Written | a test that asserts nothing, a name contradicting its assertions, a mock of the boundary the bug crossed |
+| `PRODUCT-NEW` | missing backward compatibility, absent migration path, no deprecation window, an interface change with no shim — grade this item at `PRODUCT-SHIPPED` instead when the class was defaulted rather than declared, since a defaulted class must not suppress the one axis nobody can recover after release | every failure mode of every path: invalid input, dependency failure, boundary, concurrency, partial write |
+| `PRODUCT-SHIPPED` | nothing | all of `PRODUCT-NEW`, plus any unstated break in public API, wire format, persisted data, config, or CLI flags |
+
+Two rules on top of the table. Demanding rigor the class does not warrant is itself a finding against the reviewer, not a service to the author — an over-engineered CI script costs real maintenance. And the downgrade is a downgrade, never a deletion: an unhandled condition in `CI` is reported as Low so the author can see it and decline it, not dropped.
+
+**Two carve-outs the class never adjusts.** Observed-failure regression severities and the waiver rules (`~/.claude/skills/workflows/regression-test/SKILL.md` → Review Severities and Waiver) are graded on their own scale at every class — an unguarded observed failure in a `CI` change is still High, never downgraded to the Low this table would otherwise suggest. And the test-volume scaling in `~/.claude/skills/domains/testing/SKILL.md` → How many tests is the right number only ever reduces *additional hypothetical* coverage: the failure-scenario-coverage item and Test Quality Pass Step 2 below stay mandatory at every class for the paths and documented failure modes the design commits to covering.
+
 ## Design Review Checklist (Before Implementation)
 
 ### Context
@@ -113,7 +135,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] Unit tests exist and pass
 - [ ] Unit tests complete in ≤ 3 seconds each — no network, disk I/O, external processes, or real databases
 - [ ] Test coverage is adequate (critical paths covered)
-- [ ] When a numeric coverage target can be extracted from repo policy, CI, or surrounding context, the expected minimum is `>= 80%` unless the project defines a stricter rule
+- [ ] When a numeric coverage target can be extracted from repo policy, CI, or surrounding context, the expected minimum is `>= 80%` unless the project defines a stricter rule — scaled by the change's class per Change Class Calibration above; a `CI` or `TEST` change may fall under 80% where the gap is stated in design §6 → Tests Not Written
 - [ ] Tests are clear and maintainable
 - [ ] Edge cases tested
 - [ ] Integration tests exist (not just planned) for component boundaries
@@ -126,7 +148,7 @@ Use this checklist when conducting design and code reviews with the reviewer age
 - [ ] **Assertion specificity:** Assertions check concrete values or behavior, not vacuous checks (`assert result is not None`, `assert called_once()` with no argument verification). Each assertion should fail if the implementation returns a wrong-but-non-null value.
 - [ ] **Name/assertion alignment:** The test name describes the same scenario and outcome that the assertions actually verify. A mismatch (name says "returns error on missing token", body asserts status 200) is a correctness bug.
 - [ ] **Falsifiability:** Would this test fail if the production code were broken in exactly the way the name implies? Mentally delete the production logic and ask whether the test catches it.
-- [ ] **Failure scenario coverage:** Every public function or method that can fail MUST have at least one test for each distinct failure mode — invalid input, resource exhaustion, dependency error, boundary violation. A happy-path-only test suite is a correctness gap regardless of line coverage percentage.
+- [ ] **Failure scenario coverage:** Every public function or method that can fail MUST have at least one test for each distinct failure mode — invalid input, resource exhaustion, dependency error, boundary violation. A happy-path-only test suite is a correctness gap regardless of line coverage percentage. Scaled by class per Change Class Calibration above — `CI` and `TEST` cover the failure modes the code is documented to produce, not every conceivable one.
 
 #### Performance
 - [ ] No unnecessary operations in hot paths
@@ -191,7 +213,7 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 - [ ] **Falsifiability:** Mentally delete the production logic being tested — would the test catch the breakage? If not, the test does not verify what it claims.
 - [ ] **No bare sleeps for async behavior:** `time.sleep(N)` or `std::this_thread::sleep_for` used to wait for async side-effects is a race. Replace with polling or a signal/event.
 
-**Step 2 — Per-function negative coverage:** For every public function or method that has at least one test, verify the criteria below. Additionally, for every new failure mode introduced in the diff — regardless of whether the originating function has its own tests — verify a test exists at the *caller* level that exercises the full downstream consequence of that failure, not just the component in isolation. The test must assert no irreversible caller-side state was committed and no crash-loop, replay-loop, or error-exit entry point was created. The test belongs in the test file that owns the caller, not the component under test.
+**Step 2 — Per-function negative coverage:** For every public function or method that has at least one test, verify the criteria below. Additionally, for every new failure mode introduced in the diff — regardless of whether the originating function has its own tests — verify a test exists at the *caller* level that exercises the full downstream consequence of that failure, not just the component in isolation. The test must assert no irreversible caller-side state was committed and no crash-loop, replay-loop, or error-exit entry point was created. The test belongs in the test file that owns the caller, not the component under test. The caller-level test for a new failure mode is mandatory at every class per the carve-out above; how many of the callee's own hypothetical failure modes get a test scales with class.
 - [ ] At least one negative/failure test exists for each distinct failure mode (wrong input, null return, resource exhaustion, dependency error, boundary violation).
 - [ ] Safety invariants have explicit negative tests — e.g. "action must NOT fire when ID mismatches" requires a test that asserts the action was not taken, not just that no exception was raised.
 - [ ] Error path tests assert the specific error type, code, or message — not just that "some error occurred".
@@ -322,6 +344,8 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 | **High** | Significant correctness, security, maintainability, performance, or safety issue | Must fix before approval |
 | **Medium** | Material test, maintainability, clarity, or consistency issue | Must fix before approval |
 | **Low** | Optional enhancement or minor polish | Non-blocking |
+
+Severity is assigned after the Change Class Calibration at the top of this file, not before it. The same unhandled edge case is High in `PRODUCT-SHIPPED` and Low in `CI`; the finding text is the same either way, only its severity moves.
 
 ## Tips for Effective Reviews
 

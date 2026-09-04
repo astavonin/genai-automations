@@ -70,6 +70,7 @@ Use **architecture-research-planner agent** to read all modified files together 
 - `OPEN` status on Q&A / open-items table rows that were resolved in prose but not updated in their table cell
 - **A `## Writing Rules` heading in a `design.md`** — that section is guidance in `DESIGN-TEMPLATE.md` and was copied into the output instead of applied. Always a blocker; strip it.
 - **Review-process tracking artifacts** — inline `RESOLVED` markers (`**H1 RESOLVED — ...**`, `**L2 RESOLVED**`, `(M3 RESOLVED)`, `— M4 RESOLVED.`, `H6 RESOLVED block`, etc.) anywhere in design or user-facing docs. These are always blockers: resolution is tracked in the review report and review-request doc, not in design content. The architecture-research-planner must strip them when applying fixes.
+- **In a `design.md`: a `**Class:**` field left as the template's verbatim four-value alternation, or absent from the header entirely** — copied from `DESIGN-TEMPLATE.md` instead of resolved to one value, or deleted. Scoped to `design.md` because Step 1 enumerates every `.md` in the folder and `analysis.md`, the review reports, and the ledger carry no such field by design. Always a blocker: both states are undeclared, and neither is a declared `CI` — the same rule `~/.claude/commands/review-design.md` and `~/.claude/commands/review-code.md` apply to a `**Entry point:**` field left as a template placeholder. The review checklist treats the two states identically; so does this scan.
 
 **Citation form scan.** The scan lists **candidates**; you decide. It resolves the two exemptions it can see mechanically (fenced blocks, hash-pinned permalinks) and cannot see the rest, so every hit is triaged against the full exemption list in `~/.claude/CLAUDE.md` → Markdown Writing → code references before it becomes a blocker.
 
@@ -186,7 +187,7 @@ Produce a compact report in the main conversation (not a file unless the user as
 2. `REGISTER:` greater than 0, on `design.md` or `analysis.md`.
 3. `CEILING:` greater than 0 **on the `design.md` run only** — no other file is gated on length.
 4. In a design or user-facing doc: a `## Writing Rules` heading, or a `Writing Rules` row in the `doc-metrics` table (the mechanical signal — it survives the heading being renamed), or an inline `RESOLVED` marker or finding ID. Review reports carry finding IDs by construction and are out of scope for this item.
-5. A stale `TBD`/`TODO` the Q&A session was meant to resolve, or an `OPEN` row resolved in prose but not in its table cell.
+5. A stale `TBD`/`TODO` the Q&A session was meant to resolve, an `OPEN` row resolved in prose but not in its table cell, or — in a `design.md` — a `**Class:**` field left as the template's verbatim alternation or absent from the header.
 6. A citation-scan hit that survives triage against the exemption list.
 7. A broken `§N.M` cross-reference, a diagram contradicting prose, or a resolution summary in the review-request doc that contradicts the current doc content.
 8. A `design.md` whose table shows no `5. Detailed Design` row — the section was renamed past recognition, so its ceiling never applied.

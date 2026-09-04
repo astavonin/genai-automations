@@ -131,6 +131,25 @@ Use integration tests when two or more real components interact (DB, HTTP, broke
 
 Focus on meaningful coverage: a covered line is not a tested behavior.
 
+### How many tests is the right number
+
+**The targets above are for production code. Scale them by the change's class**, defined in `~/.claude/skills/domains/architecture/SKILL.md` → Change Class and declared in the design doc header.
+
+Every test is a permanent cost, not a one-time one: it is read on each failure, rewritten on each refactor, and debugged when it goes flaky. That cost is worth paying for a path the code actually takes and for a failure the code is documented to produce. It is not worth paying for a hypothetical path whose setup needs elaborate scaffolding, a fake wrapping another fake, or a production rewrite to make it reachable.
+
+| Class | Test the paths the code takes | Test documented failure modes | Test every conceivable failure mode |
+|---|---|---|---|
+| `CI` | yes | yes | no |
+| `TEST` | yes | yes | no |
+| `PRODUCT-NEW` | yes | yes | yes |
+| `PRODUCT-SHIPPED` | yes | yes | yes |
+
+A documented failure mode is the floor at every class — what scales is the third column, the modes nobody has documented and nothing has hit. In `CI`, order the work so the failures that would pass silently get covered first; a red pipeline announces itself, so the silent one earns its test soonest. That is a priority, not an exemption — the loud documented failures are still under the floor.
+
+`PRODUCT-SHIPPED` additionally requires one test pinning each compatibility guarantee the design names — the only class where anything outside the repo already depends on the change.
+
+For `CI` and `TEST`, a path you decline to test is **stated as uncovered** in design §6 → Tests Not Written, with what reaching it would cost. Declining is a decision a reviewer can argue with; omitting silently is indistinguishable from an oversight.
+
 ## Summary
 
 1. Write unit tests first; add integration tests at component boundaries

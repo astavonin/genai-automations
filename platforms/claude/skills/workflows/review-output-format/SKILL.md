@@ -32,6 +32,7 @@ Markdown report template for **code reviews** and **fix reviews**. Design and sp
 <!-- End fix review only -->
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Class:** <value> (declared | defaulted)
 
 ## Findings (<N total — consensus of 3 reviewers>)
 

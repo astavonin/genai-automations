@@ -25,6 +25,7 @@ Typical files to pre-read:
 - All source files changed on the branch (`.h`, `.cc`, `.cpp`, `.py`, `.go`, `.rs`, `.sh`, etc.) — use `git diff origin/master...HEAD --name-only` to enumerate them
 - **Interface files not in the diff:** for each changed `.cc`/`.cpp`/`.c` file, also read its `.h`/`.hpp` if it exists and is not already in the diff; for Go, read the interface definition files the changed package implements
 - **Full design doc** (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`) if one exists — pass the entire file, not just the acceptance criteria section
+- **`analysis.md`** if one exists — agents are forbidden from calling Read themselves, so without it inline no agent can corroborate the design header's `**Class:**` against `analysis.md` → `## Change Class`
 - **The observed-failure ledger** (`<issue-folder>/observed-failures.md`, resolved per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`) if one exists — mandatory when present. Agents are instructed to validate its entries and waivers but may not Read it themselves; without it inline they will report a valid, user-approved waiver as a missing test, producing a finding no coder can fix. If it does not exist, say so explicitly in the prompt rather than omitting the topic.
 - The review checklist
 
@@ -33,6 +34,8 @@ Typical files to pre-read:
 **Evidence for Codex:** Before writing the Step 0 review-request document, run the project's build and test commands and capture their output (exit codes + last 40 lines). Populate the Evidence section with this data. If the build or tests fail, note this prominently — Codex must factor it into its assessment.
 
 **Ledger for Codex:** Populate the review-request's `## Observed-Failure Ledger` section with the contents of `<issue-folder>/observed-failures.md` **inside the template's `~~~markdown` fence** — a pasted ledger's own `## <date>` entry headings would otherwise end the section and read as empty — or the literal `No ledger exists for this work.` Codex sees only this document — omitting the section makes it flag user-approved waivers as missing tests.
+
+**Class for Codex — two parts.** Populate the review-request's `## Constraints` → `**Class:**` line with the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class` (either alone where only one is set), matching the higher-of-two rule the Claude agents grade by. Then **paste the Change Class Calibration table beneath that section's bullet list**, fresh from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`. Codex runs with `--ignore-user-config --ignore-rules` and reads only this document plus the bundled `codex_flow/resources/skills/reviewer/SKILL.md`, which carries a pointer to the table plus the two carve-outs, never the table itself — so a request with a class but no table falls back to `PRODUCT-NEW` with compatibility at `PRODUCT-SHIPPED`, and one with neither leaves Codex grading at that same fallback while the Claude agents in the same review grade at the declared class.
 
 ## Status Marker Convention
 
@@ -90,6 +93,7 @@ Agents use differentiated focus areas — see the consensus protocol for per-age
 - **Agent 3:** Observability, Maintainability, Extendability, Supportability
 
 Additional cross-cutting checks applied by all agents:
+- **Change class calibration (applies to every finding, assign severity only after reading it):** `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration — the checklist already reaches every agent's prompt, so this is a pointer, not a restatement
 - **Minimality:** The implementation is no larger than the approved design requires — flag an added indirection, abstraction, generalisation, or configuration knob that serves no §3 requirement and no §5 contract. This covers public API surface too: flag multiple methods that share the same underlying resource, preconditions, and side effects where a single call with a discriminated return type would eliminate the risk of a caller silently skipping an action type
 - **Design adherence:** Matches approved design
 - **Standards compliance:** Coding standards and static analysis per language guidelines

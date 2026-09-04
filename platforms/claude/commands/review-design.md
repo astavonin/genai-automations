@@ -33,7 +33,7 @@ Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
 
 Only proceed when the gate passes.
 
-1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`
+1. Load design document from `planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`, **and its sibling `analysis.md` if one exists** — pass both inline in every agent prompt. The Design-Level Constraint below tells each agent to corroborate the header's `**Class:**` against `analysis.md` → `## Change Class` and to raise a disagreement as its own finding; agents may not call Read themselves, so without the file inline that rule cannot fire in the one review where the class is first declared. `analysis.md` also carries `## Ticket Constraints`, which the Ticket Constraint Guardrail depends on.
 2. Run the **Consensus Review Protocol** (Steps 0, A–E and **Step G**; skip Step F and Step H — those two are code/fix/MR-only) against the design document. Step G uses its **design-review verifier variant**; single-agent and Codex-only findings are adversarially reverified before they reach the report.
 
    ```
@@ -41,6 +41,7 @@ Only proceed when the gate passes.
    ```
    (`test_coverage = no`)
 
+   - **Step 0 review-request document, two parts:** populate its `## Constraints` → `**Class:**` line with the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class` (either alone where only one is set), **and** paste the Change Class Calibration table beneath that section's bullet list, fresh from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`. Codex runs with `--ignore-user-config --ignore-rules`, so the pasted table is the only grading scale it receives — the bundled reviewer skill carries a pointer to it plus the two carve-outs, never the table itself. A request with a class and no table falls back to `PRODUCT-NEW` with compatibility at `PRODUCT-SHIPPED`, which is the over-rigor this mechanism exists to remove
    - **Launch simultaneously:** 3 Claude reviewer agents (Steps A–D) **and** Codex (Step E) in parallel — skip Step F (no code or tests to evaluate)
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → **Step G** (adversarial reverification, design criteria). Single-agent Claude findings and Codex-only findings are reverified 2-of-2; survivors land in `## Reverified Findings`, and nothing unreverified reaches the report. Skip Steps F and H.
@@ -76,6 +77,8 @@ Only proceed when the gate passes.
 
 This is a **design review**, not a code review. Reviewers must stay at the architectural level.
 
+**Grade against the change class before assigning any severity.** The design doc header declares `**Class:**` (`CI` | `TEST` | `PRODUCT-NEW` | `PRODUCT-SHIPPED`, ordered in that sequence), corroborated by `analysis.md` → `## Change Class`; the calibration table is `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration, and the definitions are `~/.claude/skills/domains/architecture/SKILL.md` → Change Class. A missing fallback is Low in `CI` and High in `PRODUCT-SHIPPED` — same finding, different severity. Demanding rigor the class does not warrant is a defect in the review, since the mechanism it asks for has to be maintained forever. Where the header and `analysis.md` disagree, grade against the **higher** class and raise the disagreement as its own finding. Where neither declares a class, or the header is left as the template's verbatim alternation (`CI | TEST | PRODUCT-NEW | PRODUCT-SHIPPED`), treat it as undeclared: review as `PRODUCT-NEW` and flag the missing declaration as Medium — the calibration table's `PRODUCT-NEW` row already grades compatibility at `PRODUCT-SHIPPED` for a defaulted class.
+
 **Flag (design-level concerns):**
 - Missing or ambiguous contracts between components (e.g. "error propagation from write failures is undefined")
 - Undefined or contradictory state machine transitions
@@ -105,7 +108,8 @@ Before flagging a design for violating a ticket restriction, consult `analysis.m
 
 ## Review Scope
 
-Each of the 3 agents evaluates these design-level attributes:
+Each of the 3 agents evaluates these design-level attributes, every one of them graded against the declared change class per the Design-Level Constraint above:
+- **Class fit:** The declared `**Class:**` matches what the change actually touches, and the design's depth matches the class — flag a `PRODUCT-SHIPPED` design that names no compatibility surface, and equally a `CI` or `TEST` design carrying fallbacks, migration paths, or failure-mode enumeration its class does not warrant; a `CI` or `TEST` design that skips a reachable path must state the gap in §6 → Tests Not Written — an undeclared gap reads as an oversight, not a decision
 - **Completeness:** All components, interfaces, and state transitions defined with enough clarity to implement consistently
 - **Correctness:** No internal contradictions, no undefined concepts referenced in diagrams or tables
 - **Contracts:** Error handling strategy, resource lifetime, thread-safety boundaries stated at component level
@@ -128,6 +132,7 @@ Produce a markdown report:
 **Subject:** <feature name>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Class:** <value> (declared | defaulted)
 **Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable
 
 ## Findings (<N total — consensus of 3 reviewers>)

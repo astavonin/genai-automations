@@ -81,6 +81,7 @@ from the review request template:
 - **Output File:** `<issue-folder>/codex-fix-review.md`
 - **Requirements:** what the fix was supposed to solve (from Step 2)
 - **Observed-Failure Ledger:** the contents of `<issue-folder>/observed-failures.md`, pasted **inside the template's `~~~markdown` fence** (its `## <date>` entry headings would otherwise end the section), or the literal `No ledger exists for this work.` Codex sees only this document; without the section it flags a user-approved waiver as a missing test, producing a High that no coder can clear. This matters most here — in a fix review every regression finding is High.
+- **Class, and the calibration table beneath the bullet list:** a fix review takes the silent `PRODUCT-NEW` default per `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration, so write `**Class:** PRODUCT-NEW (defaulted)` and paste that section's table fresh. Codex runs with `--ignore-user-config --ignore-rules` and the bundled reviewer skill carries only a pointer, so an unpasted table leaves Codex grading on a different scale from the four Claude agents in the same review.
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here
 - **Review Focus:** correctness, completeness, regressions, root cause, tests
 

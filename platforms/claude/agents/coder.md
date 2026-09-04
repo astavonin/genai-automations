@@ -138,7 +138,7 @@ Read the testing skill before writing tests:
 Read ~/.claude/skills/domains/testing/SKILL.md
 ```
 
-- Write comprehensive unit tests (80%+ coverage)
+- Write comprehensive unit tests (80%+ coverage, scaled by the design's declared change class where one exists — see `~/.claude/skills/domains/architecture/SKILL.md` → Change Class)
 - Use AAA pattern (Arrange, Act, Assert)
 - Test edge cases and error conditions
 - Keep tests independent and isolated
@@ -218,7 +218,7 @@ Before finalizing any implementation, actively verify:
 
 ## Quality Checks
 
-- [ ] Unit tests cover at least 80% of new codebase
+- [ ] Unit tests meet the coverage bar in Testing Standards above (80%+, scaled by change class)
 - [ ] If the work fixed an observed failure: a regression test reproducing it is included, at the right level, with red/green evidence recorded
 - [ ] Code follows language-specific style guidelines (C++ Core Guidelines, PEP 8, Rust API Guidelines, Go conventions, Zig Style Guide)
 - [ ] All unit tests pass successfully

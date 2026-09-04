@@ -31,9 +31,21 @@ Also read:
 - `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` (if it exists)
 - The linked issue via `projctl load issue <N>` (if a ticket number is known)
 
-### Step 1: Detect on-device scope
+### Step 1: Classify the change and detect on-device scope
 
-Before Q&A, determine whether the feature is device-verifiable. A feature is device-verifiable when the task, acceptance criteria, changed code path, CI/HIL job, verifier script, or project guidance makes target hardware or device/HIL validation relevant.
+Two determinations, both made before Q&A and both stated in conversation before it starts.
+
+#### 1a. Change class
+
+Read `~/.claude/skills/domains/architecture/SKILL.md` → Change Class and pick exactly one of `CI` | `TEST` | `PRODUCT-NEW` | `PRODUCT-SHIPPED`. It sets how much rigor the rest of the design owes — how far failure modes are enumerated, how many tests §6 asks for, and what severity a reviewer assigns to a gap. Getting it wrong in either direction is expensive: a CI script designed to `PRODUCT-SHIPPED` standards carries mechanism nobody needs, and a shipped library designed to `CI` standards ships the defect.
+
+Signals to read, in order: which paths the change touches (`ci/`, `.github/`, `Makefile` and dev scripts → `CI`; `tests/`, fixtures, harnesses → `TEST`; everything else → production), then, for production, whether anything outside this repo already depends on the surface being changed — a released version, another team's consumer, data already persisted in the field. The ticket, `README.md`, and release tags are where that evidence lives. Take the **highest** class the change touches; where the evidence is genuinely ambiguous, ask the user during Q&A rather than picking.
+
+Write the outcome to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## Change Class` heading — the machine-readable label alone on the first line, then the evidence that chose it. `PRODUCT-SHIPPED` additionally names the compatibility surface it must preserve: public API, wire format, persisted data, config and CLI flags. If that file does not yet exist, create it with just this section.
+
+#### 1b. On-device scope
+
+Determine whether the feature is device-verifiable. A feature is device-verifiable when the task, acceptance criteria, changed code path, CI/HIL job, verifier script, or project guidance makes target hardware or device/HIL validation relevant.
 
 - Read the analysis doc and ticket description for signals: deployment targets, hardware references, CI-on-device, boot/init behavior, sensor or network interface access, OTA, embedded runtimes.
 - If on-device execution or HIL/device validation is relevant to implementation or acceptance, check whether the project documents how to reach the device — look in the project's `CLAUDE.md`, `README.md`, and any existing planning docs.
@@ -48,7 +60,7 @@ Record the outcome as one of:
 - **On-device: YES-UNKNOWN** — feature is device-verifiable, but no device procedures found in project docs → include an On-Device Verification stub block in Section 3 with every field explicitly marked TBD, and add an open question in Section 8 requiring resolution before implementation. Do not invent steps.
 - **On-device: NO** — feature is software-only → omit the section with a one-line note
 
-State the outcome explicitly in conversation before starting Q&A. Also write it to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## On-Device Scope` heading using the canonical machine-readable label — exactly one of: `YES` | `YES-UNKNOWN` | `NO` — followed by the source evidence (file name and relevant excerpt). Always use the machine-readable form in analysis.md so downstream regex checks are reliable. If that file does not yet exist, create it with just this section. This heading is the authoritative scope signal for all downstream commands (review-design, review-code, verify) — they must read it rather than inferring scope from design doc section presence.
+State the outcome explicitly in conversation before starting Q&A. Also write it to `planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md` under a `## On-Device Scope` heading using the canonical machine-readable label — exactly one of: `YES` | `YES-UNKNOWN` | `NO` — followed by the source evidence (file name and relevant excerpt). Always use the machine-readable form in analysis.md so downstream regex checks are reliable. 1a runs first and creates `analysis.md` if it did not already exist, so add this section to a file that already exists rather than creating it fresh. This heading is the authoritative scope signal for all downstream commands (review-design, review-code, verify) — they must read it rather than inferring scope from design doc section presence.
 
 ### Step 2: Q&A Phase (main conversation — back-and-forth dialog)
 
@@ -100,7 +112,8 @@ Pass to the agent:
 - The enriched analysis doc (including clarifications)
 - The DESIGN-TEMPLATE.md structure
 - The goal, milestone, feature context
-- The on-device determination from step 1 — explicitly state one of:
+- **The change class from step 1a**, named explicitly, with the instruction to write it into the design doc header as `**Class:** <value>` and to design to that class's demands as `~/.claude/skills/domains/architecture/SKILL.md` → Change Class states them. Two consequences the agent must apply rather than infer, detailed there under **What each class demands**: §6 asks for exactly the test volume that class warrants, and only `PRODUCT-SHIPPED` carries mandatory compatibility, migration, or deprecation content
+- The on-device determination from step 1b — explicitly state one of:
   - "On-device verification is MANDATORY — include the On-Device Verification block in Section 3 using procedures from [source file]; build-test-package step is MANDATORY / not required (standard build suffices); entry point is [existing: `<script>` | new deliverable: must be created as part of this feature]; include 'Expected outcome on device' and 'Failure indicators' fields populated from project documentation"
   - "On-device scope detected but device procedures are unknown — include an On-Device Verification stub block in Section 3 with every field (entry point, build test package, deploy, verify, expected outcome, failure indicators) explicitly marked TBD; add an open question in Section 8 requiring resolution before implementation"
   - "No on-device scope — omit On-Device Verification with a one-line note"

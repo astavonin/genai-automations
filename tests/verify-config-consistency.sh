@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=41
+EXPECTED_TESTS=42
 
 PASS=0
 FAIL=0
@@ -136,6 +136,47 @@ elif [ "$src_rows" = "$mirror_rows" ]; then
 else
     fail "severity table ($n_src rows) is identical in regression-test and review-checklist" \
          "$(diff <(printf '%s\n' "$src_rows") <(printf '%s\n' "$mirror_rows") | head -12)"
+fi
+
+echo "== Change-class label sets agree across architecture, review-checklist, and testing tables =="
+
+# M1 (code review main-2b1a277): the four class labels grade three independent tables. A class
+# present in the architecture definition with no row in a grading table lets a reviewer improvise
+# a severity, silently, for every finding in that review. Extraction is bound to each table's own
+# first column (a line starting `| \`LABEL\` |`), not to any backtick mention of a label in
+# surrounding prose, and bounded to each table's own section heading so a same-named label
+# elsewhere in the file is never picked up.
+#
+# The guard's precondition: a class label is all-caps with hyphens (`[A-Z][A-Z-]*`). A label added in
+# any other shape — lowercase, digits, an underscore — is invisible to the extractor and the sets
+# still compare equal. Widening the character class is the wrong fix: it starts matching other
+# backticked first columns inside the same heading-bounded range. Keep the convention instead.
+#
+# DESIGN-TEMPLATE.md's own header spelling (`**Class:** CI | TEST | ...`) is deliberately excluded
+# — it is unbackticked and not a table row, so including it would false-red the one site that
+# cannot use backticks.
+class_labels() {   # $1: file  $2: heading line (fixed-string prefix match)
+    awk -v h="$2" 'index($0,h)==1{f=1;next} f && /^#/{exit} f' "$1" \
+        | $GREP -oE '^\| `[A-Z][A-Z-]*` \|' \
+        | $GREP -oE '`[A-Z][A-Z-]*`' | sort -u
+}
+
+ARCH_CLASS="$CLAUDE/skills/domains/architecture/SKILL.md"
+CHECKLIST_CLASS="$CLAUDE/skills/domains/quality-attributes/references/review-checklist.md"
+TESTING_CLASS="$CLAUDE/skills/domains/testing/SKILL.md"
+
+arch_class_labels=$(class_labels "$ARCH_CLASS" "## Change Class")
+checklist_class_labels=$(class_labels "$CHECKLIST_CLASS" "## Change Class Calibration")
+testing_class_labels=$(class_labels "$TESTING_CLASS" "### How many tests is the right number")
+
+n_arch_class=$(printf '%s\n' "$arch_class_labels" | $GREP -c . || true)
+if [ "$n_arch_class" -eq 0 ]; then
+    fail "the four class labels are extracted from architecture/SKILL.md's Change Class table" "extraction found none"
+elif [ "$arch_class_labels" = "$checklist_class_labels" ] && [ "$arch_class_labels" = "$testing_class_labels" ]; then
+    pass "the class label set ($n_arch_class labels) agrees across architecture, review-checklist, and testing tables"
+else
+    fail "the class label set agrees across architecture, review-checklist, and testing tables" \
+         "architecture=$(printf '%s' "$arch_class_labels" | tr '\n' ' ') checklist=$(printf '%s' "$checklist_class_labels" | tr '\n' ' ') testing=$(printf '%s' "$testing_class_labels" | tr '\n' ' ')"
 fi
 
 echo "== Command roster =="
@@ -869,18 +910,21 @@ CODEX_DOC="$ROOT/platforms/codex/skills/architecture-research-planner/SKILL.md"
 metric() { printf '%s\n' "$1" | $GREP -m1 "^$2:" | awk '{print $2}'; }
 
 # I1: the shipped template is the mechanism's own dogfood case — every Cost:/Misses: field is
-# present and every requirement bullet carries a real From: tag.
+# present, every requirement bullet carries a real From: tag, and the prose trips no register
+# detector. L1 (code review main-2b1a277): this loop covered COST/MISSES/FROM/UNTAGGED only, so a
+# REGISTER hit (a "deliberately" that snuck into §6) stayed green here even though the template
+# itself violates the rule its own tool enforces.
 tmpl_out=$(doc-metrics "$DESIGN_TEMPLATE" 2>&1); tmpl_rc=$?
 bad=""
 [ "$tmpl_rc" -eq 0 ] || bad="doc-metrics exited $tmpl_rc; "
-for counter in COST MISSES FROM UNTAGGED; do
+for counter in COST MISSES FROM UNTAGGED REGISTER; do
     v=$(metric "$tmpl_out" "$counter")
     [ "$v" = "0" ] || bad="$bad$counter=${v:-<no line>}; "
 done
 if [ -z "$bad" ]; then
-    pass "the shipped DESIGN-TEMPLATE.md reports zero on all four design-field counters"
+    pass "the shipped DESIGN-TEMPLATE.md reports zero on all five design-field/register counters"
 else
-    fail "the shipped DESIGN-TEMPLATE.md reports zero on all four design-field counters" \
+    fail "the shipped DESIGN-TEMPLATE.md reports zero on all five design-field/register counters" \
          "$bad$(printf '\n%s' "$tmpl_out" | tail -8)"
 fi
 

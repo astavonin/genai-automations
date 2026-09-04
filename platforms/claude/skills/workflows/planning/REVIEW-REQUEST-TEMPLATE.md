@@ -29,8 +29,17 @@ What the code was supposed to implement:
 
 What must not change:
 - ...
+- **Class:** `CI` | `TEST` | `PRODUCT-NEW` | `PRODUCT-SHIPPED` — the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class` (either alone where only one is set; `PRODUCT-NEW` where neither is), with the calibration table pasted beneath this section.
 - Name the **file and symbol** for every finding (`src/pipeline/pipeline.cc` → `process_frame()`), or a quoted distinctive token where no symbol exists. A `file:line` may accompany the symbol but must never be the only locator, and no finding may reference a planning document by line — use `§N.M` and finding IDs.
 - This review runs with `--ignore-user-config --ignore-rules`, so the rule reaches it only through this line and the bundled `codex_flow/resources/skills/reviewer/SKILL.md`; editing `platforms/codex/` does not reach a review run.
+
+**Fill the `**Class:**` bullet above from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration, never from this template's placeholder.** Paste the table fresh rather than reusing an old copy — this review runs with `--ignore-user-config --ignore-rules`, so this pasted copy is the only calibration Codex ever reads. Leaving the alternation unresolved (the literal `CI | TEST | PRODUCT-NEW | PRODUCT-SHIPPED`) is read as undeclared, not as a declared `CI` — the bundled reviewer skill says so, and the fallback line below repeats it. Resolve it anyway: an undeclared class grades every compatibility finding at `PRODUCT-SHIPPED`.
+
+~~~markdown
+# (paste the Change Class Calibration table here)
+~~~
+
+An absent or unresolved `**Class:**` value means the review is uncalibrated: grade as `PRODUCT-NEW`, with the pasted table's `PRODUCT-NEW` row applying its defaulted-class clause.
 
 ---
 

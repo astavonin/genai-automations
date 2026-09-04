@@ -22,14 +22,7 @@ Three focus-differentiated reviewer agents evaluate the subject in parallel. The
 
 ### Step 0: Prepare Codex review request (before launching any agents)
 
-**This step must complete before Step A.** Write the Codex review request document from the
-template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and save it to
-`<review-request-path>` (supplied by the invoking command). Fill in all fields from the current review
-context (repository, branch, scope, requirements, observed-failure ledger, evidence, review focus).
-The ledger section is validated by codex-flow and must not be left as the template placeholder:
-paste `<issue-folder>/observed-failures.md`, or state `No ledger exists for this work.` A document
-review has no diff and therefore never has a ledger — always the latter. The `Output File`
-field must point to `<codex-output-path>` (supplied by the invoking command).
+**This step must complete before Step A.** Write the Codex review request document from the template at `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md` and save it to `<review-request-path>` (supplied by the invoking command). Fill in all fields from the current review context (repository, branch, scope, requirements, change class, observed-failure ledger, evidence, review focus). The ledger section is validated by codex-flow and must not be left as the template placeholder: paste `<issue-folder>/observed-failures.md`, or state `No ledger exists for this work.` A document review has no diff and therefore never has a ledger — always the latter. The `Output File` field must point to `<codex-output-path>` (supplied by the invoking command).
 
 **⚠️ Heading format is validated literally by codex-flow.** The first line of the document MUST be:
 ```
@@ -257,7 +250,7 @@ Evaluate the subject under review for:
    - **An absent ledger is not an exemption.** In a code or fix review, "no ledger exists" is itself the defect condition — row 1 of Step 3's table, High — whenever the diff shows evidence of an observed failure (a bug-ticket reference, a `fix:`/`hotfix` branch or commit, a CI-config or script change following a red pipeline, an analysis doc describing an incident). Only in an **MR review** does an absent ledger mean the check does not apply, because external MRs have no issue folder.
    - **If a ledger was passed to you inline, evaluate every entry.** A `covered`, `waived`, or `out-of-scope` entry is resolved; `open` is not.
 
-Rate each finding: Critical (no tests for public API), High (significant gap or safety-invariant violation), Medium (anti-pattern, missing edge case), Low (minor improvement). For observed-failure findings use item 8's table instead of this line — it carries Medium rows this scale does not.
+Rate each finding: Critical (no tests for public API), High (significant gap or safety-invariant violation), Medium (anti-pattern, missing edge case), Low (minor improvement). For observed-failure findings use item 8's table instead of this line — it carries Medium rows this scale does not. For item 7's per-function negative-coverage findings, grade against the Change Class Calibration in the review checklist provided inline above instead of this line, including its carve-outs.
 Output a raw list: title, severity, description, location.
 ```
 

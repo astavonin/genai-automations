@@ -95,6 +95,8 @@ A header field the resolved page type contradicts is the same blocker on the sam
 
 **3. Write the Codex review request** to `<review-request-path>` per Step 0 of the consensus protocol, from `~/.claude/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md`. Paste the selected criteria set into its `## Requirements` section.
 
+A spec review takes the silent `PRODUCT-NEW` default per `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration: write `**Class:** PRODUCT-NEW (defaulted)` and paste that section's table beneath the `## Constraints` bullet list, fresh. Codex runs with `--ignore-user-config --ignore-rules` and the bundled reviewer skill carries only a pointer to the table, so leaving it out has Codex grading on a different scale from the Claude agents in the same review.
+
 A spec review has no diff, so the ledger section carries the reason on the same line rather than the template's bare placeholder: `No ledger exists for this work — spec review, no diff to regress.` Codex reads only this document, and its bundled reviewer skill runs the observed-failure regression pass unconditionally, so a bare absence reads as an unresolved gap and returns a High that no spec edit can clear. The template's own rule says it — an absence is defensible only when the reason travels with it.
 
 This settles the pass for *this review*, not for the spec's subject matter. A failure that actually happened to the document under review still belongs in a ledger somewhere; what it does not belong to is a review with nothing to regress against.

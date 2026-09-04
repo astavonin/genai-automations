@@ -103,6 +103,7 @@ from the review request template:
 - **Output File:** `planning/<epic-slug>/reviews/MR<number>-codex-review.md`
 - **Requirements:** key requirements extracted from the MR description
 - **Observed-Failure Ledger:** the literal line `No ledger exists for this work — external MR.` External MRs have no issue folder, so there is nothing to paste. Stating it explicitly stops Codex from reporting a missing ledger entry as High against an author who has no mechanism to record one.
+- **Class, and the calibration table beneath the bullet list:** an external MR has no issue folder and therefore no declaration, so write `**Class:** PRODUCT-NEW (defaulted)` per `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration, and paste that section's table fresh. The defaulted value matters here more than anywhere: the table's `PRODUCT-NEW` row grades compatibility findings at `PRODUCT-SHIPPED` precisely because a defaulted class must not suppress a breaking API change, and an external MR is the review most likely to carry one.
 - **Evidence:** run the project's build and test commands; capture exit codes + last 40 lines of output and paste here. If unavailable, use `git diff --stat` as a fallback.
 - **Review Focus:** bugs, security issues, logic errors, standards compliance
 

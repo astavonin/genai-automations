@@ -42,6 +42,7 @@ Every iteration overwrites in place. If the reviewer or the user needs to compar
    - Requirements (one or more bullets)
    - Constraints (one or more bullets)
    - Observed-Failure Ledger (contents of `<issue-folder>/observed-failures.md`, or `No ledger exists for this work.`)
+   - Class — the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class`, or `PRODUCT-NEW (defaulted)` where neither is set. Then paste the Change Class Calibration table from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` beneath the `## Constraints` bullet list, fresh. Codex runs with `--ignore-user-config --ignore-rules` and the bundled reviewer skill carries only a pointer to that table, so an unpasted table leaves the review uncalibrated
    - Evidence (bash commands + exit codes)
    - Review Focus (one or more bullets)
 4. Write the completed document to the scope-appropriate `*-review-request.md` path (never top-level `planning/reviews/`).
