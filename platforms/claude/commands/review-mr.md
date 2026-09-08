@@ -114,7 +114,7 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 
 **Step A (single message):** Launch simultaneously:
 - 3 × reviewer (opus) Agent calls with the full diff, MR title/description, review checklist, and the **Writing Style** rules from this skill (sound human, be friendly, never blame, focus on the problem not the person — full rules are under "YAML Schema → Writing style" below). Add the same MR carve-out given to the Step F agent below: **no issue folder and no `observed-failures.md` ledger exists for an external MR** — skip the ledger and waiver checkboxes in Test Quality Pass Step 3, and raise any missing regression test as a question to the author rather than a blocker.
-- 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review and the review checklist inline (its Test Quality Pass Step 3 is what prompt item 8 runs). Add one instruction: **this is an external MR with no issue folder and no `observed-failures.md` ledger.** Step 3's ledger and waiver checks do not apply; if the MR fixes a failure that occurred and ships no regression test, raise it as a question to the author, not as a blocker citing a waiver they have no mechanism to record.
+- 1 × test-coverage reviewer (opus) Agent call per **Step F** of the consensus protocol — use the exact prompt defined there, passing the full diff as the subject under review and the review checklist inline (its Test Quality Pass Step 3 is what prompt item 8 runs). Add two instructions. First: **this is an external MR with no issue folder and no `observed-failures.md` ledger.** Step 3's ledger and waiver checks do not apply; if the MR fixes a failure that occurred and ships no regression test, raise it as a question to the author, not as a blocker citing a waiver they have no mechanism to record. Second — this overrides the protocol prompt's coverage-enumeration items for MR reviews: **test-correctness over test-coverage.** Report tests that lie — vacuous assertions, mirrors of the production logic they claim to verify, timing races, order dependence — at full severity; report missing coverage only where the untested path's failure would ship to production undetected, at Low; do not report naming or file-convention issues in test files. An author reviewing eight coverage nags stops reading before the one finding that matters.
 - `codex-flow` Bash call with `run_in_background: true`:
   ```bash
   codex-flow review planning/<epic-slug>/reviews/MR<number>-review-request.md
@@ -122,7 +122,7 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 
 Aggregate once all five have returned per protocol Steps B–H:
 - Test-coverage findings that also appear in Claude consensus: mark as corroborated
-- Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections)
+- Test-coverage-only findings: merge into the YAML findings list as regular findings (no separate section — YAML format has no sections), after the who-suffers filter: a test finding earns its place by naming the production defect that would slip through; drop coverage-for-coverage's-sake and test-file pedantry. If test findings outnumber production findings after merging, re-triage the test set before writing the YAML — that ratio is the signature of enumeration, not review.
 - Step G reverified findings: merge into the YAML findings list. Prefix the finding description with exactly `[Reverified] ` (bracketed literal, single trailing space) so downstream consumers can distinguish findings that survived the adversarial pass from consensus findings. This prefix is required, not optional.
 
 **Before launching Step G verifier agents:** reuse the `Repository:` absolute path already written into `planning/<epic-slug>/reviews/MR<number>-review-request.md` (Step 0) — this is the same value Codex used. If Step 0 was skipped or the `Repository:` field is missing/empty, fall back to running `pwd` in the main conversation's shell. If both fail, do NOT launch Step G verifier agents — surface the warning defined in protocol §Step G "How the main conversation obtains Repository" and treat all Step G-eligible findings as discarded-with-warning under rule 4 semantics. Supply the resolved path as the `Repository:` field in each verifier prompt.
@@ -130,8 +130,8 @@ Aggregate once all five have returned per protocol Steps B–H:
 Severity scale:
 - `Critical` - Must fix before merge (security, data loss, crashes)
 - `High` - Should fix before merge (significant correctness/maintainability issues)
-- `Medium` - Consider fixing (improvements, test gaps, style issues)
-- `Low` - Optional suggestions (minor enhancements)
+- `Medium` - Consider fixing (improvements with production or CI-stability impact)
+- `Low` - Optional suggestions (minor enhancements; test-coverage gaps belong here unless the gap hides a regression class this MR itself creates)
 
 **Content sanitization:** Do NOT use `@username` patterns in finding descriptions.
 GitLab will interpret these as real user mentions and send notifications.
@@ -315,12 +315,12 @@ findings:
     guideline: "C++ Core Guidelines CP.2"
 
   - severity: Medium
-    title: "Missing unit test for invalidation during in-flight read"
+    title: "Eviction test asserts on its own re-computation of the LRU order"
     description: |
-      No test covers `CacheManager::invalidate()` called while a read is pending.
-      The scenario exists in the integration test but not in isolation.
+      The test rebuilds the expected order with the same comparator the cache uses, so a
+      comparator bug passes both sides — the one regression this test exists to catch.
     location: "tests/cache/test_cache_manager.cc:142"
-    fix: "Add a unit test that calls invalidate() concurrently with a pending read."
+    fix: "Assert against a hand-written literal order for a fixed insertion sequence."
     guideline: null
 
   - severity: Low

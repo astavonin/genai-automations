@@ -89,7 +89,6 @@
       "Read(/tmp/**)",
       "Read(**/planning/**)",
       "Edit(~/.claude/skills/**)",
-      "Write(~/.claude/skills/**)",
       "Bash(rsync:*)",
       "Bash(test:*)",
       "Bash(stat:*)",
