@@ -66,7 +66,7 @@ A happy-path-only test suite is a correctness gap regardless of line coverage pe
 ### Observed Failure Regression Coverage (mandatory)
 The section above covers failure modes you **anticipate**. This one covers failures that **actually happened**.
 
-Every observed failure produces two deliverables: the fix, and a test that reproduces the failure. A fix without a covering test is incomplete work — it does not pass `/verify` and is not approvable in `/review-code` or `/review-fix`. The only alternative is a user-approved waiver in one of five narrow categories.
+Every observed failure produces two deliverables: the fix, and a test that reproduces the failure. A fix without a covering test is incomplete work — it does not pass `/verify` and is not approvable in `/review-code` or `/review-fix`. The gate closes on one of three: a test, a named clause, or a user-approved waiver in one of six narrow categories.
 
 `~/.claude/skills/workflows/regression-test/SKILL.md` is the single source of truth: trigger list, unit-vs-integration selection table, red/green evidence format, the on-disk ledger, review severities, and the waiver schema. Read it when fixing any failure that occurred rather than working from a summary.
 

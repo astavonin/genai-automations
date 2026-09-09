@@ -101,7 +101,7 @@ Reference: `~/.claude/skills/domains/testing/`
 - **Prove it red first.** Never report a red/green result that was not actually observed.
 - **A green re-run is not the test.** "CI passes now" or "the device works now" proves the fix worked once, not that the failure is guarded.
 - **The trigger is a file, not a memory.** `/diagnose` and `/ci-debug` record each failure in `<issue-folder>/observed-failures.md`; `/implement` resolves the entry; `/verify` Steps 6a–6d and the review commands read it. An unrecorded fix fails the gate no matter how good the test is.
-- **Hard gate:** `/verify` blocks and the review commands flag High on an unresolved entry. The only alternative is a user-approved waiver in one of five narrow categories — never self-waive, and assent to a waiver you proposed is not approval.
+- **Hard gate:** `/verify` blocks and the review commands flag High on an unresolved entry. The gate closes on one of three: a test, a named clause, or an approved waiver in one of six narrow categories — never self-waive, and assent to a waiver you proposed is not approval.
 
 ## Architecture & Design
 

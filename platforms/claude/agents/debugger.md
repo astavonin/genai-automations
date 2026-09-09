@@ -58,7 +58,7 @@ Specify, concretely enough that the coder or devops-engineer agent can implement
 - **Assertion** — the concrete expected value, error type, code, or state that fails today and passes after the fix
 - **Name** — behaviour-and-outcome, never the incident (`test_deploy_fails_fast_on_unset_version`, not `test_ci_fix`)
 
-If you believe the failure genuinely cannot be tested, say so explicitly and name which of the four waiver categories from the fragment applies — do not silently omit this section. The waiver decision belongs to the user, not to you.
+If you believe the failure genuinely cannot be tested, say so explicitly and name which waiver category from the fragment applies — do not silently omit this section. The waiver decision belongs to the user, not to you.
 
 ## Output Format
 

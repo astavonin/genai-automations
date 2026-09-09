@@ -131,7 +131,9 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    - Its level matches the fragment's selection table — a unit test mocking the exact boundary the bug crossed does not count
    - The `**Evidence:**` field records red/green, or carries a falsifiability argument where red/green was impracticable
    - It would have caught the failure that was diagnosed
-   - **The file named in `**Test:**` still exists** — `test -f` it, or grep the test name. Nothing else checks this, so a fix that reverts an earlier fix and deletes its test leaves that entry reading `covered` forever. When coverage is genuinely withdrawn, edit the entry's `Status` in place to `out-of-scope` with the reason; append-only governs entries, not the fields inside one.
+   - **The file named in `**Test:**` still exists** — `test -f` it, or grep the test name. Nothing else checks this, so a fix that reverts an earlier fix and deletes its test leaves that entry reading `covered` forever. When coverage is genuinely withdrawn, re-resolve it through the closed list named in `### Out of Scope` of `~/.claude/skills/workflows/regression-test/SKILL.md`, in this order. A test that only moved or was renamed is not withdrawn: update the **Test:** field and stop. A test deleted with the behaviour it asserted is *Nothing assertable changed*, one whose remaining coverage would exercise only a dependency is *Third-party behaviour only*, and this run owns both — record the clause in place. A test deleted as vacuous is a category-6 waiver the user approves and this command or `/review-fix` records. Where nothing else resolves it, name the withdrawn test in `**Evidence:**` — planning is gitignored, so blanking is otherwise the last of it — then blank the **Test:** field and re-run the Step 6a gate, so the awk prints `BLOCKER: covered but no Test: field` inside the same run and Step 6d blocks that run. The entry then owes a live test from the issue's next `/implement`. That blocker kind is one Step 6d already lists — no new row, no fifth status, and the terminal-states sentence in `~/.claude/skills/workflows/regression-test/SKILL.md` stands unamended. Append-only governs entries, not the fields inside one.
+
+   `tests/verify-config-consistency.sh` checks that this recovery text carries the closed-list re-resolution phrasing above and no longer grants the old status edit unconditionally.
 
    For each `waived` entry, confirm the category genuinely holds and a compensating control is named. For each `out-of-scope` entry, confirm the stated reason holds — "nothing assertable changed" is false the moment the fix altered behaviour.
 
@@ -149,7 +151,9 @@ Read ~/.claude/skills/domains/testing/SKILL.md
                  N Status lines (malformed)   → keep exactly one; edit it in place
                  unrecognized Status value    → use open | covered | waived | out-of-scope
                  unclosed code fence          → indent pasted output four spaces instead
-                 covered but no Test:         → name the test, or change the status
+                 covered but no Test:         → re-resolve it through the closed list, or
+                                                blank the field — the issue's next
+                                                `/implement` then owes a live test
                  waived but no <field>        → the user supplies category and approval;
                                                 you may not self-approve
    ```

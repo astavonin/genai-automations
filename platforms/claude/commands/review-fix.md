@@ -142,9 +142,13 @@ Read ~/.claude/skills/workflows/review-output-format/SKILL.md
 
 ## Behavioral Bug Test Requirement
 
-**Critical and High findings (mandatory):** every fix for a Critical or High finding must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
+**Critical and High findings, and any `Required test:` line (mandatory, discharge applies):** every fix for a Critical or High finding includes a test change, unless a clause in `### Out of Scope` of `~/.claude/skills/workflows/regression-test/SKILL.md` names the case or the user has approved a waiver. The same discharge retires the `**Required test:**` obligation named in this bullet's own heading: a finding's named test is not owed when the fix lands under a clause or an approved waiver, and neither obligation outranks the other. State the discharge in your fix response, against the finding ID it answers — the clause by name, or the waiver the user approved; this command invokes no coder, so judge it from the diff and the fix description the request already carries. Where one pass fixes several findings, attribute each discharge to its finding; an unattributed claim discharges nothing. A fix by deletion leaving nothing assertable is one of those cases, and a `**Required test:**` line that turns out vacuous is category 6.
 
-**Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
+**Do not self-serve a waiver.** This command judges only a discharge already named in the fix description — the clause by name, or a waiver the user has already approved — from the diff and the fix description the request already carries; it invokes no coder to flag one back to. It never decides on its own that a category holds, including category 6: an unnamed category claim is surfaced to the user, who decides outside this command. Every recorded waiver carries `## Waiver`'s full requirements — the category, the user's approval under the approval test there, and a compensating control.
+
+**The discharge governs the test, not the ledger.** A defect reproduced by running the code is an observed failure under item 3 and owes its entry whatever shape its fix takes; a finding never reproduced owes none and lives in the fix description alone.
+
+`tests/verify-config-consistency.sh` checks that this section carries the discharge wording above and no longer carries the old absolute test mandate.
 
 ```
 Read ~/.claude/skills/workflows/behavioral-bug-test/SKILL.md

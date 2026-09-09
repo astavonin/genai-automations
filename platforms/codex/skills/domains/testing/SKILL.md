@@ -70,7 +70,8 @@ Each behavioral-correctness test must:
 
 ## Regression, Lifecycle, And Compatibility Coverage
 
-- Add a deterministic regression test for every failure that actually occurred — a red CI job, an on-device or deployment failure, a runtime crash, a manual-testing defect, a bug report, a flake, or a review finding confirmed to reproduce. The fix and the test are one deliverable; treat any failure that actually executed as in scope when unsure.
+- Add a deterministic regression test for every failure that actually occurred — a red CI job, an on-device or deployment failure, a runtime crash, a manual-testing defect, a bug report, a flake, or any other defect reproduced by running the code, whoever reported it first. The fix and the test are one deliverable; treat any failure that actually executed as in scope when unsure.
+  (`tests/verify-config-consistency.sh` in the genai-automations repo checks that this list ends with the run criterion above rather than a review-finding-specific trigger.)
 - Default to integration coverage for those tests: observed failures are usually composition failures a mocked unit test cannot catch. Prove the test fails against the unfixed code before applying the fix.
 - Never decide on your own that a failure is impractical to test — say so and name why. (When reviewing, ledger status and waiver semantics are in `skills/domains/code-quality/references/code-review-checklist.md` and `CODEX.md` pass 4.)
 - Isolate environment variables, current directory, process-global state, ports, files, random seeds, and time.

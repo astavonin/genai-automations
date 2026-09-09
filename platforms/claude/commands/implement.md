@@ -136,7 +136,7 @@ fi
    Read ~/.claude/skills/workflows/regression-test/SKILL.md
    ```
 
-   Check the fragment's **What Counts as an Observed Failure** list against this work — do not work from memory of it. Note trigger 6: a review finding confirmed to reproduce counts, including findings fixed inside `/review-code-fix-loop`. If any trigger matches, the fix and its regression test are **one deliverable**:
+   Check the fragment's **What Counts as an Observed Failure** list against this work — do not work from memory of it. If any trigger matches, the fix and its regression test are **one deliverable**:
 
    - Pass the debugger's **Regression Test** specification verbatim into the coder or devops-engineer agent prompt, with explicit instruction that it is a required deliverable and not a follow-up
    - Write the test **before** the fix, run it red, apply the fix, run it green

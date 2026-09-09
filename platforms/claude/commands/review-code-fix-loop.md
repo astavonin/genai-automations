@@ -53,11 +53,13 @@ Invoke **coder agent** with:
 - The full list of findings selected above
 - The full design doc if one exists (`planning/<goal>/milestone-XX/issues/<NNN-name>/design.md`)
 - The code review checklist (`~/.claude/skills/domains/quality-attributes/references/review-checklist.md`)
-- **The resolved `<issue-folder>` path** (resolved in Step 0 above) — the coder writes the ledger only when given this path, and the Step 3 re-review flags a missing ledger entry as High, so omitting it deadlocks the loop
+- **The resolved `<issue-folder>` path** (resolved in Step 0 above) — the coder writes the ledger only when given this path; per `~/.claude/skills/workflows/regression-test/SKILL.md` → The Ledger → Who writes it, this loop appends an entry for any defect that reproduces mid-loop, so omitting the path silently drops that entry
 - Instruction: fix all listed findings in one pass; flag explicitly any finding that cannot be addressed; apply these test requirements:
-  - **Critical and High findings (mandatory):** every fix for a Critical or High finding must include new or modified tests. Use unit tests for isolated logic and integration tests when the finding involves component interaction, external state, or runtime composition. No Critical or High finding is considered fixed without a corresponding test change.
-  - **Any severity with `Required test:` line:** implementing the described test is mandatory as part of the fix.
-  - **Findings confirmed to reproduce (observed-failure trigger 6):** for any finding describing incorrect runtime behaviour that you confirm reproduces, append a resolved entry to `<issue-folder>/observed-failures.md` per `~/.claude/skills/workflows/regression-test/SKILL.md`. The next review pass checks for it and rates its absence High.
+  - **Critical and High findings, and any `Required test:` line (mandatory, discharge applies):** every fix for a Critical or High finding includes a test change, unless a clause in `### Out of Scope` of `~/.claude/skills/workflows/regression-test/SKILL.md` names the case or the user has approved a waiver. The same discharge retires the `**Required test:**` obligation named in this bullet's own heading: a finding's named test is not owed when the fix lands under a clause or an approved waiver, and neither obligation outranks the other. State the discharge in your fix response, against the finding ID it answers — the clause by name, or the waiver the user approved. Where one pass fixes several findings, attribute each discharge to its finding; an unattributed claim discharges nothing. A fix by deletion leaving nothing assertable is one of those cases, and a `**Required test:**` line that turns out vacuous is category 6.
+  - **Do not self-serve a waiver.** If you judge that a category holds, including category 6, flag the finding instead of fixing it: this command surfaces it and the user decides outside the loop. Every recorded waiver carries `## Waiver`'s full requirements — the category, the user's approval under the approval test there, and a compensating control.
+  - **The discharge governs the test, not the ledger.** A defect you reproduced by running the code is an observed failure under item 3 and owes its entry whatever shape its fix takes; a finding never reproduced owes none and lives in the fix response alone.
+
+`tests/verify-config-consistency.sh` checks that this step carries the discharge wording above and no longer carries the trigger-6 bullet or the old absolute test mandate.
 
 **If the coder agent flags any finding as unaddressable:** surface it to the user immediately and wait for a decision before proceeding to Step 3 — do not silently continue into the next review pass.
 
@@ -80,6 +82,8 @@ Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md
 ```
 
 Follow `/review-code` with the deviations listed above. **Pass the current `code-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `code-review.md`.
+
+Pass the coder's fix response alongside the prior `code-review.md` — it records, per finding ID, the clause or approved waiver claimed as a discharge. Where the re-review accepts a discharge for a Critical or High finding, record the accepted clause or waiver on that finding's resolution line in `code-review.md`.
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file. Editing the step numbering, the headings, the pointer, or the launch sentence's opening word without re-running both is how this drifts silently.
 

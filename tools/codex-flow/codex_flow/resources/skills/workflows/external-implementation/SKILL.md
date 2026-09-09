@@ -40,7 +40,9 @@ happened. Treat it as the trigger:
   failure that occurred, the rule below still applies.
 
 
-When the implementation fixes a failure that **actually happened** — a red CI job, an on-device or deployment failure, a runtime crash or hang, a manual-testing defect, a bug report, a flaky test, or a review finding confirmed to reproduce — the fix and a test reproducing that failure are **one deliverable**. A fix alone is incomplete and will be rejected downstream.
+When the implementation fixes a failure that **actually happened** — a red CI job, an on-device or deployment failure, a runtime crash or hang, a manual-testing defect, a bug report, a flaky test, or any other defect reproduced by running the code, whoever reported it first — the fix and a test reproducing that failure are **one deliverable**. A fix alone is incomplete and will be rejected downstream.
+
+`tests/verify-config-consistency.sh` in the genai-automations repo checks that this section's trigger list ends with the run criterion above rather than a review-finding-specific trigger.
 
 - **Write the test first.** Run it against the unfixed code and confirm it fails for the observed reason, then apply the fix and confirm it passes. Record both outcomes in `verification_results`. Where reverting is impracticable (device state, destructive setup), say so plainly instead of reporting a red result you did not observe.
 - **Default to integration coverage.** Observed failures are usually composition failures — the units worked, their interaction did not. A unit test that mocks the exact boundary the bug crossed re-encodes the bug's assumption instead of catching it. Use a unit test only when the failure was reproducible from isolated logic with the inputs in hand.

@@ -223,12 +223,18 @@ This is a dedicated enumeration pass, separate from the Testability attribute ch
 
 **If this is an MR review (`/review-mr`):** there is no issue folder and no ledger. Skip the first and fifth checkboxes entirely, and raise a missing regression test as a **question to the author**, never as a blocker citing a waiver they have no mechanism to record. The rest of this step still applies.
 
-Determine whether the diff fixes a failure that actually happened. Evidence: a `Ref #N` on a bug ticket, `fix:`/`hotfix` in the branch or commit message, an `observed-failures.md` ledger in the issue folder, a CI-config or script change following a red pipeline, a design/analysis doc describing an incident, or **a prior review report in the issue folder carrying a Critical or High finding that describes incorrect runtime behaviour** (trigger 6 — this is the evidence for findings fixed inside `/review-code-fix-loop` and `/review-iterate`, which have no bug ticket and no `fix:` branch). If the rule applies, verify all five:
+Determine whether the diff fixes a failure that actually happened. Evidence: a `Ref #N` on a bug ticket, `fix:`/`hotfix` in the branch or commit message, an `observed-failures.md` ledger in the issue folder, a CI-config or script change following a red pipeline, a design/analysis doc describing an incident, or any other defect reproduced by running the code, whoever reported it first — this is the evidence for findings fixed inside `/review-code-fix-loop` and `/review-iterate`, which have no bug ticket and no `fix:` branch. If the rule applies, verify all five:
 - [ ] **A ledger entry exists** in `<issue-folder>/observed-failures.md` for the failure, and its `**Status:**` is resolved — `covered`, `waived`, or `out-of-scope`. `open` means recorded but not yet resolved and does **not** satisfy the gate.
 - [ ] **A test reproducing the observed failure is present in this diff** — not deferred, not filed as a follow-up ticket.
 - [ ] **The test asserts the actual symptom,** not a proxy or an adjacent happy path. Ask: would this test have caught the reported failure? A passing test that would not have caught it is worse than none — it manufactures false confidence.
 - [ ] **The level matches the failure.** Composition failures (env vars, startup order, config load, component interaction, CI structure) need integration coverage. A unit test that mocks the exact boundary the bug crossed re-encodes the bug's assumption.
 - [ ] **Any waiver or out-of-scope entry is valid** — the category genuinely holds, cheaper reproduction paths were considered, and a compensating control was added. An invalid one returns that entry to "test required".
+
+The four self-service `### Out of Scope` clauses: *No repository component*, *Nothing assertable changed*, *Third-party behaviour only*, and *Analysed, did not reproduce*. Decidable tests for the two least obvious: *Nothing assertable changed* asks whether the fix changes behaviour the repository can assert on; *Third-party behaviour only* holds only when no line of repository code sits between the input and the assertion.
+
+The six waiver categories: unavailable environment, harness or provider defect, destructive reproduction, non-deterministic race, workflow-instruction defect, and vacuous test. Category 6 (vacuous test) holds when the only available test asserts the same expression the fix wrote, or mirrors the production control flow — a presence assertion that pins shipped wording against drift is not a restatement, since it fails the day that wording moves, so it does not qualify. Its compensating control cannot be another test.
+
+`tests/verify-config-consistency.sh` checks that this step names all four clause titles, all six waiver categories, and category 6's conditions, carve-out, and prohibition above.
 
 Severities:
 

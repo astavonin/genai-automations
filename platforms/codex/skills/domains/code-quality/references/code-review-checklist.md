@@ -227,7 +227,8 @@ For each field, member, parameter, named constant, or non-local variable introdu
 - [ ] Unit tests are fast and isolated; integration tests are separated and do not call production services.
 - [ ] Async and readiness tests use deterministic synchronization.
 - [ ] Cleanup, cancellation, timeout, saturation, partial I/O, and background failure are tested where relevant.
-- [ ] Every failure that actually occurred (CI, device, runtime, manual testing, bug report, flake, or a review finding confirmed to reproduce) has a regression test reproducing it — mandatory, not best-effort. Treat any failure that actually executed as in scope when unsure.
+- [ ] Every failure that actually occurred (CI, device, runtime, manual testing, bug report, flake, or any other defect reproduced by running the code, whoever reported it first) has a regression test reproducing it — mandatory, not best-effort. Treat any failure that actually executed as in scope when unsure.
+  (`tests/verify-config-consistency.sh` in the genai-automations repo checks that this checkbox's trigger list ends with the run criterion above rather than a review-finding-specific trigger.)
 - [ ] Entries in the review request's observed-failure ledger are resolved, and the test asserts the actual symptom at a level matching the failure. **Severities and the external-MR carve-out are in `CODEX.md` mandatory failure pass 4** — apply them from there rather than from a summary here, so the two cannot drift apart.
 - [ ] The regression test asserts the actual observed symptom, not a proxy, and its level matches the failure — a unit test mocking the boundary the bug crossed does not count.
 - [ ] Flaky tests are fixed or removed rather than ignored.

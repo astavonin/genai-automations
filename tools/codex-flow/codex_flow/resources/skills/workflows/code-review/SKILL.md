@@ -18,7 +18,9 @@ Findings are the primary output. Requirement coverage and verification gaps must
 
 *Mirrors `~/.claude/skills/workflows/regression-test/SKILL.md` → Review Severities, which is authoritative. This is the only copy that reaches `codex-flow review`, which runs with `--ignore-user-config`; keep it in step with the source.*
 
-Determine whether the change fixes a failure that **actually happened** — a red CI job, an on-device or deployment failure, a runtime crash or hang, a manual-testing defect, a bug report, a flaky test, or a review finding confirmed to reproduce. If it does, the fix and a test reproducing that failure are one deliverable; a fix alone is incomplete.
+Determine whether the change fixes a failure that **actually happened** — a red CI job, an on-device or deployment failure, a runtime crash or hang, a manual-testing defect, a bug report, a flaky test, or any other defect reproduced by running the code, whoever reported it first. If it does, the fix and a test reproducing that failure are one deliverable; a fix alone is incomplete.
+
+`tests/verify-config-consistency.sh` in the genai-automations repo checks that this pass's trigger list ends with the run criterion above rather than a review-finding-specific trigger.
 
 Read the request's `Observed-Failure Ledger` section and judge each entry by its `**Status:**`:
 

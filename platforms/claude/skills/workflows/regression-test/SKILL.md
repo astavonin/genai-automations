@@ -17,33 +17,36 @@ metadata:
 
 Every **observed failure** produces two deliverables, not one: the fix, and a test that reproduces the failure. A fix without a covering test is incomplete work — not eligible for `/verify` completion, `/complete`, or review approval.
 
-This is a hard gate. The only alternative to writing the test is a **user-approved recorded waiver**. Shipping a fix for an observed failure with no test and no waiver is never permitted, regardless of how obvious, small, or "clearly correct" the fix looks.
+This is a hard gate. The gate closes on one of three: a test, a named clause, or an approved waiver — see `### Out of Scope` and `## Waiver` below. Shipping a fix for an observed failure with none of the three is never permitted, regardless of how obvious, small, or "clearly correct" the fix looks.
 
-**A green re-run is not the regression test.** "CI passes now", "the device works now", "I ran it and it's fine" prove the fix worked once. They do not prove the failure is guarded. Only a test that asserts the specific symptom closes the gate.
+**A green re-run is not the regression test.** "CI passes now", "the device works now", "I ran it and it's fine" prove the fix worked once. They do not prove the failure is guarded. Only a test that asserts the specific symptom satisfies the test arm — the other two arms are the named clause and the approved waiver, above.
 
 ## What Counts as an Observed Failure
 
-*Do not copy this list — link to it. Consumers reach it either by reading this fragment directly or, for reviewer agents, through `review-checklist.md` → Test Quality Pass Step 3.*
+*Do not copy this list, the closed list, or the waiver categories — link to them. Consumers reach this fragment directly, or, for reviewer agents, through `review-checklist.md` → Test Quality Pass Step 3, which carries the run criterion, the two clauses' decidable tests, and all six waiver categories as its one permitted mirror.*
 
 A failure that **actually happened** in a real execution, as opposed to one anticipated during design:
 
 1. A job failed in CI — test, lint, build, deploy, or pipeline structure
 2. A failure, crash, hang, or wrong behaviour observed on a device or in a real deployment
-3. A defect found by manual testing, exploratory use, or a bug report
+3. A defect found by manual testing, exploratory use, a bug report, or any other defect reproduced by running the code, whoever reported it first
 4. A flaky or intermittent test — the flake itself is the observed failure
 5. Anything routed through `/diagnose` or `/ci-debug`
-6. A review finding describing incorrect runtime behaviour that was **confirmed to reproduce** — including findings fixed inside `/review-code-fix-loop` and `/review-iterate`
 
 If the failure is anticipated rather than observed, this fragment does not apply — `~/.claude/skills/domains/testing/SKILL.md` → Failure Scenario Coverage governs instead. Both can apply to the same change.
 
 ### Out of Scope
 
 - **No repository component** — runner offline, registry unreachable, expired token, upstream service down, and nothing in the repo changes. Record the failure in the ledger with `**Status:** out-of-scope` and a one-line reason rather than leaving the gate unaddressed.
-- **Nothing assertable changed** — a yanked dependency or action version bumped to a working one, a `.gitignore` correction, a docs-only fix for a broken link. The decidable test is *"does the fix change behaviour the repository can assert on?"* — not *"does it feel like an infra problem?"* A CI YAML, Dockerfile, or shell script edit that changes behaviour **is** in scope. Record these as `**Status:** out-of-scope` with the reason.
+- **Nothing assertable changed** — a yanked dependency or action version bumped to a working one, a `.gitignore` correction, a docs-only fix for a broken link. The decidable test is *"does the fix change behaviour the repository can assert on?"* — not *"does it feel like an infra problem?"* A CI YAML, Dockerfile, or shell script edit that changes behaviour **is** in scope. A fix by deletion that removes a behaviour and leaves nothing assertable behind resolves here too; a deletion whose absence itself becomes the assertion — the behaviour must no longer occur — does not, since that leaves something to test. Record these as `**Status:** out-of-scope` with the reason.
+- **Third-party behaviour only** — the only available test would assert what a dependency returns, with no line of repository code between the input and the assertion. *No repository component* does not hold, because the repository did change. Where the failure has a ledger entry, record `**Status:** out-of-scope` with `**Reason:** third-party behaviour only — <the library call the test would assert on>`.
+- **Analysed, did not reproduce** — a reported failure that investigation showed cannot actually occur, because an upstream guard already prevents it or the report rested on a wrong reading of the code. Where the failure has a ledger entry, record `**Status:** out-of-scope` with `**Reason:** <what was reported> — analysed, does not reproduce: <why>`. Without this clause a correctly-refuted report would have no representable outcome and the gate would stay open against it.
 
-- **Analysed, did not reproduce** — a reported failure (most often a review finding, trigger 6, but any trigger can be mistaken) that investigation showed cannot actually occur, because an upstream guard already prevents it or the reasoning behind the finding was wrong. Record `**Status:** out-of-scope` with `**Reason:** review finding <ID> — analysed, does not reproduce: <why>`. Trigger 6 fires on findings *confirmed to reproduce*; without this clause a correctly-refuted finding would have no representable outcome and reviewers would raise an unclearable High against it.
+Do not use "quality finding" as an exit from a failure that actually occurred.
 
-A review finding about naming, comments, formatting, or observability polish is not an observed failure at all — it never enters this fragment. Do not use "quality finding" as an exit from a failure that actually occurred.
+These four clauses are the complete set of self-service `out-of-scope` resolutions, and every `**Reason:**` names the clause it claims. Any other no-test outcome is a waiver request: the user approves one of the six categories, or the answer is a test. The four clauses and the six categories together are **the closed list** — every representable no-test resolution, and the set an entry sent back here is re-resolved against. A test that became unrunnable is category 1 and a harness that stopped executing it is category 2 — neither is an `### Out of Scope` clause and neither is category 6.
+
+`tests/verify-config-consistency.sh` checks this section: the trigger list holds five items with item 3 carrying the run criterion, the closed list's four clauses and six waiver categories are present with their literal conditions, and none of the struck wording survives anywhere under `platforms/` or the bundled Codex resources.
 
 ## The Ledger (on-disk anchor)
 
@@ -57,7 +60,7 @@ Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
 
 Resolve it **before** the first read or write, and pass the resolved string to any command you hand off to. A writer and a reader that derive the path differently miss each other silently: an absent ledger reads as "nothing to do", not as an error.
 
-**Who writes it:** `/diagnose` and `/ci-debug` create or append an entry per root cause at diagnosis time, with `**Status:** open`. `/implement` and `/codex-implement` resolve each entry when the fix lands. `/review-code-fix-loop` and `/review-iterate` append an entry for every finding confirmed to reproduce. **`/verify` and `/review-fix` write the `waived` and `out-of-scope` resolutions** once the user has approved one — the command that surfaced the blocker owns closing it, or an approved waiver is re-litigated on every subsequent run. Writing that resolution is a ledger edit, not a planning-state update, so it is not covered by a "do not update planning state" hold.
+**Who writes it:** `/diagnose` and `/ci-debug` create or append an entry per root cause at diagnosis time, with `**Status:** open`. `/implement` and `/codex-implement` resolve each entry when the fix lands. `/review-code-fix-loop` and `/review-iterate` append an entry for any defect that reproduced by running the code mid-loop, discharged fix or not — never for a finding that never reproduced. **`/verify` and `/review-fix` own the `waived` resolutions the user approved, and whoever ships the fix records a self-service `out-of-scope` naming its clause** — the command that surfaced the blocker owns closing it, or an approved waiver is re-litigated on every subsequent run. Writing that resolution is a ledger edit, not a planning-state update, so it is not covered by a "do not update planning state" hold.
 
 **Append-only at entry granularity.** Never delete or consolidate an existing `##` section, and never let a second failure inherit the first entry's resolution — each gets its own entry. Fields **within** an entry are edited in place: `/implement` replaces the `**Status:** open` line rather than appending a second Status line. **Exactly one `**Status:**` line per entry** — two is a malformed entry, not a resolved one. This file is exempt from the "one final published output" convention, which governs review reports, not ledgers.
 
@@ -67,7 +70,7 @@ Resolve it **before** the first read or write, and pass the resolved string to a
 # Observed Failures — <issue or fix name>
 
 ## <YYYY-MM-DD> <one-line symptom>
-**Observed in:** <CI job `test:unit` pipeline 456789 | on device <name> | manual testing | bug report | review finding H3>
+**Observed in:** <CI job `test:unit` pipeline 456789 | on device <name> | manual testing | bug report | the run that reproduced it>
 **Root cause:** <one line>
 **Status:** <open | covered | waived | out-of-scope>
 **Test:** `tests/integration/test_deploy.py::test_deploy_fails_fast_on_unset_version` (integration)
@@ -79,7 +82,7 @@ Resolve it **before** the first read or write, and pass the resolved string to a
 For `**Status:** waived`, replace the `Test` and `Evidence` lines with:
 
 ```markdown
-**Waiver category:** <1 unavailable-environment | 2 harness-defect | 3 destructive-reproduction | 4 non-deterministic-race | 5 workflow-instruction-defect>
+**Waiver category:** <1 unavailable-environment | 2 harness-defect | 3 destructive-reproduction | 4 non-deterministic-race | 5 workflow-instruction-defect | 6 vacuous-test>
 **Approved by:** <user>, on <YYYY-MM-DD>
 **Compensating control:** <runtime assertion, invariant check, log + alert, config validator, monitoring rule, or runbook entry>
 ```
@@ -107,6 +110,15 @@ When unsure, write the integration test. An unnecessary integration test costs s
 Tag integration tests to run separately per `~/.claude/skills/domains/testing/SKILL.md` → Integration Testing.
 
 **Inline-test languages:** Rust (`#[cfg(test)] mod tests`) and Zig (`test "..." {}`) put unit tests in the source file under test. There is no separate test path for these — record the test's module and name in the ledger's `**Test:**` field.
+
+## Before Writing the Test
+
+1. Resolve the closed list — the four `### Out of Scope` clauses above, then all six waiver categories. A clause resolves the entry `out-of-scope` on your own judgement. Categories 1–5 ask whether the test can be run at all; category 6 asks whether the only available test would restate the implementation. All six go to the user for approval. Either way the entry may owe no test.
+2. Extend a test that already exercises the path **at the level the selection table names**. A unit test mocking the boundary the failure crossed is the wrong level, and this step does not apply to it.
+3. Consolidate near-duplicates into that test. Every entry pointing at it still names the assertion covering its own symptom — the hard gate matches only a non-empty `**Test:**`.
+4. Otherwise write a new test, at the level the table names.
+
+An extended test satisfies `**Test:**`. An absent new test file is not a finding.
 
 ## Red/Green Evidence (required, best-effort)
 
@@ -160,7 +172,7 @@ else
       /^\*\*Status:\*\* *open *$/                          { n += 100;     next }
       /^\*\*Status:\*\*/                                   { n += 10000;   next }
       /^\*\*Test:\*\* *[^ ]/                 { hasTest = 1 }
-      /^\*\*Waiver category:\*\* *[1-5]/     { hasCat  = 1 }
+      /^\*\*Waiver category:\*\* *[1-6]/     { hasCat  = 1 }
       /^\*\*Approved by:\*\* *[^ <]/         { hasAppr = 1 }
       /^\*\*Compensating control:\*\* *[^ ]/ { hasCtrl = 1 }
       /^\*\*Reason:\*\* *[^ ]/               { hasWhy  = 1 }
@@ -179,7 +191,7 @@ else
         # A resolution is only as good as the fields justifying it. Without this a bare
         # "**Status:** waived" would pass — the one escape from a hard gate, unjustified.
         if (st == "covered"      && !hasTest) { bad++; printf "BLOCKER: covered but no Test: field — %s\n", head }
-        if (st == "waived"       && !hasCat)  { bad++; printf "BLOCKER: waived but no Waiver category: 1-5 — %s\n", head }
+        if (st == "waived"       && !hasCat)  { bad++; printf "BLOCKER: waived but no Waiver category: 1-6 — %s\n", head }
         if (st == "waived"       && !hasAppr) { bad++; printf "BLOCKER: waived but no Approved by: — the user approves, you may not — %s\n", head }
         if (st == "waived"       && !hasCtrl) { bad++; printf "BLOCKER: waived but no Compensating control: — %s\n", head }
         if (st == "out-of-scope" && !hasWhy)  { bad++; printf "BLOCKER: out-of-scope but no Reason: — %s\n", head }
@@ -219,7 +231,7 @@ When pasting command output into an `Evidence` field, indent it four spaces inst
 
 | Mirror | Why it exists |
 |---|---|
-| `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Test Quality Pass Step 3 | verbatim copy; the one passed inline to reviewer agents |
+| `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Test Quality Pass Step 3 | verbatim copy of the severities; also carries the run criterion, the two clauses' decidable tests, all four clause titles, and all six waiver categories — the one passed inline to reviewer agents |
 | `~/projects/genai-automations/tools/codex-flow/codex_flow/resources/skills/workflows/code-review/SKILL.md` | prose form; the **only** copy that reaches `codex-flow review`, which runs with `--ignore-user-config` |
 | `~/.codex/CODEX.md` → mandatory failure pass 4 | prose form; the severity list for interactive Codex sessions |
 | `~/.codex/skills/domains/code-quality/references/code-review-checklist.md` | prose form; defers to CODEX.md pass 4 for severities |
@@ -242,17 +254,18 @@ When pasting command output into an `Evidence` field, indent it four spaces inst
 
 ## Waiver
 
-A waiver is the only alternative to writing the test. It requires **explicit user approval**.
+A waiver is one of the three ways to discharge the gate — a test, a named clause, or an approved waiver. It requires **explicit user approval**.
 
 **Approval test:** the user must give a user-initiated directive naming the waiver, or explicitly approve a named category when asked. Assent to an assistant-proposed waiver — "ok", "sure", "go ahead" — is **not** approval; apply the two-part test from `~/.claude/CLAUDE.md` → Critical Rules. Never self-waive, and never fill in `**Approved by:**` from your own judgement.
 
-**Allowed categories** (a waiver outside these five is not valid):
+**Allowed categories** (a waiver outside these six is not valid):
 
 1. **Unavailable environment** — not reproducible without hardware or a third-party environment the project has no access to, and no fake, simulator, or recorded fixture can be built at proportionate cost
 2. **Harness or provider defect** — the failure is in the test framework or CI provider itself, outside repository control
 3. **Destructive reproduction** — reproducing requires an irreversible or destructive action against a shared or production resource
 4. **Non-deterministic race** — a timing or hardware race with no deterministic reproduction, mitigated by an invariant check or assertion instead
 5. **Workflow-instruction defect** — the failing component is a Markdown instruction an agent follows, not code, and the repository has no harness that executes workflow steps. Categories 1–4 all assume the untestable thing is code; this repo's dominant failure class is not. A waiver here still requires a compensating control that makes the failure *visible* — an explicit check the instruction mandates, a field in a published artifact, or a sweep that surfaces it later — because "an agent will follow the corrected instruction" is an expectation, not a control.
+6. **Vacuous test** — the only available test restates the implementation rather than constraining it: it asserts the same expression the fix wrote, or it mirrors the production control flow. A presence assertion that pins shipped wording against drift is not a restatement: it constrains the text to stay put, which is this repository's mandated test form for a rule file, and it fails the day that wording moves. Categories 1–4 assume the test cannot be run and 5 assumes no harness executes it; here the test runs and proves nothing. The entry names the test that would have been written and the assertion that makes it vacuous. The compensating control cannot be another test and cannot be a log line nobody reads — move the assertion into the production code as a runtime check or invariant, or into an artifact a later step consumes.
 
 Every waiver requires a **compensating control**. A waiver that only explains why testing is hard is not acceptable — at minimum, the failure must become loud rather than silent.
 

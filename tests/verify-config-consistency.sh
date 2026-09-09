@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=42
+EXPECTED_TESTS=48
 
 PASS=0
 FAIL=0
@@ -1097,6 +1097,444 @@ if [ -n "$bullet" ] \
 else
     fail "diagnose.md Step 5 attributes a root cause and still records it when it belongs elsewhere" \
          "bullet: ${bullet:-<no attribution bullet found>}"
+fi
+
+# === Trigger-6 deletion and the closed list (mechanism-proportionality step 4) ============
+#
+# design.md §6 T1-T6. Trigger 6 (a review finding confirmed to reproduce) is deleted from the
+# observed-failure trigger list; item 3 absorbs its admission predicate as a run criterion that
+# reaches every consumer, including the ones outside the fragment's `Read` reach. The gate also
+# gains a representable no-test outcome — a closed list of four `### Out of Scope` clauses plus
+# six waiver categories — and the three "no Critical/High finding is fixed without a test"
+# clauses yield to a discharge stated in the coder's fix response. Six assertions, each bound to
+# a literal or a section, not to prose that could be reworded without changing behaviour.
+
+CODEX_DIR="$ROOT/platforms/codex"
+SRC_RT="$CLAUDE/skills/workflows/regression-test/SKILL.md"
+CHECKLIST="$CLAUDE/skills/domains/quality-attributes/references/review-checklist.md"
+# F13: defined again here, beside the two fragments this whole block reads, rather than relying
+# on the copy an unrelated block up-file happens to set — that copy exists for its own assertion,
+# and reordering blocks would abort this one under `set -u` far from the actual fault.
+VERIFY_DOC="$CLAUDE/commands/verify.md"
+# F14: arrays, not space-joined strings — a path containing whitespace would silently word-split
+# wrong under the old form, and every consumer below already needs `"${T1_ROOTS[@]}"` quoting.
+T1_ROOTS=("$ROOT/platforms" "$ROOT/tools/codex-flow/codex_flow/resources")
+
+echo "== T1: the eight struck trigger-6 literals occur nowhere under the config roots, over a non-empty, existing corpus =="
+
+# T1: deleting trigger 6 must not leave any of its own wording, or the two literals it carried,
+# behind at the five sites §5 rewrites plus the fragment's own "only alternative" framing
+# (repeated at two more files). Roots exclude tests/ deliberately — this comment and the ones
+# below quote the forbidden literals for documentation, and a self-referential red here would
+# make the assertion unmaintainable.
+#
+# F5: an absence-only scan has no positive control — typo both roots and every literal still
+# reads "absent" over a corpus that was never searched. Assert the roots resolve to directories
+# and that the scan actually walked a non-zero number of files before trusting the negative result.
+t1_bad=""
+for r in "${T1_ROOTS[@]}"; do
+    [ -d "$r" ] || t1_bad="${t1_bad}root '$r' is not a directory — the corpus scan would run over nothing; "
+done
+n_t1_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+[ "$n_t1_scanned" -gt 0 ] || t1_bad="${t1_bad}0 Markdown files found under the config roots — the corpus scan ran over nothing; "
+
+# F11: the pass message names how many literals were checked, counted from the list itself
+# rather than hand-copied, so the two cannot drift apart.
+t1_literals=(
+    "confirmed to reproduce" "trigger 6" "only alternative" "review finding H3"
+    "not an observed failure at all" "flags a missing ledger entry as High"
+    "cannot clear re-review" "a prior review report in the issue folder"
+)
+# F10: the failure detail keeps the count (useful at a glance) and now also appends the
+# file:line hits already in hand instead of discarding them — T4's loop below already does this.
+for lit in "${t1_literals[@]}"; do
+    hits=$($GREP -rniF "$lit" "${T1_ROOTS[@]}" 2>/dev/null || true)
+    [ -n "$hits" ] && t1_bad="$t1_bad'$lit': $(printf '%s\n' "$hits" | wc -l) occurrence(s) — $(printf '%s' "$hits" | tr '\n' ' '); "
+done
+if [ -z "$t1_bad" ]; then
+    pass "both config roots exist, $n_t1_scanned Markdown file(s) are in scope, and none of the ${#t1_literals[@]} struck trigger-6 literals occur under them"
+else
+    fail "both config roots exist, a non-empty corpus is in scope, and none of the ${#t1_literals[@]} struck trigger-6 literals occur under them" "$t1_bad"
+fi
+
+echo "== T2: the trigger list closes at five, and item 3's run criterion reaches all six routed sites =="
+
+# T2: item 3's widening is the replacement admission predicate. Checked per delivery route, not
+# per file — a route left on the old review-finding-specific wording still fires trigger 6's
+# behaviour on whichever consumer reads it, invisibly. The unit is the numbered item or the
+# mirrored statement, matched case-sensitively, with an absence half on the same unit.
+RUN_CRITERION="reproduced by running the code"
+# H3: the routed-site half below used to accept the criterion on ANY line of the file, which a
+# strike-and-park mutation satisfies by leaving the bare substring in unrelated prose (proven at
+# testing/SKILL.md and the bundled code-review/SKILL.md) while the real trigger list no longer
+# carries it. Anchor on a stable token that co-occurs with the criterion at every site in the
+# design's own replacement text ("...reproduced by running the code, whoever reported it
+# first") and require both on the SAME line — the same binding T2 already does for source item
+# 3 via the numbered-item extraction.
+RUN_ANCHOR="whoever reported it first"
+t2_bad=""
+owcf=$(awk '/^## What Counts as an Observed Failure/{f=1;next} f && /^### /{exit} f' "$SRC_RT")
+# H3: a sixth trigger item shipped as a bullet, or indented, is invisible to a bare `^[0-9]+\. `
+# count — widen to any list-item shape so an evasion by formatting still moves the count off 5.
+n_items=$(printf '%s\n' "$owcf" | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +')
+highest=$(printf '%s\n' "$owcf" | $GREP -oE '^[0-9]+' | sort -n | tail -1)
+item3=$(printf '%s\n' "$owcf" | $GREP -m1 -E '^3\. ')
+[ "$n_items" -eq 5 ] || t2_bad="${t2_bad}trigger list has $n_items items, want 5; "
+[ "$highest" = "5" ] || t2_bad="${t2_bad}trigger list's highest ordinal is '$highest', want 5; "
+printf '%s' "$item3" | $GREP -qF "$RUN_CRITERION" || t2_bad="${t2_bad}source item 3 does not carry '$RUN_CRITERION'; "
+printf '%s' "$item3" | $GREP -q 'review finding' && t2_bad="${t2_bad}source item 3 still names 'review finding'; "
+
+routed_sites=(
+    "$CHECKLIST"
+    "$CODEX_DIR/CODEX.md"
+    "$CODEX_DIR/skills/domains/testing/SKILL.md"
+    "$CODEX_DIR/skills/domains/code-quality/references/code-review-checklist.md"
+    "$ROOT/tools/codex-flow/codex_flow/resources/skills/workflows/code-review/SKILL.md"
+    "$ROOT/tools/codex-flow/codex_flow/resources/skills/workflows/external-implementation/SKILL.md"
+)
+# H2: each site's own trigger-statement opener, positionally paired with routed_sites above. A
+# same-line criterion+anchor check alone is satisfied by a decoy occurrence anywhere in the file
+# — C7 only forbids quoting absence-half literals, so a disclosure sentence quoting the run
+# criterion is a realistic decoy — so the criterion's one surviving occurrence must also fall on
+# its own site's real trigger statement, not merely co-occur with the anchor somewhere else.
+routed_anchors=(
+    "Determine whether the diff fixes a failure"
+    "**Observed-failure regression pass:**"
+    "Add a deterministic regression test"
+    "Every failure that actually occurred"
+    "Determine whether the change fixes a failure"
+    "When the implementation fixes a failure"
+)
+# F12: `n_routed` used to just count words in a static list — a tautology that always equalled
+# 6 regardless of the corpus. It now only increments when the file genuinely exists and is
+# non-empty, so a deleted or emptied site drops the count and fails structurally.
+n_routed=0
+for i in "${!routed_sites[@]}"; do
+    f="${routed_sites[$i]}"
+    opener="${routed_anchors[$i]}"
+    if [ ! -s "$f" ]; then
+        t2_bad="${t2_bad}${f#"$ROOT"/}: file missing or empty — the routed-site scan ran over nothing; "
+        continue
+    fi
+    n_routed=$((n_routed + 1))
+    # H2: exactly one occurrence in the whole file — a strike-and-park mutation that guts the
+    # real trigger statement but leaves (or adds) the criterion elsewhere, e.g. quoted in a C7
+    # disclosure, pushes this off 1 even when that surviving occurrence sits beside the anchor.
+    crit_count=$($GREP -cF "$RUN_CRITERION" "$f" || true)
+    if [ "$crit_count" -ne 1 ]; then
+        t2_bad="${t2_bad}${f#"$ROOT"/}: '$RUN_CRITERION' occurs $crit_count time(s), want exactly 1 — a decoy occurrence can hide a gutted trigger statement; "
+        continue
+    fi
+    line=$($GREP -F "$RUN_CRITERION" "$f")
+    if ! printf '%s' "$line" | $GREP -qF "$RUN_ANCHOR"; then
+        t2_bad="${t2_bad}${f#"$ROOT"/}: does not carry '$RUN_CRITERION' with '$RUN_ANCHOR' on the same line — the criterion may be parked in unrelated prose; "
+    fi
+    if ! printf '%s' "$line" | $GREP -qF "$opener"; then
+        t2_bad="${t2_bad}${f#"$ROOT"/}: the criterion's line does not carry its own trigger statement's opener ('$opener') — the criterion may have been relocated away from the real trigger statement; "
+    fi
+    printf '%s' "$line" | $GREP -q 'review finding' && t2_bad="${t2_bad}${f#"$ROOT"/}: still names 'review finding' on that line; "
+done
+
+obs_line=$($GREP -m1 -F '**Observed in:**' "$SRC_RT")
+printf '%s' "$obs_line" | $GREP -qF 'the run that reproduced it' \
+    || t2_bad="${t2_bad}Observed in template line does not carry 'the run that reproduced it'; "
+
+if [ "$n_routed" -eq 6 ] && [ -z "$t2_bad" ]; then
+    pass "the trigger list closes at five, item 3 carries the run criterion at the source and all $n_routed routed sites, and no unit names 'review finding'"
+else
+    fail "the trigger list closes at five, item 3 carries the run criterion at the source and all routed sites, and no unit names 'review finding'" "routed=$n_routed; $t2_bad"
+fi
+
+echo "== T3: the closed list, the Rule/Waiver discharge pins, the checklist mirror, and verify.md's re-resolution =="
+
+# T3: one assertion spanning every site the closed list touches — the four `### Out of Scope`
+# clauses and their two decidable tests, the closure sentence's three literals, `## Rule` and
+# `## Waiver`'s discharge-set pin, review-checklist.md's mirror, and verify.md Step 6c/6d's
+# ordered re-resolution replacing the old in-place `out-of-scope` grant.
+t3_bad=""
+oos_section=$(awk '/^### Out of Scope/{f=1;next} f && /^## /{exit} f' "$SRC_RT")
+# F1: `^- \*\*[A-Z]` misses a lowercase-titled or `*`-bulleted fifth clause, so a mutation that
+# adds one in either shape leaves the count reading 4 undisturbed. Widen the count to any bullet
+# marker followed by a bold run, so an added clause is counted regardless of its own formatting.
+# H3: F1's fix still required the bold run — a seventh clause added indented or unbolded still
+# passed. Count any list-item shape (any marker, indented, bold or not) instead.
+# H1 (round 3): the widened pattern still required a bullet marker (-, *, +) and missed the
+# numbered-item alternation its three siblings (n_items, n_cats, n_steps) already carry — a
+# fifth clause shipped as a numbered item (5. **Superseded coverage** — ...) was invisible to
+# it and the count still read 4.
+n_clauses=$(printf '%s\n' "$oos_section" | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +')
+[ "$n_clauses" -eq 4 ] || t3_bad="${t3_bad}### Out of Scope has $n_clauses clause bullets, want 4; "
+
+# F1 / F9: each clause's own bullet line, extracted by its exact title — this both asserts the
+# title is present *in the source* (previously pinned only in the checklist mirror below) and
+# gives each clause-body literal a line to bind to, so a literal migrated to the wrong clause, or
+# a clause renamed out from under its sentence, is caught instead of passing on a section-wide
+# grep that cannot tell which bullet supplied the match.
+no_repo_line=$($GREP -m1 -E '^- \*\*No repository component\*\*' "$SRC_RT")
+nothing_line=$($GREP -m1 -E '^- \*\*Nothing assertable changed\*\*' "$SRC_RT")
+thirdparty_line=$($GREP -m1 -E '^- \*\*Third-party behaviour only\*\*' "$SRC_RT")
+analysed_line=$($GREP -m1 -E '^- \*\*Analysed, did not reproduce\*\*' "$SRC_RT")
+[ -n "$no_repo_line" ] || t3_bad="${t3_bad}### Out of Scope missing the 'No repository component' bullet; "
+[ -n "$nothing_line" ] || t3_bad="${t3_bad}### Out of Scope missing the 'Nothing assertable changed' bullet; "
+[ -n "$thirdparty_line" ] || t3_bad="${t3_bad}### Out of Scope missing the 'Third-party behaviour only' bullet; "
+[ -n "$analysed_line" ] || t3_bad="${t3_bad}### Out of Scope missing the 'Analysed, did not reproduce' bullet; "
+printf '%s' "$nothing_line" | $GREP -qF 'leaves nothing assertable' \
+    || t3_bad="${t3_bad}Nothing assertable changed does not carry the fix-by-deletion sentence in its own bullet; "
+printf '%s' "$thirdparty_line" | $GREP -qF 'no line of repository code between the input and the assertion' \
+    || t3_bad="${t3_bad}Third-party behaviour only missing its structural test in its own bullet; "
+printf '%s' "$analysed_line" | $GREP -qF '<what was reported> — analysed, does not reproduce:' \
+    || t3_bad="${t3_bad}Analysed, did not reproduce missing its Reason template in its own bullet; "
+
+closure=$($GREP -m1 -F 'the complete set of self-service' "$SRC_RT")
+printf '%s' "$closure" | $GREP -qF 'names the clause it claims' || t3_bad="${t3_bad}closure sentence missing 'names the clause it claims'; "
+printf '%s' "$closure" | $GREP -qF 'one of the six categories' || t3_bad="${t3_bad}closure sentence missing 'one of the six categories'; "
+printf '%s' "$closure" | $GREP -qF 'the closed list' || t3_bad="${t3_bad}closure sentence missing 'the closed list'; "
+
+rule_sec=$(awk '/^## Rule/{f=1;next} f && /^## /{exit} f' "$SRC_RT")
+waiver_sec=$(awk '/^## Waiver/{f=1;next} f && /^## /{exit} f' "$SRC_RT")
+printf '%s\n' "$rule_sec" | $GREP -qF 'a test, a named clause, or an approved waiver' \
+    || t3_bad="${t3_bad}## Rule does not carry the full discharge set; "
+printf '%s\n' "$waiver_sec" | $GREP -qF 'a test, a named clause, or an approved waiver' \
+    || t3_bad="${t3_bad}## Waiver does not carry the full discharge set; "
+# H4: the green-re-run paragraph's old exclusive sentence contradicted the three-way closure
+# stated two sentences above it in the same section — guard against its reintroduction now that
+# the replacement scopes it to the test arm.
+printf '%s\n' "$rule_sec" | $GREP -qF 'Only a test that asserts the specific symptom closes the gate' \
+    && t3_bad="${t3_bad}## Rule still carries the old exclusive green-re-run sentence ('...closes the gate' unscoped to the test arm); "
+
+# F8: the design and the shipped disclosure both say "this step" — review-checklist.md's Test
+# Quality Pass Step 3, not the file at large. A file-wide grep is satisfied by the mirror
+# relocated anywhere else in the file (probed: moving the whole block out of Step 3 still
+# passes). Scope to the Step 3 span, from its own heading to the next mandatory pass.
+checklist_step3=$(awk '/\*\*Step 3 — Observed-failure regression coverage:\*\*/{f=1;next} f && /^### Cross-Site Consistency Pass/{exit} f' "$CHECKLIST")
+[ -n "$checklist_step3" ] || t3_bad="${t3_bad}review-checklist.md Test Quality Pass Step 3 extraction is empty — the heading anchor may have moved; "
+for title in "No repository component" "Nothing assertable changed" "Third-party behaviour only" "Analysed, did not reproduce"; do
+    printf '%s\n' "$checklist_step3" | $GREP -qF "$title" || t3_bad="${t3_bad}review-checklist.md Step 3 missing clause title '$title'; "
+done
+for cat in "unavailable environment" "harness or provider defect" "destructive reproduction" "non-deterministic race" "workflow-instruction defect" "vacuous test"; do
+    printf '%s\n' "$checklist_step3" | $GREP -qiF "$cat" || t3_bad="${t3_bad}review-checklist.md Step 3 missing category name '$cat'; "
+done
+printf '%s\n' "$checklist_step3" | $GREP -qF 'behaviour the repository can assert on' \
+    || t3_bad="${t3_bad}review-checklist.md Step 3 missing Nothing assertable changed's decidable test; "
+printf '%s\n' "$checklist_step3" | $GREP -qF 'no line of repository code sits between the input and the assertion' \
+    || t3_bad="${t3_bad}review-checklist.md Step 3 missing Third-party behaviour only's structural test; "
+
+verify_6c=$(awk '/\*\*Step 6c/{f=1} f && /\*\*Step 6d/{exit} f' "$VERIFY_DOC")
+verify_6d=$(awk '/\*\*Step 6d — On failure, BLOCK/{f=1} f && /^7\. \*\*On-device/{exit} f' "$VERIFY_DOC")
+printf '%s\n' "$verify_6c" | $GREP -qF 'blank the **Test:** field' || t3_bad="${t3_bad}verify.md Step 6c missing 'blank the **Test:** field'; "
+printf '%s\n' "$verify_6c" | $GREP -qF 're-resolve it through the closed list' || t3_bad="${t3_bad}verify.md Step 6c missing 're-resolve it through the closed list'; "
+printf '%s\n' "$verify_6c" | $GREP -qF 'update the **Test:** field and stop' || t3_bad="${t3_bad}verify.md Step 6c missing 'update the **Test:** field and stop'; "
+printf '%s\n' "$verify_6c" | $GREP -qF 'record the clause in place' || t3_bad="${t3_bad}verify.md Step 6c missing 'record the clause in place'; "
+printf '%s\n' "$verify_6d" | $GREP -qF 're-resolve it through the closed list' || t3_bad="${t3_bad}verify.md Step 6d recovery missing 're-resolve it through the closed list'; "
+printf '%s\n' "$verify_6d" | $GREP -qF "the issue's next" || t3_bad="${t3_bad}verify.md Step 6d recovery does not name the issue's-next owner; "
+$GREP -qF 'in place to `out-of-scope`' "$VERIFY_DOC" && t3_bad="${t3_bad}verify.md still carries the old in-place out-of-scope grant; "
+
+if [ -z "$t3_bad" ]; then
+    pass "the closed list's four clauses, the closure sentence, the Rule/Waiver discharge pins, the checklist mirror, and verify.md's Step 6c/6d re-resolution are all present"
+else
+    fail "the closed list's four clauses, the closure sentence, the Rule/Waiver discharge pins, the checklist mirror, and verify.md's Step 6c/6d re-resolution are all present" "$t3_bad"
+fi
+
+echo "== T4: the waiver count reads six at every quantifying statement, with no five/four remnant =="
+
+# T4: the unit is a statement, not a file — five statements sit in regression-test/SKILL.md
+# alone (the template line, the opener, the list's own highest item, the awk pattern, and its
+# BLOCKER message), one each in CLAUDE.md and testing/SKILL.md. The absence half reuses T1's
+# roots.
+t4_bad=""
+n_t4_statements=0
+$GREP -qF '6 vacuous-test>' "$SRC_RT" || t4_bad="${t4_bad}Waiver category template line's highest option is not 6; "
+n_t4_statements=$((n_t4_statements + 1))
+$GREP -qF 'these six is not valid' "$SRC_RT" || t4_bad="${t4_bad}Allowed categories opener does not read six; "
+n_t4_statements=$((n_t4_statements + 1))
+$GREP -qE '^6\. \*\*Vacuous test\*\*' "$SRC_RT" || t4_bad="${t4_bad}category list's highest item is not 6; "
+n_t4_statements=$((n_t4_statements + 1))
+
+# F2: a presence test on item 6 alone never notices a seventh category appended after it — the
+# count statement would still read six while the list itself no longer closes at six. Bound the
+# span to the enumeration itself (its own opener to the paragraph that follows the list) and
+# assert both the item count and the highest ordinal inside it.
+# H3: bounding to `**Allowed categories**`'s own span and requiring `^[0-9]+\. \*\*` still missed
+# a seventh category placed after the span's end anchor (`Every waiver requires`, itself outside
+# the count) or shaped as a bullet or indented line inside it. Count over the whole `## Waiver`
+# section instead ($waiver_sec, already extracted above) with any list-item shape.
+n_cats=$(printf '%s\n' "$waiver_sec" | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +')
+highest_cat=$(printf '%s\n' "$waiver_sec" | $GREP -oE '^[ ]*[0-9]+' | sed 's/^ *//' | sort -n | tail -1)
+[ "$n_cats" -eq 6 ] || t4_bad="${t4_bad}## Waiver section holds $n_cats list-item(s) (numbered, bulleted, or indented), want 6 waiver categories; "
+[ "$highest_cat" = "6" ] || t4_bad="${t4_bad}## Waiver section's highest numbered-item ordinal is '$highest_cat', want 6; "
+n_t4_statements=$((n_t4_statements + 1))
+
+# F15: `[1-6]` and `1-6 —` used to be file-wide, so unrelated prose gaining either token later
+# would false-red this check even though the hard gate itself is untouched. Bind both to the
+# `## Hard Gate` fenced awk block specifically, the same fence-counting extraction this file
+# already uses for the rejection-block check above.
+hard_gate_fence=$(awk '
+  /^## Hard Gate/ { f=1 }
+  f && /^```/ { fence++; if (fence == 1) next; else exit }
+  f && fence == 1 { print }
+' "$SRC_RT")
+[ -n "$hard_gate_fence" ] || t4_bad="${t4_bad}## Hard Gate fenced block extraction is empty — the fence anchor may have moved; "
+printf '%s\n' "$hard_gate_fence" | $GREP -qF '[1-6]' || t4_bad="${t4_bad}hard-gate awk fence does not match [1-6]; "
+n_t4_statements=$((n_t4_statements + 1))
+printf '%s\n' "$hard_gate_fence" | $GREP -qF '1-6 —' || t4_bad="${t4_bad}hard-gate awk fence's BLOCKER message does not read 1-6; "
+n_t4_statements=$((n_t4_statements + 1))
+
+# F16: the two "gate closes on one of three" sentences (CLAUDE.md and testing/SKILL.md word the
+# waiver clause slightly differently — "an approved waiver" vs. "a user-approved waiver") shipped
+# with no assertion at all. Pin the shared prefix both wordings carry.
+$GREP -qF 'one of six narrow categories' "$CLAUDE/CLAUDE.md" || t4_bad="${t4_bad}CLAUDE.md does not read six narrow categories; "
+n_t4_statements=$((n_t4_statements + 1))
+$GREP -qF 'one of six narrow categories' "$CLAUDE/skills/domains/testing/SKILL.md" || t4_bad="${t4_bad}testing/SKILL.md does not read six narrow categories; "
+n_t4_statements=$((n_t4_statements + 1))
+$GREP -qF 'The gate closes on one of three: a test, a named clause, or' "$CLAUDE/CLAUDE.md" \
+    || t4_bad="${t4_bad}CLAUDE.md discharge-set sentence ('the gate closes on one of three...') is missing or reworded; "
+$GREP -qF 'The gate closes on one of three: a test, a named clause, or' "$CLAUDE/skills/domains/testing/SKILL.md" \
+    || t4_bad="${t4_bad}testing/SKILL.md discharge-set sentence ('the gate closes on one of three...') is missing or reworded; "
+
+for lit in "these five" "five narrow categories" "four waiver categories"; do
+    hits=$($GREP -rniF "$lit" "${T1_ROOTS[@]}" 2>/dev/null || true)
+    [ -n "$hits" ] && t4_bad="${t4_bad}'$lit' still occurs: $(printf '%s' "$hits" | tr '\n' ' '); "
+done
+$GREP -rE 'Waiver category.*\[1-5\]' "${T1_ROOTS[@]}" >/dev/null 2>&1 && t4_bad="${t4_bad}a Waiver category reading [1-5] still exists; "
+if [ -z "$t4_bad" ]; then
+    pass "the waiver count reads six at all $n_t4_statements quantifying statements, the category list closes at 6, and no five/four remnant survives under the config roots"
+else
+    fail "the waiver count reads six at all $n_t4_statements quantifying statements, the category list closes at 6, and no five/four remnant survives under the config roots" "$t4_bad"
+fi
+
+echo "== T5: category 6's conditions and prohibition are mirrored in the checklist, and never self-serviced =="
+
+# T5: the two inspectable conditions, the drift carve-out, and the control prohibition must
+# survive at both the source and the pasted checklist copy — a mirror missing the carve-out
+# would let the checklist classify the repository's own presence assertions as vacuous, and one
+# missing the prohibition could accept a compensating control that is itself a test.
+t5_bad=""
+cat6=$($GREP -m1 -E '^6\. \*\*Vacuous test\*\*' "$SRC_RT")
+for lit in "asserts the same expression the fix wrote" "mirrors the production control flow" "is not a restatement" "cannot be another test"; do
+    printf '%s' "$cat6" | $GREP -qF "$lit" || t5_bad="${t5_bad}regression-test/SKILL.md category 6 missing '$lit'; "
+done
+# F8: bind to the same Step 3 span T3 extracts, not the whole checklist file.
+for lit in "asserts the same expression the fix wrote" "mirrors the production control flow" "is not a restatement" "cannot be another test"; do
+    printf '%s\n' "$checklist_step3" | $GREP -qF "$lit" || t5_bad="${t5_bad}review-checklist.md Step 3 missing '$lit'; "
+done
+# F7: re-extract `### Out of Scope` locally instead of reading T3's `$oos_section` — the two
+# assertions used to share one extraction, so a break in T3's copy silently vacuous-passed this
+# negative check too (an empty section contains no clause reading 'restates the implementation'
+# either), and reordering the blocks would have made that failure mode invisible here.
+t5_oos_section=$(awk '/^### Out of Scope/{f=1;next} f && /^## /{exit} f' "$SRC_RT")
+[ -n "$t5_oos_section" ] || t5_bad="${t5_bad}### Out of Scope extraction is empty — cannot verify no clause admits a self-service vacuous-test exit; "
+printf '%s\n' "$t5_oos_section" | $GREP -qF 'restates the implementation' \
+    && t5_bad="${t5_bad}an ### Out of Scope clause reads 'restates the implementation' — the vacuous-test judgement has become self-service; "
+if [ -z "$t5_bad" ]; then
+    pass "category 6's two conditions, drift carve-out, and control prohibition are mirrored in review-checklist.md, and no Out of Scope clause admits a self-service vacuous-test exit"
+else
+    fail "category 6's two conditions, drift carve-out, and control prohibition are mirrored in review-checklist.md, and no Out of Scope clause admits a self-service vacuous-test exit" "$t5_bad"
+fi
+
+echo "== T6: the ordered check, the per-site discharge wording, the roster rewrite, and STILL OPEN's sole home =="
+
+# T6: the widest single assertion — the four-step ordered check, the five discharge literals at
+# each of the three proof-of-fix sites (with the old absolute mandate gone from all three), the
+# Who-writes-it roster naming the loops as writers of a reproduced-defect entry, and STILL
+# OPEN's case-sensitive scope: present only in review-iterate.md, and only from Step 2c onward.
+t6_bad=""
+bwt=$(awk '/^## Before Writing the Test/{f=1;next} f && /^## /{exit} f' "$SRC_RT")
+step1=$(printf '%s\n' "$bwt" | $GREP -m1 -E '^1\. ')
+step2=$(printf '%s\n' "$bwt" | $GREP -m1 -E '^2\. ')
+step3=$(printf '%s\n' "$bwt" | $GREP -m1 -E '^3\. ')
+step4=$(printf '%s\n' "$bwt" | $GREP -m1 -E '^4\. ')
+# H3: a fifth step added as a bullet, or indented, is invisible to a bare `^[0-9]+\. ` count —
+# widen to any list-item shape, same as T2's and T4's.
+n_steps=$(printf '%s\n' "$bwt" | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +')
+# F3: `n_steps -eq 4` plus first-line greps of steps 1-2 never looked at steps 3-4, so replacing
+# either with "Reserved." — or renumbering the list 1,2,2,4 — still passed. Require the ordinal
+# sequence itself, in order, and pin one literal per step.
+ordinals=$(printf '%s\n' "$bwt" | $GREP -oE '^[0-9]+' | tr '\n' ' ' | sed 's/ $//')
+[ "$n_steps" -eq 4 ] || t6_bad="${t6_bad}Before Writing the Test has $n_steps numbered steps, want 4; "
+[ "$ordinals" = "1 2 3 4" ] || t6_bad="${t6_bad}Before Writing the Test's ordinal sequence is '$ordinals', want '1 2 3 4'; "
+printf '%s' "$step1" | $GREP -qF 'Out of Scope' || t6_bad="${t6_bad}step 1 does not route the Out of Scope clauses; "
+printf '%s' "$step1" | $GREP -qF 'six waiver' || t6_bad="${t6_bad}step 1 does not route all six waiver categories; "
+printf '%s' "$step2" | $GREP -qF 'at the level the selection table names' || t6_bad="${t6_bad}step 2 missing 'at the level the selection table names'; "
+printf '%s' "$step3" | $GREP -qF 'Consolidate near-duplicates' || t6_bad="${t6_bad}step 3 missing 'Consolidate near-duplicates'; "
+printf '%s' "$step4" | $GREP -qF 'Otherwise write a new test' || t6_bad="${t6_bad}step 4 missing 'Otherwise write a new test'; "
+printf '%s\n' "$bwt" | $GREP -qF 'An extended test satisfies' || t6_bad="${t6_bad}section missing 'An extended test satisfies'; "
+
+REVITER="$CLAUDE/commands/review-iterate.md"
+# F14: array, not a space-joined string — see T1_ROOTS above.
+proof_sites=("$CLAUDE/commands/review-code-fix-loop.md" "$REVITER" "$CLAUDE/commands/review-fix.md")
+for f in "${proof_sites[@]}"; do
+    # F16: "The discharge governs the test, not the ledger." shipped at all three sites with no
+    # assertion pinning it — added to the same per-site literal set the other four discharge
+    # phrases already use.
+    # H3: the no-self-serve body was pinned only by its bold lead ("Do not self-serve a
+    # waiver") at all three sites — restoring round 2's inverted wording ("this command judges
+    # it" / "record it yourself and proceed") after the bold lead left the suite green, since
+    # nothing pinned the body's own who-decides clause. Add each site's literal.
+    for lit in "unless a clause in" "the user has approved a waiver" "discharge retires the" \
+               "State the discharge in your fix response" "Do not self-serve a waiver" \
+               "The discharge governs the test, not the ledger." "decides outside"; do
+        $GREP -qF "$lit" "$f" || t6_bad="${t6_bad}${f#"$ROOT"/} missing '$lit'; "
+    done
+    $GREP -qF 'No Critical or High finding is considered fixed without a corresponding test change' "$f" \
+        && t6_bad="${t6_bad}${f#"$ROOT"/} still carries the old absolute test mandate; "
+done
+
+who_writes=$($GREP -m1 -F '**Who writes it:**' "$SRC_RT")
+printf '%s' "$who_writes" | $GREP -qF 'append an entry for any defect that reproduced' \
+    || t6_bad="${t6_bad}Who writes it does not name the loops as writers of a reproduced-defect entry; "
+printf '%s' "$who_writes" | $GREP -qF 'self-service `out-of-scope`' \
+    || t6_bad="${t6_bad}Who writes it does not admit a self-service out-of-scope; "
+# F4: a rewrite naming only one loop as the roster's justification still passed — require both.
+printf '%s' "$who_writes" | $GREP -qF '/review-code-fix-loop' || t6_bad="${t6_bad}Who writes it does not name /review-code-fix-loop; "
+printf '%s' "$who_writes" | $GREP -qF '/review-iterate' || t6_bad="${t6_bad}Who writes it does not name /review-iterate; "
+
+still_open_files=$($GREP -rl "STILL OPEN" "${T1_ROOTS[@]}" 2>/dev/null | sed "s#^$ROOT/##" | sort -u)
+[ "$still_open_files" = "platforms/claude/commands/review-iterate.md" ] \
+    || t6_bad="${t6_bad}STILL OPEN occurs in: $(printf '%s' "$still_open_files" | tr '\n' ' '), want only review-iterate.md; "
+span_2b=$(awk '/\*\*2b\. Apply the fix:\*\*/{f=1;next} f && /\*\*2c\. Scoped verification\*\*/{exit} f' "$REVITER")
+# F6: renaming the 2b anchor silently empties span_2b, and an empty span trivially contains no
+# "STILL OPEN" — the only negative check behind it vanishes with no failure to show for it. Guard
+# non-emptiness before trusting the absence.
+[ -n "$span_2b" ] || t6_bad="${t6_bad}span_2b extraction is empty — the '**2b. Apply the fix:**' anchor may have been renamed; "
+printf '%s' "$span_2b" | $GREP -q "STILL OPEN" && t6_bad="${t6_bad}STILL OPEN appears inside the 2b span; "
+
+# H1: the old exit anchor ('### Step 3') let Step 2d's 34 lines sit inside span_2c, so a pin
+# added below could be satisfied by text relocated into 2d instead of staying in 2c proper. Exit
+# at 2d instead, and guard non-emptiness the same way span_2b does (F6) — an empty span from a
+# renamed anchor would otherwise vacuous-pass every check below it.
+span_2c=$(awk '/\*\*2c\. Scoped verification\*\*/{f=1} f && /\*\*2d\. Record result\*\*/{exit} f' "$REVITER")
+[ -n "$span_2c" ] || t6_bad="${t6_bad}span_2c extraction is empty — the '**2c. Scoped verification**' or '**2d. Record result**' anchor may have been renamed; "
+printf '%s\n' "$span_2c" | $GREP -qF 'For Critical and High' || t6_bad="${t6_bad}Step 2c missing 'For Critical and High'; "
+printf '%s\n' "$span_2c" | $GREP -qF 'in addition to verifying the fix resolves the finding' || t6_bad="${t6_bad}Step 2c missing 'in addition to verifying the fix resolves the finding'; "
+printf '%s\n' "$span_2c" | $GREP -qF "coder's fix response" || t6_bad="${t6_bad}Step 2c does not pass the coder's fix response to its verifier; "
+# H1: round 1's exact defect — restoring "Return STILL OPEN in every other case." verbatim —
+# left the suite green because nothing pinned the scoped replacement sentence and nothing forbade
+# the phrase it replaced.
+printf '%s\n' "$span_2c" | $GREP -qF "when the finding's concern survives, or when none of the three is present" \
+    || t6_bad="${t6_bad}Step 2c missing the scoped STILL OPEN condition ('when the finding's concern survives, or when none of the three is present'); "
+printf '%s\n' "$span_2c" | $GREP -q "in every other case" \
+    && t6_bad="${t6_bad}Step 2c still carries the unscoped 'in every other case' STILL OPEN condition; "
+
+# H1/M1: the batch loop's Step 3 fix-response paragraph was pinned by nothing — deleting it, or
+# restoring the pre-fix referent wording, reverted green. Scope to its own span so a rename
+# elsewhere in the file cannot stand in for it.
+cfl_step3=$(awk '/^### Step 3: Re-review/{f=1;next} f && /^### /{exit} f' "$CLAUDE/commands/review-code-fix-loop.md")
+[ -n "$cfl_step3" ] || t6_bad="${t6_bad}review-code-fix-loop.md Step 3 extraction is empty — the '### Step 3: Re-review' anchor may have been renamed; "
+printf '%s\n' "$cfl_step3" | $GREP -qF "coder's fix response" || t6_bad="${t6_bad}review-code-fix-loop.md Step 3 does not pass the coder's fix response to the re-review; "
+printf '%s\n' "$cfl_step3" | $GREP -qF "record the accepted" || t6_bad="${t6_bad}review-code-fix-loop.md Step 3 does not record the accepted discharge on the finding's resolution line; "
+
+# H5: review-iterate.md's Step 3 final re-review had the same gap at its twin site — no
+# fix-response pass-through and no accepted-discharge record, so a finding discharged at 2c
+# re-presented at the final gate as a test-less fix.
+step3_final=$(awk '/^### Step 3: Final full re-review/{f=1;next} f && /^### /{exit} f' "$REVITER")
+[ -n "$step3_final" ] || t6_bad="${t6_bad}review-iterate.md Step 3 (final re-review) extraction is empty — the '### Step 3: Final full re-review' anchor may have been renamed; "
+printf '%s\n' "$step3_final" | $GREP -qF "fix responses collected in Step 2" || t6_bad="${t6_bad}review-iterate.md Step 3 does not pass the per-finding fix responses to the final re-review; "
+printf '%s\n' "$step3_final" | $GREP -qF "record the accepted" || t6_bad="${t6_bad}review-iterate.md Step 3 does not record the accepted discharge on the finding's resolution line; "
+
+if [ -z "$t6_bad" ]; then
+    pass "the ordered check, the per-site discharge wording, the roster rewrite, and STILL OPEN's sole scoped home in review-iterate.md all hold"
+else
+    fail "the ordered check, the per-site discharge wording, the roster rewrite, and STILL OPEN's sole scoped home in review-iterate.md all hold" "$t6_bad"
 fi
 
 echo
