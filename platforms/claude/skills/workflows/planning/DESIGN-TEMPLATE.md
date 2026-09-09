@@ -70,6 +70,8 @@ What problem does this solve? Why now?
 
 *(The five backtick-quoted values in the paragraph above are read by a test: `tests/verify-config-consistency.sh` extracts them and compares them against `doc-metrics`'s own accepted set. Reword the surrounding prose freely, but keep all five values on that one paragraph and re-run the suite afterwards.)*
 
+*(In a `CI` or `TEST` design, a requirement enumerating a failure mode of the environment rather than a path this change's own code takes may not enter §3 on `analysis` alone. It covers Functional Requirement, Non-Functional Requirement, and Constraint bullets alike, and catches a failure mode the artifact is required to handle rather than a recorded fact or limitation of the environment. Raise it in `## 8. Open Questions` instead — `/design` Step 5 puts it to the user, and a real Decision in `analysis.md` → `## Clarifications` admits it as `decision <date>`; otherwise it is left out. `~/.claude/skills/domains/architecture/SKILL.md` → Change Class is authoritative. `tests/verify-config-consistency.sh` reads this note.)*
+
 **Functional Requirements:**
 - ... — **From:** analysis
 

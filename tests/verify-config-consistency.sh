@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=48
+EXPECTED_TESTS=49
 
 PASS=0
 FAIL=0
@@ -1535,6 +1535,168 @@ if [ -z "$t6_bad" ]; then
     pass "the ordered check, the per-site discharge wording, the roster rewrite, and STILL OPEN's sole scoped home in review-iterate.md all hold"
 else
     fail "the ordered check, the per-site discharge wording, the roster rewrite, and STILL OPEN's sole scoped home in review-iterate.md all hold" "$t6_bad"
+fi
+
+echo "== T7: the §3-admission rule (mechanism-proportionality step 6) reaches all three sites, each inside its own span, byte-identical on the shared domain clause, pinned by one anchor phrase =="
+
+# T7: design.md §5 ships the same rule as three independently-authored lines — the source
+# paragraph in architecture/SKILL.md, the template note in DESIGN-TEMPLATE.md, and the review
+# flag in review-design.md — so nothing but an assertion binding all three together catches one
+# of them drifting, being deleted, or being relocated out of the span that scopes it. Deliberately
+# reuses T1_ROOTS (both config roots) for the absence half below rather than declaring a fresh
+# root pair — same corpus, same guard, and this comment is the record of that reuse.
+#
+# Placed after the T6 block for numeric reading order (T1..T6, then T7) — still after the T1
+# block itself, since T1_ROOTS must already be in scope. Moved above T1, `${#T1_ROOTS[@]}`
+# on an unset array raises an unbound-variable error under `set -u` (element expansion
+# `"${T1_ROOTS[@]}"` alone does not, in bash 4.4+). Left unguarded, that error abandons the
+# compound command it sits in, leaves `n_t7_scanned` unset, and the later pass-line
+# interpolation of that variable aborts the whole suite at exit 1 — losing every remaining
+# assertion and printing no summary. The existence guard below, tested before any length or
+# element expansion, converts that mid-suite abort into a single named FAIL while letting the
+# suite run to completion.
+t7_bad=""
+if [ "${T1_ROOTS+set}" = set ]; then
+    [ "${#T1_ROOTS[@]}" -eq 2 ] || t7_bad="${t7_bad}T1_ROOTS has ${#T1_ROOTS[@]} element(s), want 2; "
+    for r in "${T1_ROOTS[@]}"; do
+        [ -d "$r" ] || t7_bad="${t7_bad}root '$r' is not a directory — the absence-half scan would run over nothing; "
+    done
+    # F5-style positive control (see T1 above): an absence-only scan below has no positive
+    # control of its own, so confirm the scan actually walks a non-zero file count first.
+    n_t7_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    [ "$n_t7_scanned" -gt 0 ] || t7_bad="${t7_bad}0 Markdown files found under the config roots — the absence-half scan ran over nothing; "
+
+    T7_ANCHOR="a failure mode of the environment"
+    # CM1: the two endpoint tokens of the shared domain clause used to be the only thing pinned
+    # (via t7_common below) — each occurring somewhere on the line, in any order, with anything
+    # between them. A meaning-inverting or scope-narrowing edit to the prose between the tokens
+    # left both green. Extract the whole clause between them and compare it byte-for-byte across
+    # sites instead of trusting the endpoints alone.
+    T7_DOMAIN_START="It covers Functional Requirement"
+    T7_DOMAIN_END="limitation of the environment"
+    REVIEW_DESIGN_DOC="$CLAUDE/commands/review-design.md"
+
+    # Reuses ARCH_CLASS and DESIGN_TEMPLATE, already declared above for the class-label and
+    # doc-metrics checks, rather than redeclaring the same two paths under new names.
+    t7_files=("$ARCH_CLASS" "$DESIGN_TEMPLATE" "$REVIEW_DESIGN_DOC")
+    t7_starts=(
+        "### What each class demands"
+        "## 3. Implementation Context"
+        "**Flag (design-level concerns):**"
+    )
+    t7_ends=(
+        "### Choosing between them"
+        "## 4. Architecture Overview"
+        "**Ticket Constraint Guardrail"
+    )
+    # Both domain-clause halves (scope, then carve-out), the two class literals the rule is
+    # scoped to, the tag under test, and the escape route — every one of the three lines carries
+    # all six, on the same line as the anchor phrase.
+    t7_common=(
+        '`CI`' '`TEST`' '`analysis`' '## 8. Open Questions'
+        'Constraint bullets alike' 'limitation of the environment'
+    )
+    t7_domain_clauses=()
+
+    for i in "${!t7_files[@]}"; do
+        f="${t7_files[$i]}"
+        start="${t7_starts[$i]}"
+        end="${t7_ends[$i]}"
+        name="${f#"$ROOT"/}"
+
+        if [ ! -f "$f" ]; then
+            t7_bad="${t7_bad}$name: file does not resolve; "
+            continue
+        fi
+        $GREP -qF "$start" "$f" || { t7_bad="${t7_bad}$name: span start '$start' not found; "; continue; }
+        # CM2: existence alone doesn't prove order. A terminator hoisted above the span start (or
+        # renamed away) leaves the awk range below with no closing match once `s` has been seen,
+        # so the range silently runs to EOF — the exact widening this guard exists to catch.
+        # Probe with the extraction's own index()-after-index() semantics rather than a bare grep.
+        awk -v s="$start" -v e="$end" 'index($0,s){f=1; next} f && index($0,e){found=1; exit} END{exit !found}' "$f" \
+            || { t7_bad="${t7_bad}$name: span terminator '$end' not found after '$start' — the span would silently widen to EOF; "; continue; }
+
+        t7_span=$(awk -v s="$start" -v e="$end" 'index($0,s){f=1} f && index($0,e){exit} f' "$f")
+
+        # Occurrences, not lines: `grep -cF` reads 1 for a second copy appended to the rule's own
+        # line, because it counts matching lines, not matches — this corpus bans manual line
+        # wrapping, so the whole rule is one line and a same-line decoy must still redden.
+        whole_count=$($GREP -oiF "$T7_ANCHOR" "$f" | wc -l | tr -d ' ')
+        [ "$whole_count" -eq 1 ] || t7_bad="${t7_bad}$name: anchor phrase occurs $whole_count time(s) in the whole file, want exactly 1; "
+
+        span_count=$(printf '%s\n' "$t7_span" | $GREP -oiF "$T7_ANCHOR" | wc -l | tr -d ' ')
+        if [ "$span_count" -ne 1 ]; then
+            # CM4: a gutted or absent rule line makes every literal check below vacuous — one
+            # deleted sentence used to fan out into 8 derived failures stacked on the 2 real ones.
+            t7_bad="${t7_bad}$name: anchor phrase occurs $span_count time(s) inside its own span ('$start' .. '$end'), want exactly 1 — deleted, relocated out of span, or a second copy; "
+            continue
+        fi
+
+        rule_line=$(printf '%s\n' "$t7_span" | $GREP -F "$T7_ANCHOR")
+        for lit in "${t7_common[@]}"; do
+            printf '%s' "$rule_line" | $GREP -qF "$lit" || t7_bad="${t7_bad}$name: rule line missing '$lit'; "
+        done
+        printf '%s' "$rule_line" | $GREP -q 'PRODUCT' && t7_bad="${t7_bad}$name: rule line names 'PRODUCT' — FR-3 keeps this rule off both high classes; "
+
+        if [ "$f" = "$REVIEW_DESIGN_DOC" ]; then
+            printf '%s' "$rule_line" | $GREP -qF 'flag as Medium' || t7_bad="${t7_bad}$name: rule line missing 'flag as Medium'; "
+        else
+            printf '%s' "$rule_line" | $GREP -qF '## Clarifications' || t7_bad="${t7_bad}$name: rule line missing '## Clarifications'; "
+            printf '%s' "$rule_line" | $GREP -qF '`decision <date>`' || t7_bad="${t7_bad}$name: rule line missing '\`decision <date>\`'; "
+        fi
+
+        # Fixed-string extraction, matching CM2's index()-after-index() discipline above: sed's
+        # interpolated `${T7_DOMAIN_START}.*${T7_DOMAIN_END}` (a) aborts on stderr if either anchor
+        # ever carries a regex metacharacter, leaving t7_domain_clauses empty and every `[ -n ... ]`
+        # comparison below silently skipped while the pass banner still claims byte-identity; and
+        # (b) is regex-greedy, so a drifted clause plus a pristine copy appended on the same line
+        # extracts the trailing (last) copy instead of catching the drift. index()/substr() takes
+        # the first start token, then the first end token after it, with no regex involved.
+        domain_clause=$(printf '%s' "$rule_line" | awk -v s="$T7_DOMAIN_START" -v e="$T7_DOMAIN_END" '
+            {
+                si = index($0, s)
+                if (si == 0) { exit }
+                rest = substr($0, si)
+                ei = index(rest, e)
+                if (ei == 0) { exit }
+                print substr(rest, 1, ei + length(e) - 1)
+            }')
+        if [ -n "$domain_clause" ]; then
+            t7_domain_clauses[$i]="$domain_clause"
+        else
+            t7_bad="${t7_bad}$name: domain clause anchors ('$T7_DOMAIN_START' .. '$T7_DOMAIN_END') not found on the rule line — cannot compare for byte-identity; "
+        fi
+    done
+
+    # CM1: compare the extracted clause pairwise against the first site's, only when both sides
+    # actually extracted one — a site that already failed above (and already carries its own
+    # message) shouldn't also report a spurious mismatch against an empty placeholder. Iterate
+    # every site index, not a hardcoded pair, so a future fourth site added to t7_files is
+    # compared too; index 0 against itself is a trivial no-op equality.
+    for i in "${!t7_files[@]}"; do
+        if [ -n "${t7_domain_clauses[0]:-}" ] && [ -n "${t7_domain_clauses[$i]:-}" ] \
+            && [ "${t7_domain_clauses[$i]}" != "${t7_domain_clauses[0]}" ]; then
+            t7_bad="${t7_bad}${t7_files[$i]#"$ROOT"/}: shared domain clause differs from ${t7_files[0]#"$ROOT"/} — not byte-identical; "
+        fi
+    done
+
+    # Absence half: the anchor phrase must resolve to exactly these three files under both config
+    # roots. A fourth uncontrolled copy in a fourth file is invisible to the per-site loop above,
+    # which only ever looks at the three named files — this is the only half that catches it.
+    # `-i`, matching T1's sibling scan above: a sentence-initial capitalised fourth copy is
+    # otherwise invisible to a case-sensitive `-F` match.
+    anchor_files=$($GREP -rliF "$T7_ANCHOR" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+    expected_files=$(printf '%s\n' "${t7_files[@]}" | sort -u)
+    [ "$anchor_files" = "$expected_files" ] \
+        || t7_bad="${t7_bad}anchor phrase resolves outside the three named sites — found: $(printf '%s' "$anchor_files" | tr '\n' ' '); "
+else
+    t7_bad="T1_ROOTS is unset — T7 must run after the T1 block, which declares it; "
+fi
+
+if [ -z "$t7_bad" ]; then
+    pass "the §3-admission rule reaches all three sites inside their own spans, each carries the shared domain clause byte-identically and no 'PRODUCT' literal, and the anchor phrase resolves to exactly these three files across $n_t7_scanned Markdown file(s) under the config roots"
+else
+    fail "the §3-admission rule reaches all three sites inside their own spans, each carries the shared domain clause byte-identically and no 'PRODUCT' literal, and the anchor phrase resolves to exactly these three files under the config roots" "$t7_bad"
 fi
 
 echo

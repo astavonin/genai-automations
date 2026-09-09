@@ -121,6 +121,8 @@ Classify every change before designing it. One of four values, recorded in `anal
 
 **`PRODUCT-SHIPPED` — everything `PRODUCT-NEW` demands, plus what is already deployed.** Name the compatibility surface: public API, wire format, persisted data, config and CLI flags. For each, state whether this change preserves it; where it does not, state the migration path and the deprecation window. A behavioural change no existing caller can opt out of is a trade-off for §7, not an implementation detail.
 
+**`CI` and `TEST` additionally bound §3, not only §6:** a requirement enumerating a failure mode of the environment — the substrate, a dependency, or the infrastructure, rather than a path this change's own code takes — is inadmissible while its only `From:` tag is `analysis`; a documented one (`ticket`, `incident <date>`, `spec <name>`) stays. It covers Functional Requirement, Non-Functional Requirement, and Constraint bullets alike, and catches a failure mode the artifact is required to handle rather than a recorded fact or limitation of the environment. A speculative one that genuinely matters goes to `## 8. Open Questions`, where `/design` Step 5 puts it to the user; a real Decision recorded in `analysis.md` → `## Clarifications` is what lets it enter as `decision <date>`. (`tests/verify-config-consistency.sh` reads this paragraph.)
+
 ### Choosing between them
 
 - The order, low to high: `CI` < `TEST` < `PRODUCT-NEW` < `PRODUCT-SHIPPED`. "Highest" below means furthest right in that order.
