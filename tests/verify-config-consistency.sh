@@ -36,7 +36,7 @@ APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=49
+EXPECTED_TESTS=51
 
 PASS=0
 FAIL=0
@@ -1071,17 +1071,34 @@ fi
 
 # S3: /verify's attribution step (step 3b). Span-scoped, not file-scoped — `verify.md` already
 # carries `git diff` and `origin/master` elsewhere (step 2a), so a file-level grep for either
-# proves nothing about this step. The span runs from the step 8 opener to the next `## `.
+# proves nothing about this step. The span runs from the step 8 opener to the next numbered step
+# (`/^9\. /`), not the next `## ` — mechanism-proportionality step 7 inserts step 9 (the
+# comment-gate run) between step 8 and the next heading, and a `^## ` terminator would swallow
+# it, letting step 9's own copy of `refs/remotes/origin/HEAD` keep this assertion green after
+# step 8's own resolution line was deleted. Also pins the `BASE=` assignment itself (not just the
+# resolution token it fixes) and asserts step 9's content — the comment-gate invocation — has not
+# leaked into step 8's own span.
 VERIFY_DOC="$CLAUDE/commands/verify.md"
-span=$(awk '/^8\. \*\*Attribution/{f=1} f&&/^## /{exit} f' "$VERIFY_DOC")
-if [ -n "$span" ] \
-    && printf '%s' "$span" | $GREP -q 'refs/remotes/origin/HEAD' \
-    && printf '%s' "$span" | $GREP -q 'ls-files --others' \
-    && printf '%s' "$span" | $GREP -q 'say so in one line'; then
-    pass "/verify's attribution step resolves the base, sees unstaged files, and documents the no-source skip"
+span=$(awk '/^8\. \*\*Attribution/{f=1} f&&/^9\. /{exit} f' "$VERIFY_DOC")
+s3_bad=""
+if [ -z "$span" ]; then
+    s3_bad="no step 8 span found; "
 else
-    fail "/verify's attribution step resolves the base, sees unstaged files, and documents the no-source skip" \
-         "$(printf '%s' "${span:-<no step 8 span found>}" | head -4)"
+    printf '%s' "$span" | $GREP -q 'refs/remotes/origin/HEAD' \
+        || s3_bad="${s3_bad}span missing 'refs/remotes/origin/HEAD'; "
+    printf '%s' "$span" | $GREP -q 'ls-files --others' \
+        || s3_bad="${s3_bad}span missing 'ls-files --others'; "
+    printf '%s' "$span" | $GREP -q 'say so in one line' \
+        || s3_bad="${s3_bad}span missing 'say so in one line'; "
+    printf '%s' "$span" | $GREP -qF 'BASE=$(git symbolic-ref' \
+        || s3_bad="${s3_bad}span missing 'BASE=\$(git symbolic-ref'; "
+    printf '%s' "$span" | $GREP -qF 'comment-gate.sh' \
+        && s3_bad="${s3_bad}comment-gate.sh leaked into step 8's span from step 9; "
+fi
+if [ -z "$s3_bad" ]; then
+    pass "/verify's attribution step resolves the base, sees unstaged files, documents the no-source skip, and carries no comment-gate.sh leaked in from step 9"
+else
+    fail "/verify's attribution step resolves the base, sees unstaged files, documents the no-source skip, and carries no comment-gate.sh leaked in from step 9" "$s3_bad"
 fi
 
 # S4: diagnose.md Step 5's attribution check (step 3c). Bound to the bullet, not the file --
@@ -1697,6 +1714,202 @@ if [ -z "$t7_bad" ]; then
     pass "the §3-admission rule reaches all three sites inside their own spans, each carries the shared domain clause byte-identically and no 'PRODUCT' literal, and the anchor phrase resolves to exactly these three files across $n_t7_scanned Markdown file(s) under the config roots"
 else
     fail "the §3-admission rule reaches all three sites inside their own spans, each carries the shared domain clause byte-identically and no 'PRODUCT' literal, and the anchor phrase resolves to exactly these three files under the config roots" "$t7_bad"
+fi
+
+# === The comment gate (mechanism-proportionality step 7) ====================================
+#
+# design.md §5 ships the comment-ratio gate across five prose sites: four spans of
+# commands/verify.md (the tier-1 linter-discovery sub-item, the tier-3a step-9 run site, the
+# Requirements bullet, and the Failure Handling recovery item) plus one span of
+# agents/coder.md (the Comments-list rule and its ticket-reference qualification). T-a binds
+# the four verify.md spans together; T-b binds the coder.md span and absence-checks it against
+# a second copy under either config root, the same two roots T1/T7 already declare. S3 above is also
+# edited in place for this step: it now re-terminates at the next numbered step instead of the
+# next `## ` heading, since step 9 sits between step 8 and that heading, and it pins the new
+# `BASE=` assignment plus the absence of a leaked comment-gate.sh reference.
+
+echo "== T-a: /verify's four comment-gate spans carry their pinned literals, each inside its own span (mechanism-proportionality step 7) =="
+
+# T-a: each span is read with `awk '/opener/{f=1;next} f&&/terminator/{exit} f'` — the `next` is
+# what stops a numbered-step opener from matching a numbered-step terminator and exiting on its
+# own first line. Occurrences, not lines, throughout: this corpus bans manual line wrapping, so
+# a whole rule is often one line and a same-line decoy must still redden.
+ta_bad=""
+
+# Linter Discovery span: '**Linter Discovery Process:**' -> '**Language-Specific Linters:**'.
+# Anchored on the no-configuration clause, which is unique to the one sub-item step 7 adds —
+# a deleted or relocated sub-item drops the anchor from the span entirely.
+ld_span=$(awk '/\*\*Linter Discovery Process:\*\*/{f=1;next} f&&/\*\*Language-Specific Linters:\*\*/{exit} f' "$VERIFY_DOC")
+if [ -z "$ld_span" ]; then
+    ta_bad="${ta_bad}Linter Discovery span not found; "
+else
+    ld_anchor='ships no linter configuration into the repo under verification'
+    n_ld_anchor=$(printf '%s\n' "$ld_span" | $GREP -oiF "$ld_anchor" | wc -l | tr -d ' ')
+    if [ "$n_ld_anchor" -ne 1 ]; then
+        ta_bad="${ta_bad}Linter Discovery span: no-configuration clause occurs $n_ld_anchor time(s), want exactly 1; "
+    else
+        ld_line=$(printf '%s\n' "$ld_span" | $GREP -F "$ld_anchor")
+        for lit in 'ERA001' 'revive' 'missing_docs'; do
+            printf '%s' "$ld_line" | $GREP -qF "$lit" || ta_bad="${ta_bad}Linter Discovery sub-item missing '$lit'; "
+        done
+    fi
+fi
+
+# Step-9 span: '9. **Comment ratio' -> the next numbered step or the next '## ', whichever first.
+step9_span=$(awk '/^9\. \*\*Comment ratio/{f=1;next} f&&(/^[0-9]+\. /||/^## /){exit} f' "$VERIFY_DOC")
+step9_opener=$($GREP -n '^9\. \*\*Comment ratio' "$VERIFY_DOC" | head -1 | cut -d: -f1)
+step8_opener=$($GREP -n '^8\. \*\*Attribution' "$VERIFY_DOC" | head -1 | cut -d: -f1)
+if [ -z "$step9_span" ]; then
+    ta_bad="${ta_bad}step-9 span not found; "
+else
+    n_invoke=$(printf '%s\n' "$step9_span" | $GREP -oiF 'comment-gate.sh' | wc -l | tr -d ' ')
+    [ "$n_invoke" -eq 1 ] || ta_bad="${ta_bad}step-9 span: comment-gate.sh invocation occurs $n_invoke time(s), want exactly 1; "
+
+    printf '%s\n' "$step9_span" | $GREP -qF 'BASE=$(git symbolic-ref' \
+        || ta_bad="${ta_bad}step-9 span missing the 'BASE=\$(git symbolic-ref' assignment — a bare resolution line with no BASE= in front satisfies a looser pin; "
+    printf '%s\n' "$step9_span" | $GREP -qF 'git remote show origin' \
+        || ta_bad="${ta_bad}step-9 span missing the 'git remote show origin' fallback half of the assignment; "
+    printf '%s\n' "$step9_span" | $GREP -qF '${BASE:?' \
+        || ta_bad="${ta_bad}step-9 span missing the '\${BASE:?' guard — a hardcoded base branch would drop this; "
+    printf '%s\n' "$step9_span" | $GREP -qF 'Exit `0` means the scan ran' \
+        || ta_bad="${ta_bad}step-9 span missing the exit-contract phrase 'Exit \`0\` means the scan ran' — its absence lets a caller wire &&; "
+
+    warn_line=$(printf '%s\n' "$step9_span" | $GREP -F 'and do not stop the run')
+    if [ -z "$warn_line" ]; then
+        ta_bad="${ta_bad}step-9 span missing 'and do not stop the run'; "
+    else
+        printf '%s' "$warn_line" | $GREP -qF '`BLOCK`, a bare suppression, or an unreferenced `TODO` is a failure' \
+            || ta_bad="${ta_bad}the same sentence does not carry '\`BLOCK\`, a bare suppression, or an unreferenced \`TODO\` is a failure' — a WARN/BLOCK swap between the two verdict sentences keeps every literal in isolation but separates this pair; "
+
+        # The pairing above catches a literal two-way swap but not a one-sided rewrite —
+        # changing only the first verdict word keeps both pinned literals in place while
+        # inverting which verdict the sentence says does not stop the run. Isolate the
+        # non-stopping sentence itself (line start to its own period) and require it to name
+        # `WARN`, not `BLOCK`.
+        stopping_sentence=$(printf '%s' "$warn_line" | $GREP -oE '^[[:space:]]*[^.]*and do not stop the run\.')
+        if [ -z "$stopping_sentence" ]; then
+            ta_bad="${ta_bad}could not isolate the non-stopping sentence ending in 'and do not stop the run.'; "
+        elif printf '%s' "$stopping_sentence" | $GREP -qF '`BLOCK`'; then
+            ta_bad="${ta_bad}the non-stopping sentence names \`BLOCK\` — a one-sided verdict-word rewrite; "
+        elif ! printf '%s' "$stopping_sentence" | $GREP -qF '`WARN`'; then
+            ta_bad="${ta_bad}the non-stopping sentence does not name \`WARN\`; "
+        fi
+    fi
+
+    if [ -n "$step9_opener" ] && [ -n "$step8_opener" ]; then
+        [ "$step9_opener" -gt "$step8_opener" ] \
+            || ta_bad="${ta_bad}step-9 opener (line $step9_opener) is not after step-8 opener (line $step8_opener); "
+    else
+        ta_bad="${ta_bad}could not locate the step-8 or step-9 opener line number; "
+    fi
+
+    # The invocation names ~/.claude/scripts/comment-gate.sh (the installed location); resolve
+    # that filename under platforms/claude/scripts/ (the shipped location) instead of asserting
+    # the installed path literally, which the test tree never populates.
+    invoked=$(printf '%s\n' "$step9_span" | $GREP -oE '[^[:space:]]*comment-gate\.sh' | head -1)
+    if [ -z "$invoked" ]; then
+        ta_bad="${ta_bad}step-9 span: could not extract the invoked script path; "
+    else
+        resolved="$CLAUDE/scripts/$(basename "$invoked")"
+        [ -f "$resolved" ] \
+            || ta_bad="${ta_bad}invoked path '$invoked' does not resolve under platforms/claude/scripts/ (looked for $resolved) — a rename on one side without the other is otherwise invisible; "
+    fi
+fi
+
+# '## Requirements' span: '## Requirements' -> '## Failure Handling'.
+req_span=$(awk '/^## Requirements/{f=1;next} f&&/^## Failure Handling/{exit} f' "$VERIFY_DOC")
+if [ -z "$req_span" ]; then
+    ta_bad="${ta_bad}## Requirements span not found; "
+else
+    n_req=$(printf '%s\n' "$req_span" | $GREP -oiF 'Comment ratio run over every changed file' | wc -l | tr -d ' ')
+    if [ "$n_req" -ne 1 ]; then
+        ta_bad="${ta_bad}## Requirements span: 'Comment ratio run over every changed file' occurs $n_req time(s), want exactly 1; "
+    else
+        # The escape clause is the requirement's only path to "all checks pass" when the
+        # gate flags a genuine false positive — without it the bullet is unconditionally
+        # unsatisfiable on any run that hits one.
+        req_line=$(printf '%s\n' "$req_span" | $GREP -F 'Comment ratio run over every changed file')
+        printf '%s' "$req_line" | $GREP -qF "or is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8" \
+            || ta_bad="${ta_bad}## Requirements bullet missing the pre-authorized-false-positive escape clause; "
+    fi
+fi
+
+# '## Failure Handling' span: '## Failure Handling' -> '## Execution Order is Critical'.
+fh_span=$(awk '/^## Failure Handling/{f=1;next} f&&/^## Execution Order is Critical/{exit} f' "$VERIFY_DOC")
+if [ -z "$fh_span" ]; then
+    ta_bad="${ta_bad}## Failure Handling span not found; "
+else
+    n_fh_block=$(printf '%s\n' "$fh_span" | $GREP -oiF '`BLOCK`' | wc -l | tr -d ' ')
+    if [ "$n_fh_block" -ne 1 ]; then
+        ta_bad="${ta_bad}## Failure Handling span: '\`BLOCK\`' occurs $n_fh_block time(s), want exactly 1; "
+    else
+        fh_line=$(printf '%s\n' "$fh_span" | $GREP -F '`BLOCK`')
+        # The stop-for-the-user's-decision clause is what the Requirements escape clause
+        # above points at by name ("Failure Handling item 8") — dropping it here breaks that
+        # pointer even if the Requirements literal itself survives.
+        for lit in 'delete the body comments the code does not need' \
+                   'give a bare suppression marker its reason' \
+                   'do not edit the constants' \
+                   "report it and stop for the user's decision"; do
+            printf '%s' "$fh_line" | $GREP -qF "$lit" || ta_bad="${ta_bad}## Failure Handling item missing '$lit'; "
+        done
+    fi
+fi
+
+if [ -z "$ta_bad" ]; then
+    pass "/verify's four comment-gate spans (linter discovery, step 9, Requirements, Failure Handling) each carry their pinned literals"
+else
+    fail "/verify's four comment-gate spans (linter discovery, step 9, Requirements, Failure Handling) each carry their pinned literals" "$ta_bad"
+fi
+
+echo "== T-b: agents/coder.md's Comments span carries the body-comment rule and the TODOs ticket qualification, with no second copy under either config root (mechanism-proportionality step 7) =="
+
+# T-b: `### Comments` -> `### Linter Suppressions`, the section that follows it and carries
+# adjacent flag vocabulary a loose whole-file match would otherwise accept. Occurrences, not
+# lines, throughout. Reuses T1_ROOTS (already declared and directory-checked by the T1 block
+# above, which this section runs after) rather than declaring a fresh root pair.
+CODER_DOC="$CLAUDE/agents/coder.md"
+tb_bad=""
+# Declared unconditionally, not inside the span-found branch below — the absence-half scan
+# further down needs it regardless of whether the span itself resolved, and referencing an
+# unset variable under `set -u` would abort the whole suite rather than failing this one block.
+rule_lit='Body comments are for the genuinely unusual.'
+if [ "${T1_ROOTS+set}" != set ]; then
+    tb_bad="T1_ROOTS is unset — T-b must run after the T1 block, which declares it; "
+else
+    comments_span=$(awk '/^### Comments/{f=1;next} f&&/^### Linter Suppressions/{exit} f' "$CODER_DOC")
+    if [ -z "$comments_span" ]; then
+        tb_bad="${tb_bad}### Comments span not found; "
+    else
+        n_rule=$(printf '%s\n' "$comments_span" | $GREP -oiF "$rule_lit" | wc -l | tr -d ' ')
+        if [ "$n_rule" -ne 1 ]; then
+            tb_bad="${tb_bad}body-comment rule occurs $n_rule time(s) in the Comments span, want exactly 1; "
+        else
+            rule_line=$(printf '%s\n' "$comments_span" | $GREP -F "$rule_lit")
+            printf '%s' "$rule_line" | $GREP -qF 'body-comment lines against added code lines' \
+                || tb_bad="${tb_bad}rule line missing 'body-comment lines against added code lines'; "
+        fi
+
+        n_todo=$(printf '%s\n' "$comments_span" | $GREP -oiF 'TODOs carrying a ticket reference' | wc -l | tr -d ' ')
+        [ "$n_todo" -eq 1 ] || tb_bad="${tb_bad}'TODOs carrying a ticket reference' occurs $n_todo time(s) in the Comments span, want exactly 1; "
+    fi
+
+    # Absence half: the rule occurs in this one file and nowhere else under either config root —
+    # mirrors T7's own absence-half pattern over the same T1_ROOTS pair, run unconditionally
+    # (like T7's) rather than gated on the span checks above, with `2>/dev/null` covering a
+    # non-directory root the loop below already flags.
+    for r in "${T1_ROOTS[@]}"; do
+        [ -d "$r" ] || tb_bad="${tb_bad}root '$r' is not a directory — the absence-half scan would run over nothing; "
+    done
+    rule_files=$($GREP -rliF "$rule_lit" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+    [ "$rule_files" = "$CODER_DOC" ] \
+        || tb_bad="${tb_bad}body-comment rule found outside agents/coder.md: $(printf '%s' "$rule_files" | tr '\n' ' '); "
+fi
+
+if [ -z "$tb_bad" ]; then
+    pass "agents/coder.md's Comments span carries the body-comment rule and the TODOs ticket qualification, with no second copy under either config root"
+else
+    fail "agents/coder.md's Comments span carries the body-comment rule and the TODOs ticket qualification, with no second copy under either config root" "$tb_bad"
 fi
 
 echo

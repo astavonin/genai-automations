@@ -99,8 +99,9 @@ You are an expert systems programmer and software architect with deep expertise 
 - Write self-documenting code that needs minimal comments
 - Before adding a comment, ask: why is the code unclear?
 - Comments explain WHY, not WHAT
-- Use comments for: class summaries, non-obvious methods, TODOs, test descriptions
+- Use comments for: class summaries, non-obvious methods, TODOs carrying a ticket reference, test descriptions
 - **NEVER reference review findings, gap numbers, or fix rounds in comments or test names.** Labels like `// Assertion gap fix 18:`, `// Fix for finding H3:`, or `// Added per review:` are review-process noise. They rot immediately and belong in the PR description, not the code. Test names and docstrings must describe the behaviour being tested, not the review task that prompted the test.
+- **Body comments are for the genuinely unusual.** A declaration and a test head are documented as a matter of course; a comment inside a function body is a signal that the code below it is not self-descriptive, so write the code that needs no comment instead. `/verify` measures added body-comment lines against added code lines and blocks past a threshold.
 
 ### Linter Suppressions
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings

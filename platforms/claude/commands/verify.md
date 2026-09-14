@@ -32,6 +32,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
       - **STOP** and explicitly ask user how to proceed
       - Provide options: install linters, skip linting, use basic syntax check
       - **DO NOT** proceed to tests without user decision
+   d. **Prefer the comment rules where the repo already configures them.** Step 9 measures the ratio; these catch the classes a ratio cannot see. Where the repo's own linter config already carries the linter, prefer `ruff`'s `D` rules (declarations documented) and `ERA001` (commented-out code) for Python, `revive`'s `exported` rule for Go, and `missing_docs` for Rust, and report which of them the repo leaves off. This command ships no linter configuration into the repo under verification and does not add one.
 
    **Language-Specific Linters:**
    - Python: `pylint`, `flake8`, `mypy` (type checking)
@@ -187,6 +188,8 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    Resolve the base the way `commands/verify-docs.md` → Step 1 does — `git symbolic-ref --quiet --short refs/remotes/origin/HEAD`, falling back to `git remote show origin`. Do not hardcode `origin/master`; step 2a above does, and it is wrong for a repo whose default is `main`. Then list the changed files:
 
    ```bash
+   BASE=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) \
+     || BASE=$(git remote show origin | sed -n 's/.*HEAD branch: /origin\//p')
    git diff --name-only "${BASE:?could not resolve the default branch}"
    git ls-files --others --exclude-standard   # a new file is invisible to every git diff form until `git add`
    ```
@@ -196,6 +199,20 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    A file serving nothing is **discovered work, not a defect**. Report it with the branch's `+N LOC` from `git diff --stat`, and do not report a full pass — the `## Planning State Update` rule below already withholds planning state when a check fails. Do not create a ticket or propose one: `/ticket` is user-invoked, so the split is the user's call and this check terminates in telling them.
 
    Two files this does not reach: anything under `planning/` (gitignored, so no diff form counts it) and a file changed only on the remote since the branch point.
+
+9. **Comment ratio — is the new code carrying more explanation than it should?**
+
+   **Run this with step 8, against the same resolved base.** One script over the same diff.
+
+   ```bash
+   BASE=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) \
+     || BASE=$(git remote show origin | sed -n 's/.*HEAD branch: /origin\//p')
+   bash ~/.claude/scripts/comment-gate.sh "${BASE:?could not resolve the default branch}"
+   ```
+
+   Exit `0` means the scan ran — read the output. A non-zero exit means it did not, so the check is unmet rather than passed; exit `127` means the script is not installed, and `./sync-configs.sh install --claude` run from your `genai-automations` checkout installs it. Per file the output carries `PASS`, `WARN`, `BLOCK`, `small` (under `MIN_ADDED_CODE`, so no ratio is reported), or `skip` (path not readable, comment syntax unknown for that extension, or no added lines resolved), plus each bare suppression marker and each `TODO`/`FIXME` with no ticket reference.
+
+   `WARN` and `small` are reported and do not stop the run. Under `## Failure Handling` below, `BLOCK`, a bare suppression, or an unreferenced `TODO` is a failure: the comment-gate item there carries the recovery, and the run restarts from step 1. The thresholds are guesses under tuning and the flags are stricter than `/comment`'s user-sanctioned cases — where a `BLOCK`, a flagged suppression, or a flagged `TODO` is genuinely wrong, stop and say so rather than editing the constant or deleting the marker. A `BLOCK` driven by comments inside an embedded language or a heredoc — an awk program, a `sed` script, a heredoc carrying Markdown — is the known false positive and the expected case for saying so.
 
 ## Requirements
 
@@ -210,6 +227,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - ✅ Every entry in `<issue-folder>/observed-failures.md` is resolved — covered by a test that asserts its actual symptom, waived with user approval, or justified as out-of-scope; and no observed failure is missing an entry
 - ✅ Build passes
 - ✅ On-device verification passed locally, or passing CI/HIL device evidence is recorded when no local device is available
+- ✅ Comment ratio run over every changed file — no `BLOCK`, no bare suppression marker, and no `TODO`/`FIXME` without a ticket reference, or is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8
 
 ## Failure Handling
 
@@ -221,8 +239,9 @@ If any check fails:
 5. **Missing regression coverage:** Write the test specified by the diagnosis, confirm it fails against the unfixed code, then record it in the ledger and re-run Step 6a. If the failure is genuinely untestable, ask the user to approve a waiver — do not proceed on your own judgement.
 6. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
 7. **Unattributed changed file:** report it with the branch's `+N LOC` and stop for the user's decision — split it out, or widen the design's goals to cover it. Do not create a ticket, and do not resolve it by inlining an explanation of why the file is fine.
-8. Re-run verification from step 1 (linters)
-9. Do NOT proceed to completion until all checks pass
+8. **Comment gate `BLOCK` or flag:** delete the body comments the code does not need, or rewrite the code those comments are compensating for; give a bare suppression marker its reason and an unreferenced `TODO` its ticket. Where the verdict is genuinely wrong, report it and stop for the user's decision — do not edit the constants and do not delete the marker.
+9. Re-run verification from step 1 (linters)
+10. Do NOT proceed to completion until all checks pass
 
 ## Execution Order is Critical
 
