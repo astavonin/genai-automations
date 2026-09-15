@@ -17,12 +17,14 @@ import sys
 from pathlib import Path
 
 from . import specverify
+from .extract import AmbiguousAnchorError, SectionNotFoundError, UnclosedFenceError, extract_section
 from .metrics import MeasurementError, analyze_file, render
 
-__all__ = ["main", "spec_main"]
+__all__ = ["extract_main", "main", "spec_main"]
 
 _USAGE = "usage: doc-metrics <file.md> [<file.md> ...]"
 _SPEC_USAGE = "usage: spec-verify <issue-folder>"
+_EXTRACT_USAGE = "usage: extract-section <file.md> <anchor-heading>"
 
 
 class _StdoutClosed(Exception):
@@ -104,6 +106,47 @@ def main(argv: list[str] | None = None) -> int:
     if unmeasured:
         print(f"BLOCKER: no usable measurement for {unmeasured} file(s)", file=sys.stderr)
         return 1
+    return 0
+
+
+def extract_main(argv: list[str] | None = None) -> int:
+    """Print the body of the section one ATX heading opens in one Markdown file.
+
+    Exit codes:
+      0  the anchor heading was found — its body is on stdout
+      1  usage error, unreadable file, malformed or ambiguous anchor, an unclosed
+         fence, or no matching heading
+
+    A missing anchor is a BLOCKER, never an empty print at exit 0: a caller checking for
+    an absent token would otherwise read the empty output as proof of absence when the
+    real cause was a heading that moved or was renamed.
+    """
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if len(arguments) != 2:
+        print(f"BLOCKER: {_EXTRACT_USAGE}", file=sys.stderr)
+        return 1
+
+    path_arg, anchor = arguments
+    try:
+        path = _check_path(path_arg)
+        text = path.read_text(encoding="utf-8")
+    except MeasurementError as err:
+        _blocker(err)
+        return 1
+    except (OSError, UnicodeDecodeError) as err:
+        print(f"BLOCKER: not readable — {path_arg}: {err}", file=sys.stderr)
+        return 1
+
+    try:
+        body = extract_section(text, anchor)
+    except (SectionNotFoundError, AmbiguousAnchorError, UnclosedFenceError, ValueError) as err:
+        print(f"BLOCKER: {err}", file=sys.stderr)
+        return 1
+
+    try:
+        _write(body if not body or body.endswith("\n") else f"{body}\n")
+    except _StdoutClosed:
+        _discard_stdout()
     return 0
 
 

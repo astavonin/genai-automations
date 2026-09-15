@@ -16,7 +16,7 @@ from typing import Callable
 
 import pytest
 
-from docgate.cli import main, spec_main
+from docgate.cli import extract_main, main, spec_main
 from docgate.specverify import SENTINEL, Runner, SpecDocument, parse_spec
 
 # Column index for field(), matching the rendered table order.
@@ -55,6 +55,14 @@ def spec_run(*arguments: object) -> Result:
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         code = spec_main([str(argument) for argument in arguments])
+    return Result(out.getvalue(), err.getvalue(), code)
+
+
+def extract_run(*arguments: object) -> Result:
+    """Invoke the extract-section entry function in process and capture both streams."""
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = extract_main([str(argument) for argument in arguments])
     return Result(out.getvalue(), err.getvalue(), code)
 
 

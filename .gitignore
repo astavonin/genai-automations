@@ -74,3 +74,6 @@ tools/codex-flow/examples/*.implementation-output.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Build artifacts fetched during local installs
+*.whl

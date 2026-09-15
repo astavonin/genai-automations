@@ -461,6 +461,9 @@ class _Analyzer:
         self._register_hits: list[Hit] = []
         self._field_hits: list[Hit] = []
         self._slots: dict[str, str] = {}
+        # True while the current section is /research's machine-pasted locator table —
+        # see _is_prior_context_section().
+        self._skip_section = False
 
         # Design-field state: slot 7 tracks one open ### option block at a time, slot 3
         # the current requirement-group state. Both reset per section change, mirroring
@@ -510,6 +513,17 @@ class _Analyzer:
             self._halfwords[name] = 0
             self._register[name] = 0
             self._seen.add(name)
+
+    def _is_prior_context_section(self, name: str, level: int) -> bool:
+        """Report whether ``name``/``level`` is `/research`'s machine-pasted locator table.
+
+        Keyed on the raw heading text taken here, before :meth:`_unique` suffixes a
+        repeat, on the filename — only ``analysis.md`` carries a section a human did
+        not author — and on the level: the documented key is ``## Prior Context``
+        specifically, so an ``#`` or ``###`` heading carrying the same words is an
+        ordinary authored section and must not opt out of the register gate.
+        """
+        return level == 2 and name == "Prior Context" and Path(self._path).name == "analysis.md"
 
     def _unique(self, name: str) -> str:
         """Suffix a repeated heading so two sections cannot merge into one row."""
@@ -760,6 +774,9 @@ class _Analyzer:
         self._scan_bullets = False
 
         name = heading_text(line)
+        # Read before _unique() suffixes a repeat: a second such section registers as
+        # "Prior Context (2)", and keying on that name would miss it.
+        self._skip_section = self._is_prior_context_section(name, level)
         self._section = self._unique(name)
         self._register_section(self._section)
         # The first H1 is the document title. Five corpus titles matched the Test rule,
@@ -799,6 +816,12 @@ class _Analyzer:
         # YAML frontmatter is metadata, not prose. Its closing --- also looks exactly
         # like a setext underline following a content line.
         if self._frontmatter.feed(line, number):
+            return
+        # Ahead of the fence tracker, so a fence-like line in a pasted section stays inert
+        # rather than opening a fence the section never closes — which would raise this
+        # document's MeasurementError at a boundary the author never wrote.
+        if self._skip_section and heading_level(line) not in (1, 2):
+            self._prev_prose = False
             return
         if self._fence.feed(line):
             self._prev_prose = False

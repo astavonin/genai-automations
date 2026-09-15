@@ -24,10 +24,15 @@ Investigate existing codebase patterns and architecture using the architecture-r
    Read ~/.claude/skills/domains/architecture/SKILL.md
    ```
 
-1. Investigate existing codebase patterns
-2. Understand current architecture
-3. Identify integration points and dependencies
-4. Ask clarifying questions if requirements are unclear
+1. Run one `search docs` query before writing `analysis.md`, built from the issue title and the distinctive nouns of the request — never the raw ticket text pasted verbatim:
+   ```bash
+   projctl search docs "<query>" [--related]
+   ```
+   Record the query string as run, the `--related` flag state, and the outcome — these three lines open the `## Prior Context` section described under Output below.
+2. Investigate existing codebase patterns
+3. Understand current architecture
+4. Identify integration points and dependencies
+5. Ask clarifying questions if requirements are unclear
 
 ## Output
 
@@ -39,6 +44,17 @@ Investigate existing codebase patterns and architecture using the architecture-r
 - Research findings
 - Integration points
 - Dependency analysis
+- A `## Prior Context` section, holding the Action 1 `search docs` run
+
+**`## Prior Context`:** three lines, then a locator table's rows, nothing else. **First line:** the query string verbatim. **Second line:** the `--related` flag state. **Third line:** `N of M shown` — `M` is the run's own reported matched-unit total, never a count of the rows this section actually pastes, since a silently truncated read must not read as full coverage. `PRIOR_CONTEXT_ROWS` is **40** — `research.md` owns this value, and `review-mr.md` is its one other consuming site. Paste no more than that many rows.
+
+What gets pasted is the locator table's rows alone: its header row, its alignment row, and its data rows. `search docs` also emits a `## Roadmap` block and a `## Prior decisions` heading ahead of the table, plus a footer. **Dropped:** `## Roadmap`, `## Prior decisions`, and the footer are dropped, because pasting either heading closes this section early and everything after it escapes `doc-metrics`'s skip.
+
+**Gate:** reduction runs only when the header row names the five declared columns, in order — `score`, `tier`, `repo`, `path`, `heading`. Any other shape (an older `projctl` not yet carrying this format) takes the zero-row path below rather than pasting a shape the reduction does not recognize.
+
+A run that exits non-zero, or matches zero sections, still produces the section: the query and flag-state lines are written as usual, and the third line records the exit status or `0 of 0` in place of a row count. Omitting the section entirely is indistinguishable from a step that never ran.
+
+**This section is parsed by a test.** `tests/verify-config-consistency.sh` extracts `## Output` via `extract-section` and asserts, sentence by sentence, the `**Third line:**` disclosure, the `**Dropped:**` heading list, the `**Gate:**` column list, and the `PRIOR_CONTEXT_ROWS` value against `review-mr.md`'s copy. Reword a bold lead-in or move a token out of its sentence without re-running that suite and the drift is silent.
 
 **Citation form:** every code reference is **file + symbol** (`` `src/pipeline/pipeline.cc` `` → `` `process_frame()` ``), or a quoted distinctive token where no symbol exists. A line number is valid only pinned to a pushed commit, as `<short-hash>:path:line`. `analysis.md` is written once and never revisited, so an unpinned line number in it rots for the life of the issue without anyone noticing.
 

@@ -32,11 +32,23 @@ CLAUDE="$ROOT/platforms/claude"
 PAGETYPE="$CLAUDE/skills/workflows/page-type/SKILL.md"
 APPENDIX_TEMPLATE="$CLAUDE/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md"
 
+# The Command-files section near the end of this suite extracts Markdown sections through
+# docgate's extract-section rather than carrying a second fence-aware parser here — one
+# implementation needs no agreement test. A missing package would otherwise skip those
+# assertions silently, which this repository treats as worse than no gate at all: fail the
+# whole run now, loudly, rather than let the rest of the suite report a clean pass with
+# part of it never checked.
+if ! command -v extract-section >/dev/null 2>&1; then
+    echo "FAIL: docgate is not installed — the 'extract-section' console script is not on PATH."
+    echo "      Install it before running this suite: pip install -e $ROOT/tools/docgate"
+    exit 1
+fi
+
 # Bump when adding or removing an assertion. Asserted at the end so a block that silently
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=51
+EXPECTED_TESTS=58
 
 PASS=0
 FAIL=0
@@ -1910,6 +1922,200 @@ if [ -z "$tb_bad" ]; then
     pass "agents/coder.md's Comments span carries the body-comment rule and the TODOs ticket qualification, with no second copy under either config root"
 else
     fail "agents/coder.md's Comments span carries the body-comment rule and the TODOs ticket qualification, with no second copy under either config root" "$tb_bad"
+fi
+
+echo "== Command files: research.md and review-mr.md's shared Prior Context contract =="
+
+# Seven assertions over the prose of two public command files. A missing anchor is a real
+# content regression — the requirement text moved, was renamed, or was deleted — so each
+# extraction's own failure becomes that row's failure message rather than a separate one.
+RESEARCH_MD="$CLAUDE/commands/research.md"
+REVIEW_MR_MD="$CLAUDE/commands/review-mr.md"
+
+research_raw=$(extract-section "$RESEARCH_MD" "## Output" 2>&1)
+research_status=$?
+research_output=""
+research_error=""
+if [ "$research_status" -eq 0 ]; then research_output="$research_raw"; else research_error="$research_raw"; fi
+
+step2b_raw=$(extract-section "$REVIEW_MR_MD" "### Step 2b" 2>&1)
+step2b_status=$?
+step2b_output=""
+step2b_error=""
+if [ "$step2b_status" -eq 0 ]; then step2b_output="$step2b_raw"; else step2b_error="$step2b_raw"; fi
+
+step3b_raw=$(extract-section "$REVIEW_MR_MD" "### Step 3b" 2>&1)
+step3b_status=$?
+step3b_output=""
+step3b_error=""
+if [ "$step3b_status" -eq 0 ]; then step3b_output="$step3b_raw"; else step3b_error="$step3b_raw"; fi
+
+prior_rows_value() {   # $1: extracted section text — the first integer following PRIOR_CONTEXT_ROWS
+    printf '%s' "$1" | $GREP -oE 'PRIOR_CONTEXT_ROWS[^0-9]{1,20}[0-9]+' | $GREP -oE '[0-9]+$' | head -1
+}
+
+# Rows 1-6 branch on the captured exit status, not on emptiness: `extract-section` exits 0
+# with an empty body for a real-but-empty section, and that case is not the same failure as
+# a missing anchor — collapsing them under `[ -z "$output" ]` reported "extraction failed:"
+# with a blank reason either way.
+#
+# Rows 1, 2, and 4 also bind their required tokens to one sentence rather than to the whole
+# extracted section: a rewrite that keeps every required token but reverses what the
+# sentence says (e.g. "paste the whole run, and drop nothing") previously stayed green,
+# because co-occurrence anywhere in the section is not the same claim as one sentence making
+# it. Each bound sentence is pulled out with its own `**Lead-in:**` marker in the command
+# file and extracted here with `[^.]*\.`, which cannot cross the period into a neighboring
+# sentence — so a token that legitimately recurs elsewhere in the same paragraph (row 4's
+# "epic", row 1's "never") does not leak into the check.
+
+# Row 1: a silently truncated slice reading as full coverage is the exact property §1 of
+# the design faults the old digest for losing.
+if [ "$research_status" -ne 0 ]; then
+    fail "research.md's ## Output states the 'N of M shown' disclosure" "extraction failed (exit $research_status): $research_error"
+elif [ -z "$research_output" ]; then
+    fail "research.md's ## Output states the 'N of M shown' disclosure" "anchor found, section body is empty"
+else
+    third_line=$(printf '%s' "$research_output" | $GREP -oE '\*\*Third line:\*\*[^.]*\.' | head -1)
+    if [ -z "$third_line" ]; then
+        fail "research.md's ## Output states the 'N of M shown' disclosure" \
+             "no '**Third line:**' sentence found in the extracted section"
+    elif printf '%s' "$third_line" | $GREP -qF 'N of M shown' \
+         && ! printf '%s' "$third_line" | $GREP -qiE 'is gone|no longer|retired|was '; then
+        pass "research.md's ## Output states the 'N of M shown' disclosure"
+    else
+        fail "research.md's ## Output states the 'N of M shown' disclosure" "sentence: $third_line"
+    fi
+fi
+
+# Row 2: pasting either producer heading closes the section early and everything after it
+# escapes doc-metrics's skip — measured at four sections and ~816 words (design §5.2).
+if [ "$research_status" -ne 0 ]; then
+    fail "research.md's ## Output names ## Roadmap and ## Prior decisions as dropped" "extraction failed (exit $research_status): $research_error"
+elif [ -z "$research_output" ]; then
+    fail "research.md's ## Output names ## Roadmap and ## Prior decisions as dropped" "anchor found, section body is empty"
+else
+    dropped_sentence=$(printf '%s' "$research_output" | $GREP -oE '\*\*Dropped:\*\*[^.]*\.' | head -1)
+    if [ -z "$dropped_sentence" ]; then
+        fail "research.md's ## Output names ## Roadmap and ## Prior decisions as dropped" \
+             "no '**Dropped:**' sentence found in the extracted section"
+    elif printf '%s' "$dropped_sentence" | $GREP -qF '## Roadmap' \
+         && printf '%s' "$dropped_sentence" | $GREP -qF '## Prior decisions' \
+         && printf '%s' "$dropped_sentence" | $GREP -qiE '\bdropped\b' \
+         && ! printf '%s' "$dropped_sentence" | $GREP -qiE '\b(not|never|nothing|no longer)\b'; then
+        pass "research.md's ## Output names ## Roadmap and ## Prior decisions as dropped"
+    else
+        fail "research.md's ## Output names ## Roadmap and ## Prior decisions as dropped" "sentence: $dropped_sentence"
+    fi
+fi
+
+# Row 3: without the shape gate, a projctl installed before this change returns the old
+# digest at exit 0, and pasting it whole is the same escape as row 2 by a different route.
+if [ "$research_status" -ne 0 ]; then
+    fail "research.md's ## Output gates reduction on the five-column header row" "extraction failed (exit $research_status): $research_error"
+elif [ -z "$research_output" ]; then
+    fail "research.md's ## Output gates reduction on the five-column header row" "anchor found, section body is empty"
+else
+    gate_sentence=$(printf '%s' "$research_output" | $GREP -oE '\*\*Gate:\*\*[^.]*\.' | head -1)
+    if [ -z "$gate_sentence" ]; then
+        fail "research.md's ## Output gates reduction on the five-column header row" \
+             "no '**Gate:**' sentence found in the extracted section"
+    else
+        missing_cols=""
+        for col in score tier repo path heading; do
+            printf '%s' "$gate_sentence" | $GREP -qF "\`$col\`" || missing_cols="$missing_cols $col"
+        done
+        # "only when" is the conditional itself, not just the word "gate" (which the lead-in
+        # marker would otherwise supply for free) — a descriptive rewrite that drops the
+        # gate keeps the column list and "header row" but has nothing to put here.
+        if [ -z "$missing_cols" ] && printf '%s' "$gate_sentence" | $GREP -qi 'header row' \
+           && printf '%s' "$gate_sentence" | $GREP -qF 'only when'; then
+            pass "research.md's ## Output gates reduction on the five-column header row"
+        else
+            fail "research.md's ## Output gates reduction on the five-column header row" \
+                 "missing column token(s):$missing_cols; or no 'header row'/'only when' phrase; sentence: $gate_sentence"
+        fi
+    fi
+fi
+
+# Row 4: the ticket body silently re-dropped is the defect this whole change exists to fix.
+if [ "$step2b_status" -ne 0 ]; then
+    fail "review-mr.md's ### Step 2b retains the ticket description verbatim" "extraction failed (exit $step2b_status): $step2b_error"
+elif [ -z "$step2b_output" ]; then
+    fail "review-mr.md's ### Step 2b retains the ticket description verbatim" "anchor found, section body is empty"
+else
+    retain_sentence=$(printf '%s' "$step2b_output" | $GREP -oE '\*\*Retained verbatim:\*\*[^.]*\.' | head -1)
+    if [ -z "$retain_sentence" ]; then
+        fail "review-mr.md's ### Step 2b retains the ticket description verbatim" \
+             "no '**Retained verbatim:**' sentence found in the Step 2b section"
+    elif printf '%s' "$retain_sentence" | $GREP -qiF "issue's description" \
+         && printf '%s' "$retain_sentence" | $GREP -qi 'verbatim' \
+         && ! printf '%s' "$retain_sentence" | $GREP -qiF 'epic'; then
+        pass "review-mr.md's ### Step 2b retains the ticket description verbatim"
+    else
+        fail "review-mr.md's ### Step 2b retains the ticket description verbatim" "sentence: $retain_sentence"
+    fi
+fi
+
+# Row 5: Codex runs with --ignore-user-config --ignore-rules, so the bundled review-request
+# document is the only way the table reaches it — losing this silently drops the table for
+# that reviewer alone, with nothing else in the suite able to notice. Requires a positive
+# verb ("lands in" / "paste") on the same line as both tokens, not just their co-occurrence
+# — "review-request" and "## Context" both survive a flip to "Do not copy ... into the
+# review-request's ## Context section", so the verb and a bounded negation guard carry the
+# check instead of the two nouns alone.
+if [ "$step3b_status" -ne 0 ]; then
+    fail "review-mr.md's ### Step 3b routes the table into the review-request's ## Context section" \
+         "extraction failed (exit $step3b_status): $step3b_error"
+elif [ -z "$step3b_output" ]; then
+    fail "review-mr.md's ### Step 3b routes the table into the review-request's ## Context section" \
+         "anchor found, section body is empty"
+else
+    context_line=$(printf '%s\n' "$step3b_output" | $GREP -F 'review-request' | $GREP -F '## Context')
+    apos="'"
+    neg_pattern="(do not|don${apos}t|never)[^.]*(land|paste|copy)"
+    if [ -z "$context_line" ]; then
+        fail "review-mr.md's ### Step 3b routes the table into the review-request's ## Context section" \
+             "no single line names both 'review-request' and '## Context'"
+    elif printf '%s' "$context_line" | $GREP -qiE 'lands in|paste' \
+         && ! printf '%s' "$context_line" | $GREP -qiE "$neg_pattern"; then
+        pass "review-mr.md's ### Step 3b routes the table into the review-request's ## Context section"
+    else
+        fail "review-mr.md's ### Step 3b routes the table into the review-request's ## Context section" \
+             "line lacks a positive verb (lands in / paste), or a negation survives: $context_line"
+    fi
+fi
+
+# Row 6: a repo-specific path in a public command file. The pre-commit hook's path-leak
+# scan is the constraint's only other seam, and it catches a work-directory prefix, not a
+# bare path segment — this line must name no path at all.
+if [ "$step3b_status" -ne 0 ]; then
+    fail "review-mr.md's ### Step 3b wiring instruction names no path" "extraction failed (exit $step3b_status): $step3b_error"
+elif [ -z "$step3b_output" ]; then
+    fail "review-mr.md's ### Step 3b wiring instruction names no path" "anchor found, section body is empty"
+else
+    ci_line=$(printf '%s\n' "$step3b_output" | $GREP -F 'what CI selects')
+    if [ -z "$ci_line" ]; then
+        fail "review-mr.md's ### Step 3b wiring instruction names no path" "no line contains 'what CI selects'"
+    elif printf '%s' "$ci_line" | $GREP -qF '/'; then
+        fail "review-mr.md's ### Step 3b wiring instruction names no path" "the 'what CI selects' line contains a '/': $ci_line"
+    else
+        pass "review-mr.md's ### Step 3b wiring instruction names no path"
+    fi
+fi
+
+# Row 7: two consumers slicing at different bounds with nothing saying so. Both sides must
+# extract successfully before comparing — two failed extractions would otherwise both read
+# as empty and compare equal, passing while neither file states a bound.
+research_rows=$(prior_rows_value "$research_output")
+step3b_rows=$(prior_rows_value "$step3b_output")
+if [ -z "$research_rows" ] || [ -z "$step3b_rows" ]; then
+    fail "research.md and review-mr.md declare the same PRIOR_CONTEXT_ROWS value" \
+         "research.md extracted '$research_rows', review-mr.md extracted '$step3b_rows' — one or both are empty"
+elif [ "$research_rows" = "$step3b_rows" ]; then
+    pass "research.md and review-mr.md declare the same PRIOR_CONTEXT_ROWS value ($research_rows)"
+else
+    fail "research.md and review-mr.md declare the same PRIOR_CONTEXT_ROWS value" \
+         "research.md=$research_rows review-mr.md=$step3b_rows"
 fi
 
 echo
