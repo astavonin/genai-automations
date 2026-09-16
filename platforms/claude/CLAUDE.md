@@ -337,7 +337,9 @@ For ALL managerial tasks related to GitLab/GitHub, use `projctl`:
 - The `--help` output includes a "Documentation:" section with the absolute path to comprehensive usage instructions
 - Invoke via `/mr` and `/load` commands, which internally use projctl
 
-**Critical rule:** If a required operation is not supported by projctl, extend it first (source at `~/projects/projctl`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass projctl.
+**Never infer a missing capability from a subcommand's `--help`.** It lists argv and nothing else. Every file-driven command — `comment`, `create`, `ci lint` — carries its schema *only* in the documentation named under `Documentation:`, so sub-`--help` cannot show what the file accepts. Read that documentation before designing around a supposed gap, and before telling the user projctl cannot do something. Inferring a capability's absence from a sample artifact is the same error: a sample shows what someone used, never what the format allows. Concretely, `projctl comment`'s review YAML takes `replies:` (`discussion_id` + `body`, working on any thread including an unresolvable top-level note) and `resolve:` (a `discussion_id` list) — the reply-into-thread-and-close capability I have twice wrongly reported as absent.
+
+**Critical rule:** If a required operation is not supported by projctl, extend it first (source at `~/projects/projctl`) rather than working around it with direct `glab` CLI or GitLab API calls. Never bypass projctl. A false negative here is expensive in both directions: it sends work toward extending a tool that already does the job, or toward a worse manual workaround.
 
 # Proprietary Information Policy
 
