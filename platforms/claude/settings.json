@@ -197,7 +197,7 @@
       "WebFetch(domain:devnewsletter.com)",
       "WebFetch(domain:www.nutrient.io)"
     ],
-    "defaultMode": "default",
+    "defaultMode": "auto",
     "additionalDirectories": [
       "~/work",
       "~/projects",
