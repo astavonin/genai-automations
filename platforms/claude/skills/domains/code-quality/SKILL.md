@@ -21,13 +21,21 @@ metadata:
 
 ### Comment Policy
 
-The full comment policy is defined in and enforced by the `/comment` command (`~/.claude/commands/comment.md`). Use `/comment` whenever adding or reviewing comments on any file.
-
-**Summary of the two-tier policy:**
+This section is the comment policy. It applies whenever code is written or changed — there is no separate commenting pass to defer to.
 
 **Tier 1 — WHY-only inline comments.** Add a comment only when the WHY is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, or behavior that would surprise a careful reader. Never explain WHAT — self-documenting names do that. One short line max; if removing it would not confuse a future reader, omit it.
 
-**Tier 2 — Public API documentation.** Every public class, interface, enum, non-trivial public type alias, and non-obvious public constant must have a concise comment (one line). Enum values with non-obvious semantics get a trailing comment. Trivial accessor methods are exempt. See `/comment` for the full symbol-kind table.
+**Tier 2 — Public API documentation.** Every public class, interface, enum, non-trivial public type alias, and non-obvious public constant must have a concise comment. One line max per symbol — no paragraphs, no `@param`/`@return` blocks unless the project already uses Doxygen. Skip symbols whose names are already self-documenting and carry no non-obvious contract; trivial accessors are exempt.
+
+| Symbol kind | Scope | Comment style | Content |
+|---|---|---|---|
+| Class / struct (non-trivial) | Public or file-scope | Line above declaration | Purpose and key invariant or ownership rule |
+| Interface / abstract class | Public | Line above declaration | Contract: what implementors must guarantee |
+| Public method | Non-obvious purpose | Line above declaration | What it does and any preconditions/postconditions |
+| Enum | Public | Line above declaration | What the enum represents |
+| Enum value | Non-obvious meaning | Trailing `//` | Semantics, especially error codes and sentinel values |
+| Public constant | Non-obvious | Trailing `//` | What it controls and why this value |
+| `using` / `typedef` (public) | Non-obvious alias | Line above | What the alias represents and why it exists |
 
 ### What to Avoid in Comments
 

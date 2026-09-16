@@ -78,7 +78,7 @@ See language skills for detailed guidelines, patterns, and examples.
 Reference: `~/.claude/skills/domains/code-quality/`
 
 - Write self-documenting code that needs minimal comments
-- **Use `/comment` for all commenting decisions** — it enforces the full two-tier policy (WHY-only inline + public API documentation)
+- **The comment policy is `~/.claude/skills/domains/code-quality/SKILL.md` → Comment Policy** — two tiers, WHY-only inline and public API, one line each. It applies as code is written; there is no separate commenting pass
 - **ALWAYS add a comment explaining WHY** when suppressing linter warnings
 - Apply formatting using the current project's formatting tool for all files you create or modify
 
@@ -137,7 +137,7 @@ Every command's name and description is already injected into context as the ava
 Classify anything in the listing by this rule rather than by a stored list:
 
 - **Phase commands** — `/start`, `/research`, `/design`, `/review-design`, `/implement`, `/review-code`, `/verify`, `/complete`. These eight advance the workflow; see Workflow Execution below.
-- **Workflow commands with no phase slot** — `/refresh` (reload this config after drift), `/comment`, `/review-article`, `/review-spec`.
+- **Workflow commands with no phase slot** — `/refresh` (reload this config after drift), `/review-article`, `/review-spec`.
 - **Utilities** — everything else defined in `~/.claude/commands/`.
 
 

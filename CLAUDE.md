@@ -18,7 +18,7 @@ Backup of AI platform configurations:
 - **`claude/`** - Claude Code configs (mirrors `~/.claude/`)
   - `CLAUDE.md` - Workflow rules, phase gates, commit format, agent dispatch, quality standards
   - `agents/*.md` - Agent definitions (architecture-research-planner, coder, devops-engineer, reviewer, debugger, writer)
-  - `commands/*.md` - 28 slash command definitions (start, research, design, implement, review-*, verify, complete, and utilities)
+  - `commands/*.md` - 29 slash command definitions (start, research, design, implement, review-*, verify, complete, and utilities)
   - `skills/` - Modular knowledge base: languages (C++, Go, Rust, Python, Zig, Shell), domains (architecture, testing, code-quality, devops, quality-attributes), workflows (complete-workflow, planning, review gates, regression-test, issue-folder-resolve, push-planning)
   - `hooks/` - Git hooks: pre-commit scans platforms/ for path leaks
   - `scripts/` - Helper scripts: codex-pipe, projctl-post-create.sh
