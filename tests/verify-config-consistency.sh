@@ -48,7 +48,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=58
+EXPECTED_TESTS=59
 
 PASS=0
 FAIL=0
@@ -2116,6 +2116,24 @@ elif [ "$research_rows" = "$step3b_rows" ]; then
 else
     fail "research.md and review-mr.md declare the same PRIOR_CONTEXT_ROWS value" \
          "research.md=$research_rows review-mr.md=$step3b_rows"
+fi
+
+# Every agent that takes outside content points at the one place the rule lives. The
+# fragment is the single source; an agent file rewritten without the pointer loses the
+# rule silently, which is the drift this pins.
+uc_fragment="$CLAUDE/skills/workflows/untrusted-content/SKILL.md"
+uc_missing=""
+for uc_agent in "$CLAUDE"/agents/*.md; do
+    $GREP -qF 'untrusted-content/SKILL.md' "$uc_agent" || uc_missing="$uc_missing $(basename "$uc_agent")"
+done
+if [ ! -s "$uc_fragment" ]; then
+    fail "every agent points at the untrusted-content fragment" \
+         "the fragment itself is missing or empty at skills/workflows/untrusted-content/SKILL.md"
+elif [ -n "$uc_missing" ]; then
+    fail "every agent points at the untrusted-content fragment" \
+         "no pointer in:$uc_missing"
+else
+    pass "every agent points at the untrusted-content fragment"
 fi
 
 echo
