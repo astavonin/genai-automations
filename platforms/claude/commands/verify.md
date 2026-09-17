@@ -210,9 +210,9 @@ Read ~/.claude/skills/domains/testing/SKILL.md
    bash ~/.claude/scripts/comment-gate.sh "${BASE:?could not resolve the default branch}"
    ```
 
-   Exit `0` means the scan ran — read the output. A non-zero exit means it did not, so the check is unmet rather than passed; exit `127` means the script is not installed, and `./sync-configs.sh install --claude` run from your `genai-automations` checkout installs it. Per file the output carries `PASS`, `WARN`, `BLOCK`, `small` (under `MIN_ADDED_CODE`, so no ratio is reported), or `skip` (path not readable, comment syntax unknown for that extension, or no added lines resolved), plus each bare suppression marker and each `TODO`/`FIXME` with no ticket reference.
+   Exit `0` means the scan ran — read the output. A non-zero exit means it did not, so the check is unmet rather than passed; exit `127` means the script is not installed, and `./sync-configs.sh install --claude` run from your `genai-automations` checkout installs it. Per file the output carries `PASS`, `WARN`, `BLOCK`, `small` (under `MIN_ADDED_CODE`, so no ratio is reported), or `skip` (path not readable, comment syntax unknown for that extension, or no added lines resolved), plus each bare suppression marker, each `TODO`/`FIXME` with no ticket reference, each body-comment run longer than `MAX_COMMENT_RUN`, and each comment citing a planning document or a `§N` section.
 
-   `WARN` and `small` are reported and do not stop the run. Under `## Failure Handling` below, `BLOCK`, a bare suppression, or an unreferenced `TODO` is a failure: the comment-gate item there carries the recovery, and the run restarts from step 1. The thresholds are guesses under tuning and the flags are stricter than `/comment`'s user-sanctioned cases — where a `BLOCK`, a flagged suppression, or a flagged `TODO` is genuinely wrong, stop and say so rather than editing the constant or deleting the marker. A `BLOCK` driven by comments inside an embedded language or a heredoc — an awk program, a `sed` script, a heredoc carrying Markdown — is the known false positive and the expected case for saying so.
+   `WARN` and `small` are reported and do not stop the run. Under `## Failure Handling` below, `BLOCK` and any flag — a bare suppression, an unreferenced `TODO`, an over-long comment run, a planning reference — is a failure: the comment-gate item there carries the recovery, and the run restarts from step 1. The thresholds are guesses under tuning and the flags are stricter than the sanctioned cases in `skills/domains/code-quality/SKILL.md` — where a `BLOCK` or any flag is genuinely wrong, stop and say so rather than editing the constant or deleting the marker. A `BLOCK` driven by comments inside an embedded language or a heredoc — an awk program, a `sed` script, a heredoc carrying Markdown — is the known false positive and the expected case for saying so.
 
 ## Requirements
 
@@ -227,7 +227,7 @@ Read ~/.claude/skills/domains/testing/SKILL.md
 - ✅ Every entry in `<issue-folder>/observed-failures.md` is resolved — covered by a test that asserts its actual symptom, waived with user approval, or justified as out-of-scope; and no observed failure is missing an entry
 - ✅ Build passes
 - ✅ On-device verification passed locally, or passing CI/HIL device evidence is recorded when no local device is available
-- ✅ Comment ratio run over every changed file — no `BLOCK`, no bare suppression marker, and no `TODO`/`FIXME` without a ticket reference, or is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8
+- ✅ Comment ratio run over every changed file — no `BLOCK` and no flag (bare suppression, ticketless `TODO`/`FIXME`, over-long comment run, planning reference), or each is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8
 
 ## Failure Handling
 
@@ -239,7 +239,7 @@ If any check fails:
 5. **Missing regression coverage:** Write the test specified by the diagnosis, confirm it fails against the unfixed code, then record it in the ledger and re-run Step 6a. If the failure is genuinely untestable, ask the user to approve a waiver — do not proceed on your own judgement.
 6. **On-device verification failures:** Check the failure indicators listed in the design doc's On-Device Verification section; fix the underlying issue (firmware, deploy step, or test logic) and re-run the entry-point script. If the device is unavailable, leave the explicit pending statement from Step 7c in place and do not mark as verified.
 7. **Unattributed changed file:** report it with the branch's `+N LOC` and stop for the user's decision — split it out, or widen the design's goals to cover it. Do not create a ticket, and do not resolve it by inlining an explanation of why the file is fine.
-8. **Comment gate `BLOCK` or flag:** delete the body comments the code does not need, or rewrite the code those comments are compensating for; give a bare suppression marker its reason and an unreferenced `TODO` its ticket. Where the verdict is genuinely wrong, report it and stop for the user's decision — do not edit the constants and do not delete the marker.
+8. **Comment gate `BLOCK` or flag:** delete the body comments the code does not need, or rewrite the code those comments are compensating for; give a bare suppression marker its reason and an unreferenced `TODO` its ticket; split or cut a comment run past `MAX_COMMENT_RUN`, extracting a named function where the WHY needs the room; and replace a planning-document citation with what the reader of a clone can actually resolve. Where the verdict is genuinely wrong, report it and stop for the user's decision — do not edit the constants and do not delete the marker.
 9. Re-run verification from step 1 (linters)
 10. Do NOT proceed to completion until all checks pass
 

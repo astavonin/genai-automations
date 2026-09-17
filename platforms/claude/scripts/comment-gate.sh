@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# comment-gate.sh — measure added body-comment density per changed file, plus two
-# marker-carrying-no-reason greps, over the diff against a resolved base.
+# comment-gate.sh — measure added body-comment density per changed file, plus four
+# per-line flag scans, over the diff against a resolved base.
 #
-# The gate mechanizes a position rule, not a content judgment (see ../commands/comment.md
-# and skills/domains/code-quality/SKILL.md): a comment preceding a declaration or opening
-# a test is the required class and is excluded; a comment inside a function body is priced
-# as a body comment. Two independent greps catch a suppression marker with no reason and a
-# `TODO`/`FIXME` with no ticket (STEP-7 design.md §5) — classes the ratio cannot see because
-# they are markers, not position.
+# The gate mechanizes a position rule, not a content judgment (see
+# skills/domains/code-quality/SKILL.md → Comment Policy): a comment preceding a declaration
+# or opening a test is the required class and is excluded; a comment inside a function body
+# is priced as a body comment. The four flags catch what the ratio cannot see, because each
+# is a property of one comment rather than of the file's proportions: a suppression marker
+# with no reason, a `TODO`/`FIXME` with no ticket, a body-comment run past
+# MAX_COMMENT_RUN, and a comment citing a gitignored planning document.
 #
 # Usage:   comment-gate.sh <base-ref>
 #
@@ -31,6 +32,9 @@ set -uo pipefail
 WARN_THRESHOLD=10
 BLOCK_THRESHOLD=25
 MIN_ADDED_CODE=10
+# Longest body-comment run that is not flagged. 2 mirrors the one-or-two-lines rule in
+# agents/coder.md; a longer WHY is the signal to extract a named function instead.
+MAX_COMMENT_RUN=2
 
 # Interpreter seam, mirroring citation-scan.sh's CITATION_SCAN_AWK: gawk, mawk, and
 # busybox awk disagree on regex extensions, so the classifier below avoids GNU-only
@@ -63,8 +67,8 @@ ROOT=$(git rev-parse --show-toplevel)
 # Two ARGV files: the first (FNR==NR) is the added-line-number set (one lineno per line,
 # built by the hunk parser below, or 1..N whole for an untracked file); the second is the
 # working-tree file itself. Position tests (declaration-adjacent, test-head, file-head)
-# read the second file's lines regardless of added-status (NFR-2 / §5 "which lines each
-# half reads") — only the added set gates what enters the ratio or the flag scan.
+# read the second file's lines regardless of added-status — only the added set gates what
+# enters the ratio or the flag scan.
 read -r -d '' CLASSIFIER <<'AWKEOF'
 function ltrim(s,   i, n, c) {
     n = length(s)
@@ -199,7 +203,7 @@ function is_testdecl(raw,    t) {
 # wins — NOLINTNEXTLINE must precede the bare NOLINT it would otherwise partially match.
 # Each allowed-tail is what a marker's OWN rule-list grammar permits while still counting
 # as "no reason": a colon-list for `noqa`, a bracketed code list for `type: ignore`, an
-# optional rule in parens for the NOLINT family. Collapsing to one table (§5) is what
+# optional rule in parens for the NOLINT family. Collapsing to one table is what
 # catches `// NOLINT(bugprone-narrowing)` and `# type: ignore[arg-type]` — the seven
 # hardcoded per-marker branches this replaces required a reason to be absent, but tested
 # the wrong thing for "reason": zero characters after the marker itself, not zero
@@ -228,7 +232,7 @@ function check_bare_suppression(raw,    i, n, mre, tre, rest) {
 }
 
 # comment_marker_pos: where the family's first comment marker sits on a raw line, or 0 if
-# the line carries none — used only to scope the `TODO`/`FIXME` grep (STEP-7 design.md §5)
+# the line carries none — used only to scope the `TODO`/`FIXME` grep
 # to comment text; the suppression grep below stays a whole-line scan regardless.
 function comment_marker_pos(raw,    p_slash, p_star) {
     if (FAMILY == "clike") {
@@ -241,13 +245,31 @@ function comment_marker_pos(raw,    p_slash, p_star) {
     return index(raw, "#")
 }
 
-# check_todo (STEP-7 design.md §5): a `TODO`/`FIXME` flags only inside comment text — the
+# check_todo: a `TODO`/`FIXME` flags only inside comment text — the
 # whole line where the classifier already typed it COMMENT (a // or /* opener, or a
 # /* ... */ span line), or the trailing text from the first comment marker onward where it
 # typed the line CODE; a code line carrying no marker at all is not searched. A bare
 # whole-line scan for these two ordinary words has no bound on false positives — they occur
 # in code, in string/regex literals, and in prose about this rule, which is the defect the
 # STEP-7 observed-failures ledger records and this scoping fixes.
+# check_planning_ref: a comment citing a planning document or a doc section. Those files
+# are globally gitignored, so no reader of a clone can resolve the pointer and no commit
+# pins what it named. Scoped to comment text the same way as the TODO grep, since such a
+# path in code is a legitimate operand.
+function check_planning_ref(raw, ln,    scan, pos) {
+    if (type[ln] == "COMMENT") {
+        scan = raw
+    } else {
+        pos = comment_marker_pos(raw)
+        if (pos == 0) return ""
+        scan = substr(raw, pos)
+    }
+    if (scan ~ /§[ \t]*[0-9]/) return "planning-ref"
+    if (scan ~ /(design|analysis|design-review|code-review|fix-review|codex-review|spec|spec-review|article-review|brief|draft|observed-failures|progress|status|overview)\.md/) return "planning-ref"
+    if (scan ~ /planning\//) return "planning-ref"
+    return ""
+}
+
 function check_todo(raw, ln,    scan, pos) {
     if (type[ln] == "COMMENT") {
         scan = raw
@@ -294,7 +316,7 @@ FILENAME == AF { added[$1] = 1; next }
 }
 END {
     # file-head boundary: the first line that is neither comment nor blank. Comment/blank
-    # lines before it are excluded regardless of an internal blank (§5 "the one place a
+    # lines before it are excluded regardless of an internal blank (the one place a
     # blank does not close a block") — falls out for free below since the test is
     # per-line (k < H), never a blank-bounded block.
     H = total + 1
@@ -316,6 +338,12 @@ END {
                 ex = (k < H) || below || above
                 excluded[k] = ex
             }
+            # Run length is a property of the run, not of any line in it, so it is measured
+            # here and reported once at the run's first added line. Excluded runs are the
+            # documented class (file head, declaration, test head) and are not measured.
+            if (!ex && (e - s + 1) > MAXRUN) {
+                for (k = s; k <= e; k++) if (k in added) { longrun[k] = 1; break }
+            }
         } else {
             i++
         }
@@ -336,6 +364,9 @@ END {
         if (lbl != "") print "FLAG\t" lbl "\t" i
         lbl = check_todo(text[i], i)
         if (lbl != "") print "FLAG\t" lbl "\t" i
+        lbl = check_planning_ref(text[i], i)
+        if (lbl != "") print "FLAG\t" lbl "\t" i
+        if (i in longrun) print "FLAG\tlong-comment-run\t" i
     }
 }
 AWKEOF
@@ -380,7 +411,7 @@ if [ "${#DIFF_FILES[@]}" -gt 0 ] || [ "${#UNTRACKED_FILES[@]}" -gt 0 ]; then
 fi
 
 # Output buffers: verdict/skip/small lines first, then flag lines, then the summary —
-# the order §5's sample block shows.
+# the order the sample block above shows.
 LINES_BUF=""
 FLAGS_BUF=""
 N_FILES=0
@@ -456,7 +487,7 @@ for relpath in "${ALL_FILES[@]}"; do
     fi
 
     awk_rc=0
-    RESULT=$("$AWK" -v FAMILY="$family" -v AF="$ADDED_FILE" "$CLASSIFIER" "$ADDED_FILE" "$ROOT/$relpath") || awk_rc=$?
+    RESULT=$("$AWK" -v FAMILY="$family" -v AF="$ADDED_FILE" -v MAXRUN="$MAX_COMMENT_RUN" "$CLASSIFIER" "$ADDED_FILE" "$ROOT/$relpath") || awk_rc=$?
 
     num=""; den=""
     while IFS=$'\t' read -r tag a b; do

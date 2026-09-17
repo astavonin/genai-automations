@@ -24,7 +24,7 @@ set -uo pipefail
 # AWK_RUNNERS at the loop). A hardcoded floor, matching verify-workflow-safety.sh's and
 # verify-config-consistency.sh's EXPECTED_TESTS: update it by hand when a case is added
 # or removed above the loop.
-BASE_COUNT=175
+BASE_COUNT=186
 
 GREP=/usr/bin/grep
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/platforms/claude/scripts/comment-gate.sh"
@@ -768,8 +768,12 @@ commit_file fe.yaml <<< ""
 printf 'key: value\n' > "$CASE_DIR/fe.yaml"
 
 out=$(run_gate)
+# Three flags, not two: fc.rs's six-line body run is also past MAX_COMMENT_RUN, so the
+# same fixture that carries the BLOCK ratio carries a long-run flag with it.
 assert_contains "31 verbatim summary line" "$out" \
-    "comment-gate: 5 files · 1 WARN · 1 BLOCK · 1 small · 1 skipped · 2 flags"
+    "comment-gate: 5 files · 1 WARN · 1 BLOCK · 1 small · 1 skipped · 3 flags"
+assert_contains "31 the BLOCK file's run also flags as over-long" "$out" \
+    "$(expected_flag_line long-comment-run fc.rs 2)"
 
 # =====================================================================================
 # is_signature()'s terminal-character test, both directions.
@@ -1350,6 +1354,69 @@ commit_file f.cc <<< ""
 { printf 'n0 = 0;\n// comment A\n// comment B\nRow[3] decode(int x);\n'; filler 8 1; } > "$CASE_DIR/f.cc"
 out=$(run_gate)
 assert_contains "a bracketed return type is still a signature: PASS 0% 0/10" "$out" "PASS 0% 0/10"
+
+# =====================================================================================
+# long-comment-run — a body-comment run past MAX_COMMENT_RUN flags once, at its first
+# added line. The excluded classes (file head, declaration-adjacent, test head) are not
+# measured, so a long run in any of them stays silent however long it is.
+# =====================================================================================
+new_repo case_long_run_body
+commit_file f.cc <<< ""
+{
+    printf 'int f() {\n'
+    printf '  int a = 1;\n'
+    printf '  // run line one\n'
+    printf '  // run line two\n'
+    printf '  // run line three\n'
+    printf '  int b = a;\n'
+    printf '  // short one\n'
+    printf '  // short two\n'
+    printf '  int c = b;\n'
+    filler 8 2
+    printf '}\n'
+} > "$CASE_DIR/f.cc"
+out=$(run_gate)
+assert_contains "a three-line body run flags at its first line" "$out" \
+    "$(expected_flag_line long-comment-run f.cc 3)"
+assert_not_contains "the run flags once, not per line" "$out" "$(expected_flag_line long-comment-run f.cc 4)"
+assert_not_contains "a two-line body run is within MAX_COMMENT_RUN" "$out" \
+    "$(expected_flag_line long-comment-run f.cc 7)"
+
+new_repo case_long_run_excluded
+commit_file f.cc <<< ""
+{
+    printf '// head one\n// head two\n// head three\n// head four\n'
+    printf 'int g();\n'
+    printf '// decl one\n// decl two\n// decl three\n// decl four\n'
+    printf 'int decode(int x) {\n'
+    filler 10 2
+    printf '}\n'
+} > "$CASE_DIR/f.cc"
+out=$(run_gate)
+assert_not_contains "a long file-head run is excluded, so unmeasured" "$out" "long-comment-run"
+
+# =====================================================================================
+# planning-ref — a comment citing a gitignored planning document or a §N section. Scoped
+# to comment text, so the same token as a code operand does not flag.
+# =====================================================================================
+new_repo case_planning_ref
+commit_file f.py <<< ""
+{
+    printf 'a = 1  # see design.md for the contract\n'
+    printf 'b = 2  # per §5.4 of the spec\n'
+    printf 'c = 3  # written to planning/foo/bar.md\n'
+    printf 'd = 4  # see README.md and CLAUDE.md\n'
+    printf 'e = "design.md"\n'
+    printf 'f = 6  # section 5.4 of the design\n'
+    filler 8 2
+} > "$CASE_DIR/f.py"
+out=$(run_gate)
+assert_contains "a design.md citation flags" "$out" "$(expected_flag_line planning-ref f.py 1)"
+assert_contains "a §N section citation flags" "$out" "$(expected_flag_line planning-ref f.py 2)"
+assert_contains "a planning/ path citation flags" "$out" "$(expected_flag_line planning-ref f.py 3)"
+assert_not_contains "tracked docs are not planning docs" "$out" "$(expected_flag_line planning-ref f.py 4)"
+assert_not_contains "a filename as a code operand is not a comment" "$out" "$(expected_flag_line planning-ref f.py 5)"
+assert_not_contains "prose naming a section without § does not flag" "$out" "$(expected_flag_line planning-ref f.py 6)"
 
 # =====================================================================================
 # Cross-awk agreement: gawk, mawk, awk, busybox-awk must all produce byte-identical

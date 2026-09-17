@@ -1790,8 +1790,8 @@ else
     if [ -z "$warn_line" ]; then
         ta_bad="${ta_bad}step-9 span missing 'and do not stop the run'; "
     else
-        printf '%s' "$warn_line" | $GREP -qF '`BLOCK`, a bare suppression, or an unreferenced `TODO` is a failure' \
-            || ta_bad="${ta_bad}the same sentence does not carry '\`BLOCK\`, a bare suppression, or an unreferenced \`TODO\` is a failure' — a WARN/BLOCK swap between the two verdict sentences keeps every literal in isolation but separates this pair; "
+        printf '%s' "$warn_line" | $GREP -qF '`BLOCK` and any flag — a bare suppression, an unreferenced `TODO`, an over-long comment run, a planning reference — is a failure' \
+            || ta_bad="${ta_bad}the same sentence does not carry the \`BLOCK\`-and-any-flag failure clause — a WARN/BLOCK swap between the two verdict sentences keeps every literal in isolation but separates this pair; "
 
         # The pairing above catches a literal two-way swap but not a one-sided rewrite —
         # changing only the first verdict word keeps both pinned literals in place while
@@ -1841,7 +1841,7 @@ else
         # gate flags a genuine false positive — without it the bullet is unconditionally
         # unsatisfiable on any run that hits one.
         req_line=$(printf '%s\n' "$req_span" | $GREP -F 'Comment ratio run over every changed file')
-        printf '%s' "$req_line" | $GREP -qF "or is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8" \
+        printf '%s' "$req_line" | $GREP -qF "or each is reported as a pre-authorized false positive — satisfied by the stop-for-the-user's-decision handoff in Failure Handling item 8" \
             || ta_bad="${ta_bad}## Requirements bullet missing the pre-authorized-false-positive escape clause; "
     fi
 fi
