@@ -1,0 +1,361 @@
+---
+name: fix-mr
+description: Adjudicate every unresolved MR review thread through a three-lens quorum, draft replies, and gate one approved batch that the fix chain acts on.
+---
+
+# Fix MR — Adjudication
+
+Loads every unresolved thread on a GitLab MR, decides each through three lenses reading differentiated evidence (2-of-3), drafts a reply per thread, and holds one approval gate ahead of every irreversible action. This half — Steps 1 through 4 — only decides and gates. Acting on an approved decision (Steps 5 and 6) is `step-2-chain/design.md`, a sibling design not yet approved or implemented; this file's Step 5 and Step 6 headings exist because that design's own test requirements anchor on them, and carry no content of their own.
+
+Design: `planning/genai-automations/fix-mr/step-1-adjudication/design.md`.
+
+## Agents
+
+**Explore** — dispatched three times per adjudicated thread (Lens A — conformance, Lens B — reachability, Lens C — text), Step 3 below. **This is the one site in this file that declares the literal.** Every later reference in this file points back to "the lens type declared here" rather than retyping the name — an unresolved `subagent_type` silently falls back to a general-purpose agent holding every tool, which is the exposure a second, drifting declaration would reopen.
+
+**coder** — the fix chain, Step 5. Delivered by `step-2-chain/design.md`, not yet approved or implemented.
+
+## Setup
+
+```
+Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
+Read ~/.claude/skills/workflows/regression-test/SKILL.md
+```
+
+Resolve `<issue-folder>` in Step 1, before the batch file is opened — the ledger the fix chain writes in Step 5 anchors on the same path, and a mismatch between Step 1's resolution and the fix chain's is silent.
+
+## Invocation
+
+```
+/fix-mr <mr_number>
+```
+
+## Conventions
+
+**Quoting.** Every scalar the batch file emits is collapsed to one line and single-quoted, whatever wrote it — this covers the claim and every note `body` (first written in Step 2a), the drafted reply (Step 3e), and each lens's reason (Step 3). Single-quoted YAML: wrap the value in `'...'` and double every embedded `'` as `''` — no other character is escaped, so a literal `\t` or `\n` sequence passes through unprocessed instead of being turned into a real control character, which is what double-quoted YAML does. Step 3e's transform strips backticks and line breaks but not colons, so this rule is what still yields a parsable document from a value carrying a colon, a leading `-`, an embedded `"`, or an unbalanced `'`, with no line reading as a key of its own. Step 2a, Step 3e, and Step 4c each point back here rather than restating it.
+
+**Placeholders.** Each fenced block in this file is a separate Bash invocation, so shell state set in one block is gone by the next. A value that must travel from one block into a later one is written as an orchestrator-substituted placeholder — `<base>`, `<source_branch>`, `<target_branch>`, `<web_url>`, `<issue-folder>`, `<mr_number>` among them — wrapped in **single** quotes at every point of use, including inside a composite argument like a refspec or a `..` range; a value used only inside the block that computes it may stay a `$var`. The orchestrator substitutes the **raw value**, never a shell-quoted literal — single quotes suppress parameter expansion entirely, so a legal branch name like `feat$foo` reaches git literally instead of silently narrowing to `feat`. A raw value carrying an apostrophe uses the `'\''` idiom: close the quote, insert an escaped literal quote, reopen the quote — the value `o'brien` becomes `o'\''brien` when substituted into the placeholder's own enclosing quotes. Every fenced block re-derives whatever placeholder value it needs under its own guards, unless an earlier block's own printed value is substituted into it — Step 3b's case, not Step 4a's, which re-derives its own merge-base independently.
+
+## Workflow
+
+### Step 1: Preconditions
+
+**1a. One load.** `projctl load mr '<mr_number>' --comments --json`. This is the run's only read of MR state; Step 1's ownership check and Step 2's thread selection both read this same payload rather than issuing a second call, which would open a window in which the MR changes between two reads.
+
+The load call is also where the GitLab-only refusal fires: `--json`'s `viewer` field comes from a GraphQL `currentUser` lookup that hard-errors on a `null` result (a GitHub remote, or any non-GitLab host) rather than degrading to an empty value. If the load errors for any reason, stop before any agent runs and before any file is written — report the error as given.
+
+**1b. The consumer floor.** Refuse the run — do not adjudicate, do not write the batch — naming the first key that fails this check. Two separate requirements, not one: every key must be **present** at every level, but only a narrow subset must also be **non-empty** — the fields §5.5's ownership conjuncts compare, plus every note's `created_at`. An empty `skip_reason` on a non-skipped thread, an empty `file_path`/`line` on a general note, or an empty `claim` where every note is the viewer's are all ordinary payloads, not floor failures.
+
+| Level | Required present (every key, may be empty) | Also required non-empty |
+|---|---|---|
+| Envelope | `viewer`, `author_username`, `source_project_id`, `target_project_id`, `web_url`, `title`, `source_branch`, `target_branch` | `viewer`, `author_username`, `source_project_id`, `target_project_id`, `web_url` — the fields §5.5's ownership conjuncts compare |
+| Each thread record | `discussion_id`, `notes`, `resolvable`, `claim`, `file_path`, `line`, `created_at`, `skip`, `skip_reason` | none |
+| Each note inside every thread's `notes` | `body`, `created_at`, `file_path` | `created_at` — must also parse, checked on every note in the thread, not the claim note alone, since the ordering the fold depends on reads every note before any other arm evaluates |
+
+This floor exists for `projctl` version skew, not for the ordinary case: a thread the payload already skips for an unusable value is the producer's outcome and is not re-flagged here. The floor fires only where an unusable value arrives with no skip decision beside it — an older `projctl` build that has not yet learned a skip arm this design assumes. Refusing by name beats adjudicating on a key that silently reads `false`.
+
+**1c. MR ownership — three conjuncts, checked in order, each naming the one that failed and printing both compared values on failure.** An absent or empty operand refuses by name rather than comparing — two absent ids compare equal, and a repo-path lookup outside a repository returns nothing.
+
+| # | Conjunct | Left operand | Right operand |
+|---|---|---|---|
+| 1 | the operator authored the MR | `author_username` | `viewer` |
+| 2 | the source branch lives in the MR's own project | `source_project_id` | `target_project_id` |
+| 3 | that project is this checkout's | `web_url`'s path component, see below | this checkout's `origin`, see below |
+
+Conjunct 3, one self-contained block — `<web_url>` up to the merge-request separator against this checkout's `origin`, replicating `get_current_repo_path()`'s own branch on `origin`'s URL so both sides use one algorithm without a network call. Both compared values print before the comparison runs, and an empty operand refuses by name rather than letting two empty strings compare equal:
+
+```bash
+web_url='<web_url>'
+web_url_path="${web_url#*://*/}"                       # drop scheme + host
+project_path_remote="${web_url_path%%/-/merge_requests/*}"
+project_path_remote="${project_path_remote#/}"
+
+origin_url=$(git remote get-url origin)
+if [[ "$origin_url" == *"@"* ]]; then
+  project_path_local="${origin_url#*:}"                # SSH form: user@host:group/project.git
+else
+  project_path_local=$(printf '%s' "$origin_url" | cut -d/ -f4-)   # https://host/group/project.git
+fi
+project_path_local="${project_path_local%.git}"
+
+echo "project_path_remote='$project_path_remote' project_path_local='$project_path_local'"
+if [ -z "$project_path_remote" ] || [ -z "$project_path_local" ]; then
+  echo "BLOCKER: conjunct 3 (project identity) refused — an operand is empty" >&2
+  exit 1
+fi
+if [ "$project_path_remote" != "$project_path_local" ]; then
+  echo "BLOCKER: conjunct 3 (project identity) refused — project_path_remote != project_path_local" >&2
+  exit 1
+fi
+```
+
+A credential-bearing HTTPS remote (`https://user@host/group/project.git`) carries an `@` and takes the SSH branch, yielding a value with a leading `//user@host/...` — wrong, but non-empty, so the comparison correctly refuses rather than silently passing. Printing both operands before comparing is what makes that refusal readable, and is also what a no-`origin` checkout hits first: both operands are empty, and the guard above refuses by name rather than letting `[ "" = "" ]` pass.
+
+This conjunct is not tip-equality (a colleague's branch fetched and checked out satisfies that and still fails here) and not derivability (an owned branch routinely carries no issue number) — both are different checks the fix chain and Step 1d make respectively; do not fold them into this one.
+
+**1d. Issue folder.** Parse `Ref #<N>` from the envelope's `title`, falling back to `<N>` from `source_branch` (`feature/<N>-*`, `fix/<N>-*`) — `review-mr.md` Step 2b's own chain, reused rather than re-derived. Then resolve with `issue-folder-resolve/SKILL.md`'s Procedure, with these overrides for `/fix-mr` specifically:
+
+| Outcome | Answer |
+|---|---|
+| several folders match `<N>-*` | Ask the user rather than guess — the fragment's step 5 is for ledger corroboration, not folder matches |
+| the number resolves to no folder on disk | Stop, naming the folder expected — never invent one |
+| no number at all (the ordinary case here — `/fix-mr` is routinely invoked on a branch carrying no issue number) | Skip the fragment's own step 1 (ask-then-orphan). Instead: derive the branch slug per its Orphan Fallback (strip `feature/`/`fix/`/`hotfix/`/`chore/`, lowercase, collapse to `-`, refuse a detached HEAD or an all-punctuation name), then match it against both 2-layer planning shapes — `planning/<goal>/<issue-slug>/` and `planning/<goal>/<work-slug>/` — per the shape test below. Skip the fragment's own step 5 corroboration: a first run has no ledger to corroborate against, and a later run's ledger may belong to a different step under the same work slug. |
+
+**Shape test**, applied to a slug match's children as one exception against a default, not two positive arms:
+
+| Shape of the match | Outcome |
+|---|---|
+| a child directory carries, by name, an issue-folder file (`analysis.md`, `design.md`, `design-review.md`, `code-review.md`, `codex-review.md`, or `observed-failures.md`) — tested first | this is a work slug: escalate, listing every such child, and ask which one the MR belongs to |
+| no child carries one, whatever else is beside them | this is the issue folder itself |
+
+Echo the resolved path on one line before continuing, per the fragment's step 6:
+```
+Issue folder: <resolved path>
+```
+
+**1e. The batch file — never resumed.** `<issue-folder>/fix-mr-MR<mr_number>-batch.yaml` is keyed on the MR number alone, so a prior unfinished run leaves one this run must not adopt — its approval marks were given against a tree and a thread set that have since moved. If a file already sits at that path, rename it aside under its own modification time before anything else writes:
+
+```bash
+BATCH='<issue-folder>/fix-mr-MR<mr_number>-batch.yaml'
+if [ -f "$BATCH" ]; then
+  mtime=$(date -r "$BATCH" +%Y%m%dT%H%M%S)
+  if [ -z "$mtime" ]; then
+    echo "BLOCKER: rename aside failed — date -r $BATCH produced no mtime" >&2
+    exit 1
+  fi
+  dest="${BATCH%.yaml}.${mtime}.yaml"
+  mv "$BATCH" "$dest" || { echo "BLOCKER: rename aside failed — $BATCH" >&2; exit 1; }
+  echo "Prior batch set aside: $dest"
+fi
+```
+
+A failed rename aborts here, before any lens or any dispatch — the rename is the only thing that makes the file at the canonical path this run's own.
+
+**1f. Preconditions the fix chain adds.** `step-2-chain/design.md` §5.1 layers further preconditions onto this same step (an identity/freshness probe ahead of its own first write) — not yet approved or implemented, and not this file's content to invent.
+
+---
+
+### Step 2: Select Threads
+
+**2a. Open the batch.** Write `<issue-folder>/fix-mr-MR<mr_number>-batch.yaml` with one row per thread the Step 1 load returned — skipped threads included, since the skipped census is part of what Step 4 presents. Each row opens with everything it will ever take from the payload and nothing it doesn't yet have:
+
+```yaml
+mr_number: <mr_number>
+source_branch: '<source_branch>'
+target_branch: '<target_branch>'
+
+threads:
+  - ordinal: 1
+    discussion_id: '<id>'
+    skip: false
+    skip_reason: ''
+    claim: '<collapsed to one line, single-quoted — see Conventions → Quoting>'
+    notes: [ ... ]              # adjudication input; dropped from what Step 4 shows the operator
+    file_path: '<path or empty>'
+    line: <n or empty>
+    created_at: '<ISO-8601>'
+    resolvable: true
+    # added as that thread is decided (Step 3), except `approved`, added at the gate (Step 4):
+    verdict: null                # real | refuted | no claim | undecided
+    split: [ ... ]                # each lens's answer and reason
+    preconditions: [ ... ]        # every precondition from every lens contributing to a `real` verdict — Step 3d
+    reply: null                  # the drafted reply, one line, quoted — see Conventions → Quoting
+    thread_action: null          # resolved | left open, per Step 3d's table
+    approved: null                # the gate's approval mark
+```
+
+A failed write here aborts before any dispatch, the same way a failed rename does in 1e.
+
+**2b. Split.** The `skip` / `skip_reason` fields arrive already decided — `projctl`'s fold computes them, this command does not re-derive the predicate. A row with `skip: true` takes no lens dispatch and is carried straight to Step 4's skipped list with its reason. Every other row proceeds to Step 3, one at a time or batched, adjudication order does not matter. If every row is `skip: true` — or the load returned no threads at all — there is nothing for Step 3 to adjudicate and nothing approvable for Step 4 to gate: report the skipped census and stop before Step 3.
+
+---
+
+### Step 3: Quorum
+
+Each of the three lenses is one dispatch of the agent type declared in the Agent block above, over one evidence bundle. A quorum sharing one bundle measures the bundle rather than the claim — differentiation is load-bearing, not a nicety.
+
+**3a. Evidence, per lens — the merge-base derivation and Lens A's diff below run once per run, before any thread's quorum is dispatched, not once per thread.**
+
+| Lens | Holds | Denied |
+|---|---|---|
+| A — conformance | the MR diff over the merge-base range (below), and the design doc for the linked issue | no wiring |
+| B — reachability | the deployment-wiring instruction for the changed entry points, the ticket body, and a `search docs` locator table | no design doc |
+| C — text | the changed files at the MR revision, whole, no diff | no design doc, no ticket, no wiring |
+
+Lens C is bounded by the thread: only the files its notes name through `file_path`; the whole changed set only for a general note that names none — that scoping is Lens C's own, and nothing in Lens A's command below is scoped by it. Lens A's diff is over the merge-base range, not a two-endpoint diff against the target tip — on an advanced target a two-endpoint diff attributes other people's commits to this MR, and Lens A is judging whether *those* commits match the linked design. This block derives and guards the merge-base and stops there — it does not run `git diff`; Step 3b takes the diff from the merge-base this block prints. Each step checks its own result and prints its own reason to stderr on failure, rather than leaving it in a comment that never runs; on any failure, record Lens A `failed` for every thread this run and do not dispatch it for any:
+
+```bash
+if ! git fetch origin '+<target_branch>:refs/remotes/origin/<target_branch>' '+<source_branch>:refs/remotes/origin/<source_branch>'; then
+  echo 'Lens A: failed — git fetch origin +<target_branch>:refs/remotes/origin/<target_branch> +<source_branch>:refs/remotes/origin/<source_branch> failed; do not dispatch' >&2
+else
+  base=$(git merge-base 'origin/<target_branch>' 'origin/<source_branch>')
+  if [[ $? -ne 0 || -z "$base" ]]; then
+    echo 'Lens A: failed — git merge-base origin/<target_branch> origin/<source_branch> found no common ancestor; do not dispatch' >&2
+  else
+    echo "$base"
+  fi
+fi
+```
+
+`<base>` is the SHA this block prints on success. Step 3b's blocks substitute that value in place of the shell variable `$base`, which does not survive past this block (see Conventions → Placeholders); Step 4a needs a merge-base too but re-derives its own under its own fetch and guards, rather than taking this substitution.
+
+An unguarded, empty merge-base is not a hypothetical: `git diff ..origin/<source_branch>` parses as `HEAD..origin/<source_branch>`, prints a full diff and **exits 0** — so a block that treated an empty result as usable would silently diff local `HEAD` against the source branch instead of the intended range. The guard above covers each way the merge-base goes bad: a rejected or partial fetch (`git fetch` exits nonzero), `merge-base` finding no common ancestor (exits nonzero, `$base` empty), and, belt and suspenders, a zero-exit `merge-base` that still yields an empty string.
+
+An ordinary invocation resolves no issue number (Step 1d's override is the common case), so Lens A's design doc and Lens B's ticket body are routinely absent. Where absent, state that plainly in that lens's bundle and in its denial line — printed that way in Step 4's per-lens split — rather than silently sending a thinner bundle.
+
+Lens B reuses the wiring instruction and the locator-table block exactly as `review-mr.md` → Step 3b already assembles them, under the same three-line header (query verbatim, `--related` flag state, `N of M shown`). **Do not redeclare a row count here** — `PRIOR_CONTEXT_ROWS` is `research.md`'s and Step 3b's shared constant; a third declaring site would join the mirror without joining the test that checks it.
+
+**3b. Pre-dispatch size bound — declared once, here.** Lens A's measurement and production below run once per run, alongside Step 3a's fetch and merge-base — Lens A's diff does not vary by thread. Lens B's ticket body and locator table are likewise fixed for the run.
+
+```
+BUNDLE_BYTE_BOUND = 300000    # UTF-8 bytes; hand-maintained against the harness's context budget
+PROMPT_FRAME_BYTES = 5000     # UTF-8 bytes; fixed allowance for the prompt frame, applied to every measurement regardless of scope
+```
+
+Measure before assembling, never after, splitting the bound's terms by scope: run-level — the diff's byte count (Lens A only) and Lens B's ticket body and locator-table rows, both measured once alongside Step 3a's fetch and merge-base; thread-level — each file member the bundle would name (Lens C's file set) and that thread's notes; constant — the fixed `PROMPT_FRAME_BYTES` allowance for the prompt frame, applied to every measurement regardless of scope.
+
+Measure the diff's byte count with the pipeline's own exit status checked, not read off its output alone — an unguarded `git diff … | wc -c` reports `0` for a failed diff, indistinguishable from a genuinely empty one, and would admit an unmeasured bundle under the bound as though it were tiny. This block is self-contained: `<base>` is the merge-base SHA Step 3a's block printed, substituted by the orchestrator — a fresh shell here holds no `$base` from that block. If Step 3a's guard recorded Lens A `failed` (no SHA printed), skip this measurement entirely — there is nothing to size and no lens to dispatch.
+
+```bash
+set -o pipefail
+diff_bytes=$(git diff '<base>..origin/<source_branch>' | wc -c)
+diff_rc=$?
+set +o pipefail
+echo "$diff_bytes $diff_rc"
+```
+
+The echoed line is what the orchestrator reads: `$diff_bytes` against `BUNDLE_BYTE_BOUND` below, `$diff_rc` for the failed arm two paragraphs down — neither value survives past this block otherwise.
+
+Discard the diff text immediately either way — do not keep it just to have measured it. A nonzero `$diff_rc` is an execution failure, not a size finding: record the lens `failed` with the git error as the reason — the same outcome this step's own production-diff guard below reaches on the identical command — and do not dispatch it.
+
+A bundle at or over `BUNDLE_BYTE_BOUND` is never assembled — record that lens `abstained` with the measured size as its reason, and do not dispatch it. This runs deliberately high against the bound (whole files where the lens may read only part of one, a constant frame allowance rather than the real one) — refusing slightly early costs a visible abstention; refusing late costs a truncated vote nothing here can see.
+
+One abstention leaves two lenses, which still decide by agreement. Two or three abstentions leave no deciding pair — the thread is `undecided`, the expected shape on a large MR, since the same diff that over-fills Lens A is attached to the changed set that over-fills Lens C.
+
+Only once the bundle clears the bound is the diff text itself produced, for assembly into Lens A's prompt, checked the same way as the measurement above:
+
+```bash
+git diff '<base>..origin/<source_branch>'
+diff_rc=$?
+if [ "$diff_rc" -ne 0 ]; then
+  echo "Lens A: failed — git diff "'<base>..origin/<source_branch>'" exited $diff_rc" >&2
+fi
+```
+
+**3c. Dispatch contract.** The type withholds `Agent`, `Artifact`, `ExitPlanMode`, `Edit`, `Write`, and `NotebookEdit`, and injects no memory block; `Bash`, the worktree tools, `WebFetch`, `WebSearch`, and the connected MCP set all remain available. Do not overstate what that buys:
+
+| Clause | Backed by |
+|---|---|
+| no write, no execute | **mostly the prompt alone.** Nothing withheld stops a direct write — `Bash` alone settles the execute half too, and that remains an instruction the lens is trusted to follow, not a structural guarantee. `Agent` withheld is the one structural piece: it blocks re-delegating to a type that holds `Write` |
+| the bundle is closed — read only what you were pointed at, nothing further | **the prompt alone**, against a type whose own charter is broad file search and says the opposite |
+| memory-free | **the harness.** No persistent-memory block is injected into this dispatch type, no `MEMORY.md` index and no entries. `Bash` still reaches the directory on disk, which the no-write clause above covers |
+
+This is why Non-Goal §2 excludes hardening against a deliberate adversary: the controls above answer ordinary text carrying syntax, not an adversarial bundle member.
+
+Every lens prompt opens with a pointer, not a restatement:
+```
+Read ~/.claude/skills/workflows/untrusted-content/SKILL.md
+```
+
+Every third-party fragment the prompt carries — the claim, note bodies, Lens B's ticket body and locator-table rows, any inline bundle member — sits inside one labelled container naming what it is and where it came from, fenced with a fence longer than any backtick run the fragment holds so the fragment cannot close its own container early. No heading, key, or instruction in the prompt is built out of fragment text. A file member the prompt only names (a path) is read by the lens itself and is not subject to this — the closed-bundle clause above governs it instead.
+
+**3d. Answer contract.** The prompt requires a fixed leading label carrying exactly one of the **three claim values** — `real`, `refuted`, `no claim` — followed by a `Reason:` line. Parse only that leading label; a claim value appearing later in the reason text is not a vote. A response with no label at all, an empty label, a label naming two values, a label naming any token outside those three — including `abstained` or `failed` themselves — or a dispatch that itself errors, all resolve to `failed`: the type mandates no report shape, so a labelless response is the ordinary form of `failed`, not an exception. The reason recorded for a `failed` verdict names which of those five classes fired — the errored-dispatch class carries the harness's own error text as its reason — the way 3a and 3b each name their own reason. `abstained` and `failed` are recorded outcomes, never labels a lens may return: `abstained` is set by 3b before dispatch, and `failed` is what a non-conforming or errored answer resolves to. There is no timeout arm: no per-dispatch deadline exists in this harness, and the operator's only lever ends the whole run, not one lens.
+
+A lens judging the claim `real` but unable to settle it by reading appends a `Precondition:` line — the reproduction setup, in the form `/diagnose`'s debugger output already uses. Collect every precondition from every lens contributing to a `real` verdict into the row's `preconditions` list; the fix chain runs them.
+
+**Verdict = whichever of `real` / `refuted` / `no claim` two lenses return.** No value reaching two is `undecided`.
+
+| Verdict | Thread action |
+|---|---|
+| real | resolved (if `resolvable`) after the fix chain completes |
+| refuted | resolved (if `resolvable`) |
+| no claim | left open — the thread asserts no defect |
+| undecided | left open, with the three lens answers recorded in the batch |
+
+A general MR note (`resolvable: false`) never takes a resolve regardless of verdict — only the reply is conditional on the verdict, the resolve is conditional on `resolvable`.
+
+**3e. Draft the reply immediately, per thread, as soon as that thread's verdict is reached** — not after every thread is decided, and the same timing governs the verdict, the per-lens split, every precondition, and the thread action: all five are written to the row as that thread is decided, never deferred to presentation. This keeps a batch row self-consistent if the session is interrupted mid-run.
+
+| Verdict | Reply |
+|---|---|
+| real | two sentences. First — approved at Step 4 — states the claim holds and names in one clause what breaks. Second is a placeholder the fix chain fills after its push (short SHA + this thread's ledger `**Test:**` path); do not compose it here. |
+| refuted | one or two sentences: the claim does not hold, and the reading that kills it. No counter-claim about the reviewer. |
+| no claim | none |
+| undecided | none — a split ballot has decided nothing, and one lens saying `real` is enough to withhold a message asserting the opposite |
+
+Reuse `review-mr.md` → Reply Drafting Guidelines and its Writing Style rules verbatim rather than restating them (sound human, acknowledge the point, never blame, describe the problem not the person). `review-mr.md` bars the `@mention` pattern only inside review findings — the bar on `/fix-mr` replies below is this command's own rule, since a reply quotes note bodies by construction.
+
+Every reply composes its fragment under this transform, applied to the fragment before composition — never to the assembled reply, so approved text is never rewritten and neither treatment reaches a lens prompt or the coder dispatch:
+
+1. Collapse: replace every line boundary with a space.
+2. Remove every backtick.
+3. Strip leading and trailing whitespace.
+4. A leading `/` (a GitLab quick action: `/close`, `/merge`, `/unapprove`, `/assign`) becomes `&#47;` — this substitution must run after step 3's strip, not before: it fixes position 0, and `"\n/merge"` or `" /close"` still carry whitespace there ahead of the strip, making a substitution run earlier a no-op.
+5. Wrap the whole transformed fragment in a single-backtick code span. GitLab's `@mention` reference filters skip a code span at render time; removing backticks in step 2 is what keeps the fragment from closing that span early.
+
+Store the drafted reply on the row, one line, quoted (see Conventions → Quoting).
+
+---
+
+### Step 4: Approval Gate
+
+One gate, before this run's first irreversible action: coder dispatch, the ledger write, or any call that writes to GitLab. Everything above this step reads and drafts; nothing above it posts or rewrites.
+
+**4a. Branch-movement flag, read once, before presenting — over the two refs the envelope carries, on every `refuted` row:**
+
+```bash
+if ! git fetch origin '+<target_branch>:refs/remotes/origin/<target_branch>' '+<source_branch>:refs/remotes/origin/<source_branch>'; then
+  echo 'flag: unavailable — git fetch origin +<target_branch>:refs/remotes/origin/<target_branch> +<source_branch>:refs/remotes/origin/<source_branch> failed' >&2
+else
+  base=$(git merge-base 'origin/<target_branch>' 'origin/<source_branch>')
+  if [[ $? -ne 0 || -z "$base" ]]; then
+    echo 'flag: unavailable — git merge-base origin/<target_branch> origin/<source_branch> found no common ancestor' >&2
+  else
+    if ! git log --format='%ct %cI %h %s' "$base.."'origin/<source_branch>'; then
+      echo "flag: unavailable — git log $base.."'origin/<source_branch>'" failed" >&2
+    fi
+  fi
+fi
+```
+
+Report the entries that post-date the row's own `created_at`, both reduced to epoch seconds (`%ct` against `created_at` parsed to epoch — never compare the rendered `%cI` string, which carries the committer's own zone and can sort a west-of-UTC commit as earlier than it is; keep `%cI` in the line for the operator to read). Use the **committer** date, not the author date — `git commit -a --amend`, which every fix in this workflow uses, preserves the author date, so an author-date comparison answers "not post-dating" on exactly the threads this flag exists to catch. No pathspec — a fix for a claim about one file routinely lands in another. Each of the three commands checks its own result, as guarded above: a failed fetch, an absent ref, an empty or non-zero `merge-base`, or a non-zero `git log` each mark the flag `unavailable` on that row rather than an empty entry list — an empty list and an unanswered question must not read the same. It is a flag, not a verdict: it says the branch moved under this thread since the note was written, nothing about whether the tip now satisfies the claim.
+
+**4b. What's presented — one list, everything an irreversible step reads and nothing more:**
+
+| Row | Carries | Approvable |
+|---|---|---|
+| adjudicated thread | ordinal, `discussion_id`, claim, `file_path`, `line`, verdict, per-lens split with each lens's reason, every precondition, the drafted reply, thread action, `resolvable`, the branch-movement flag on a `refuted` row | yes |
+| skipped thread | its skip reason | no — a skip is not a verdict; listed so a mis-firing predicate is visible where a human actually reads the run |
+| unactionable thread (`no claim` or `undecided`) | ordinal, `discussion_id`, claim, `file_path`, `line`, verdict, per-lens split with each lens's reason | no — nobody can act on it, and leaving it out of the list would otherwise fall to the default-rejection rule below and terminate it somewhere the state model gives it no path to |
+
+Adjudication inputs read before the gate — note bodies, `created_at` — stay in the file and out of what's shown; nothing after the gate reads them.
+
+If no row is approvable — every adjudicated row resolved to `no claim` or `undecided`, and every other row was skipped — report the census and stop here, before presenting a gate with nothing to approve; Step 2b already stops this way for an all-`skip` run, and this is its counterpart for an all-unactionable one.
+
+**4c.** See Conventions → Quoting — it applies here too: the drafted reply and each lens's reason are free text carrying reviewer-authored fragment, which Step 3e's transform does not fully neutralize (it strips backticks and line breaks but not colons).
+
+**4d. Present the approvable rows to the operator**, stating plainly what approval buys — `CLAUDE.md` → Definitions scopes conversational acknowledgements to a phase transition and a regression-test waiver, and `/fix-mr` sits outside the 0–8 phase map, so no existing rule supplies this default; it is stated here in full:
+
+> Approving a row buys, for that thread alone: its coder dispatch, the amend and force-push of `<source_branch>`, and every tracker write (the resolve, the reply post, the ledger entry).
+
+Read the reply as a list of ordinals (preferred — two characters, retyped without error) or `discussion_id`s.
+
+| The reply | Outcome |
+|---|---|
+| names an approvable row | mark it approved in the batch |
+| names a row whose `Approvable` is `no` | reject it by name — echoed in the split as rejected, not approved, even though it was named |
+| does not name a row | mark it rejected — as is every row, when the reply names none, matches nothing, or is not a list of identifiers |
+
+**Echo the resolved approved/rejected split — by ordinal, claim, and verdict — unconditionally, whether or not any row was approved.** A reply matching some rows and not others, or naming an identifier that matches no row, is settled here, in front of the operator, not silently inside a parser. If every approvable row was rejected, say so plainly and end the run here — there is nothing left to dispatch.
+
+A rejected thread takes no fix chain, no reply, and no resolve on this run; it re-enters the quorum on the next `/fix-mr` invocation, since GitLab thread state alone decides adjudication eligibility.
+
+---
+
+### Step 5: Fix Chain
+
+Delivered by `step-2-chain/design.md`. Not yet approved or implemented — no content here.
+
+### Step 6: Post
+
+Delivered by `step-2-chain/design.md`. Not yet approved or implemented — no content here.

@@ -73,7 +73,7 @@ Epic: <Title> [&<N>] (<slug>) — MR review will be written to planning/<epic-sl
 Use the source branch obtained from Step 2 (not `HEAD`, which may be on a different branch):
 
 ```bash
-git fetch origin <source_branch> <target_branch>
+git fetch origin '<source_branch>' '<target_branch>'
 git diff origin/<target_branch>...origin/<source_branch> --stat   # file summary
 git diff origin/<target_branch>...origin/<source_branch>           # full diff for review
 ```

@@ -25,6 +25,7 @@ Current callers (commands with custom column updates that don't fit the standard
 - `/review-mr` — after MR review YAML written and progress.md updated
 - `/diagnose` — after the observed-failure ledger entry is written (no Phase change; the ledger must survive a machine switch to anchor the gate later)
 - `/ci-debug` — same, after Phase 5 writes the ledger
+- `/fix-mr` — after the last `real` thread's ledger entry lands (no Phase change; the ledger must survive a machine switch to anchor the gate later)
 
 ## Steps
 

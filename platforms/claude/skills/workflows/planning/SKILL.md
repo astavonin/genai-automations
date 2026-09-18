@@ -103,7 +103,7 @@ Do not invent new phase labels. If a transition is not listed here, leave the Ph
 - `design-review.md` — design review (Phase 3)
 - `code-review.md` — code review (Phase 5)
 - `codex-*.md` — codex review outputs (optional)
-- `observed-failures.md` — append-only ledger of failures that actually occurred and how each is covered (written by `/diagnose` and `/ci-debug`, resolved by `/implement`, read by `/verify` and the review commands). Also valid at `planning/reviews-orphan/<slug>/` for unlinked hotfixes. Exempt from the one-final-output convention — never overwrite or consolidate it.
+- `observed-failures.md` — append-only ledger of failures that actually occurred and how each is covered (written by `/diagnose`, `/ci-debug`, `/review-code-fix-loop`, `/review-iterate`, and `/fix-mr`'s Fix Chain, resolved by `/implement`, read by `/verify` and the review commands). Also valid at `planning/reviews-orphan/<slug>/` for unlinked hotfixes. Exempt from the one-final-output convention — never overwrite or consolidate it.
 
 **Style:** Detailed technical content; filenames inside the folder are generic (no issue-number prefix)
 

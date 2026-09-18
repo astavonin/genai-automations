@@ -1,6 +1,6 @@
 ---
 name: regression-test
-description: Shared fragment — single source of truth for the observed-failure regression rule. Defines what counts as an observed failure, the on-disk ledger that anchors the gate, unit-vs-integration selection, red/green evidence, review severities, and the waiver escape hatch. Read directly by diagnose, ci-debug, implement, verify, refresh, start, review-code, review-fix, review-code-fix-loop, review-iterate, and the coder/devops-engineer/debugger agents; reached indirectly by review-mr and the reviewer agent via review-checklist.md Test Quality Pass Step 3.
+description: Shared fragment — single source of truth for the observed-failure regression rule. Defines what counts as an observed failure, the on-disk ledger that anchors the gate, unit-vs-integration selection, red/green evidence, review severities, and the waiver escape hatch. Read directly by diagnose, ci-debug, implement, verify, refresh, start, review-code, review-fix, review-code-fix-loop, review-iterate, fix-mr, and the coder/devops-engineer/debugger agents; reached indirectly by review-mr and the reviewer agent via review-checklist.md Test Quality Pass Step 3.
 allowed-tools: Bash, Glob, Grep, Read
 compatibility: claude-code
 metadata:
@@ -31,7 +31,7 @@ A failure that **actually happened** in a real execution, as opposed to one anti
 2. A failure, crash, hang, or wrong behaviour observed on a device or in a real deployment
 3. A defect found by manual testing, exploratory use, a bug report, or any other defect reproduced by running the code, whoever reported it first
 4. A flaky or intermittent test — the flake itself is the observed failure
-5. Anything routed through `/diagnose` or `/ci-debug`
+5. Anything routed through `/diagnose`, `/ci-debug`, or `/fix-mr`
 
 If the failure is anticipated rather than observed, this fragment does not apply — `~/.claude/skills/domains/testing/SKILL.md` → Failure Scenario Coverage governs instead. Both can apply to the same change.
 
@@ -60,7 +60,7 @@ Read ~/.claude/skills/workflows/issue-folder-resolve/SKILL.md
 
 Resolve it **before** the first read or write, and pass the resolved string to any command you hand off to. A writer and a reader that derive the path differently miss each other silently: an absent ledger reads as "nothing to do", not as an error.
 
-**Who writes it:** `/diagnose` and `/ci-debug` create or append an entry per root cause at diagnosis time, with `**Status:** open`. `/implement` and `/codex-implement` resolve each entry when the fix lands. `/review-code-fix-loop` and `/review-iterate` append an entry for any defect that reproduced by running the code mid-loop, discharged fix or not — never for a finding that never reproduced. **`/verify` and `/review-fix` own the `waived` resolutions the user approved, and whoever ships the fix records a self-service `out-of-scope` naming its clause** — the command that surfaced the blocker owns closing it, or an approved waiver is re-litigated on every subsequent run. Writing that resolution is a ledger edit, not a planning-state update, so it is not covered by a "do not update planning state" hold.
+**Who writes it:** `/diagnose` and `/ci-debug` create or append an entry per root cause at diagnosis time, with `**Status:** open`. `/implement` and `/codex-implement` resolve each entry when the fix lands. `/review-code-fix-loop`, `/review-iterate`, and `/fix-mr`'s Fix Chain append an entry for any defect that reproduced by running the code mid-loop, discharged fix or not — never for a finding that never reproduced. **`/verify` and `/review-fix` own the `waived` resolutions the user approved, and whoever ships the fix records a self-service `out-of-scope` naming its clause** — the command that surfaced the blocker owns closing it, or an approved waiver is re-litigated on every subsequent run. Writing that resolution is a ledger edit, not a planning-state update, so it is not covered by a "do not update planning state" hold.
 
 **Append-only at entry granularity.** Never delete or consolidate an existing `##` section, and never let a second failure inherit the first entry's resolution — each gets its own entry. Fields **within** an entry are edited in place: `/implement` replaces the `**Status:** open` line rather than appending a second Status line. **Exactly one `**Status:**` line per entry** — two is a malformed entry, not a resolved one. This file is exempt from the "one final published output" convention, which governs review reports, not ledgers.
 

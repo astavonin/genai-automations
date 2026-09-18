@@ -44,11 +44,19 @@ if ! command -v extract-section >/dev/null 2>&1; then
     exit 1
 fi
 
+# fix-mr.md's shell-text assertions pipe extracted blocks to shellcheck — same reasoning as
+# extract-section above: a missing tool must fail the whole run loudly, not silently skip part of it.
+if ! command -v shellcheck >/dev/null 2>&1; then
+    echo "FAIL: shellcheck is not installed — required by the fix-mr.md shell-text assertions."
+    echo "      Install it before running this suite (e.g. apt install shellcheck)."
+    exit 1
+fi
+
 # Bump when adding or removing an assertion. Asserted at the end so a block that silently
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=59
+EXPECTED_TESTS=63
 
 PASS=0
 FAIL=0
@@ -2134,6 +2142,123 @@ elif [ -n "$uc_missing" ]; then
          "no pointer in:$uc_missing"
 else
     pass "every agent points at the untrusted-content fragment"
+fi
+
+echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="
+
+# fix-mr.md is Markdown an agent reads, not a script a harness runs, so a regression in its
+# shell text stays invisible until someone reads the right paragraph. These four give it a surface.
+FIXMR="$CLAUDE/commands/fix-mr.md"
+FIXMR_FETCH_CMD_COUNT=2      # Step 3a + Step 4a — bump when fix-mr.md gains or loses a fetch call
+FIXMR_SHELL_BLOCK_COUNT=6    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
+
+# 1: an unforced refspec rejects a non-fast-forward update. Scoped to COMMAND lines only (the two
+# echo diagnostics also mention the text), with a positive count so a dropped refspec is caught too.
+fetch_cmd_lines=$($GREP -F 'git fetch origin' "$FIXMR" | $GREP -v '^[[:space:]]*echo ')
+n_fetch_cmd=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -c . || true)
+unforced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '[^+]<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
+forced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '\+<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
+n_forced=$(printf '%s\n' "$forced" | $GREP -c . || true)
+if [ "$n_fetch_cmd" -ne "$FIXMR_FETCH_CMD_COUNT" ]; then
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+         "found $n_fetch_cmd command line(s) — extraction drifted from the expected literal"
+elif [ -n "$unforced" ]; then
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+         "unforced refspec(s): $(printf '%s' "$unforced" | tr '\n' ' ')"
+elif [ "$n_forced" -ne $((FIXMR_FETCH_CMD_COUNT * 2)) ]; then
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+         "expected $((FIXMR_FETCH_CMD_COUNT * 2)) forced refspecs (2 per line), found $n_forced — a refspec may be missing outright, not merely unforced"
+else
+    pass "fix-mr.md's $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s) carry $n_forced forced refspecs, none unforced"
+fi
+
+# 2: shellcheck -s bash replaces a hand-rolled unassigned-$VAR scan that false-red on export/local/read.
+blocks_dir=$(mktemp -d) && [ -d "$blocks_dir" ] || blocks_dir=""
+if [ -z "$blocks_dir" ]; then
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), each clean under shellcheck -s bash" \
+         "mktemp -d failed to create a scratch directory"
+else
+    awk -v dir="$blocks_dir" '
+      /^```(bash|sh|shell)/ { n++; f=dir "/" n; print "" > f; next }
+      /^```$/    { if (f) { close(f); f="" } ; next }
+      f          { print >> f }
+    ' "$FIXMR"
+    n_blocks=$(find "$blocks_dir" -type f | wc -l)
+    bad=""
+    for blk in "$blocks_dir"/*; do
+        [ -f "$blk" ] || continue
+        sc_out=$(shellcheck -s bash "$blk" 2>&1) || bad="$bad$(basename "$blk"): $sc_out\n"
+    done
+    rm -rf "$blocks_dir"
+    if [ "$n_blocks" -ne "$FIXMR_SHELL_BLOCK_COUNT" ]; then
+        fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), each clean under shellcheck -s bash" \
+             "found $n_blocks block(s) — extraction drifted from the expected literal"
+    elif [ -n "$bad" ]; then
+        fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), each clean under shellcheck -s bash" "$(printf "%b" "$bad")"
+    else
+        pass "all $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s) in fix-mr.md are clean under shellcheck -s bash"
+    fi
+fi
+
+# 3: shell state does not cross a fence — the block assigning a value must itself echo it (base in
+# 3a; diff_bytes/diff_rc in 3b, order pinned); Step 4a must re-derive its own base, not reuse 3a's.
+step3a_block=$(awk '/Lens A: failed/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
+step3b_block=$(awk '/diff_bytes=\$\(git diff/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
+step4a_block=$(awk '/flag: unavailable/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
+bad=""
+if [ -z "$step3a_block" ]; then
+    bad="${bad}Step 3a's block (containing 'Lens A: failed') not found — extraction broken; "
+else
+    printf '%s\n' "$step3a_block" | $GREP -qE '^[[:space:]]*base=\$\(git merge-base' \
+        || bad="${bad}Step 3a's block no longer assigns \$base; "
+    printf '%s\n' "$step3a_block" | $GREP -qE '^[[:space:]]*echo "\$base"[[:space:]]*$' \
+        || bad="${bad}Step 3a's block assigns \$base but has no echo \"\$base\"; "
+fi
+if [ -z "$step3b_block" ]; then
+    bad="${bad}Step 3b's diff-measurement block not found — extraction broken; "
+else
+    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*echo "\$diff_bytes \$diff_rc"[[:space:]]*$' \
+        || bad="${bad}Step 3b's block assigns \$diff_bytes/\$diff_rc but has no echo \"\$diff_bytes \$diff_rc\" in that field order; "
+fi
+if [ -z "$step4a_block" ]; then
+    bad="${bad}Step 4a's block (containing 'flag: unavailable') not found — extraction broken; "
+else
+    printf '%s\n' "$step4a_block" | $GREP -qE '^[[:space:]]*base=\$\(git merge-base' \
+        || bad="${bad}Step 4a's block reads \$base but no longer assigns it — it must re-derive its own merge-base; "
+fi
+if [ -z "$bad" ]; then
+    pass "the block assigning \$base (Step 3a) echoes it, the block assigning \$diff_bytes/\$diff_rc (Step 3b) echoes both in that order, and Step 4a re-derives its own \$base"
+else
+    fail "the block assigning \$base (Step 3a) echoes it, the block assigning \$diff_bytes/\$diff_rc (Step 3b) echoes both in that order, and Step 4a re-derives its own \$base" "$bad"
+fi
+
+# 4: the convention requires single quotes everywhere — a bare placeholder is invisible to a dq-only scan.
+placeholder_unsafe_hits=$(awk '
+  /^```(bash|sh|shell)/ { f=1; next }
+  /^```$/    { f=0; next }
+  f {
+    in_dq=0; in_sq=0; hit=0
+    n=length($0)
+    for (i=1; i<=n; i++) {
+      c=substr($0,i,1)
+      if (!in_sq && c=="\"")   { in_dq = !in_dq; continue }
+      if (!in_dq && c=="\047") { in_sq = !in_sq; continue }
+      if (!in_sq && c=="<") {
+        rest=substr($0,i)
+        if (match(rest, /^<[A-Za-z_-]+>/)) { hit=1 }
+      }
+    }
+    if (hit) print
+  }
+' "$FIXMR")
+n_bash_blocks=$($GREP -cE '^```(bash|sh|shell)' "$FIXMR" || true)
+if [ "$n_bash_blocks" -ne "$FIXMR_SHELL_BLOCK_COUNT" ]; then
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any" \
+         "found $n_bash_blocks block(s) — extraction drifted from the expected literal"
+elif [ -n "$placeholder_unsafe_hits" ]; then
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any" "$placeholder_unsafe_hits"
+else
+    pass "all $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s) in fix-mr.md keep every placeholder single-quoted at its point of use"
 fi
 
 echo
