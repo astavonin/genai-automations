@@ -175,7 +175,9 @@ function is_decl(raw,    t, t2, ind) {
     if (matches_any_kw(t, "def class function readonly declare")) return 1
     if (starts_kw(t, "async def")) return 1
     if (t ~ /^[A-Za-z_][A-Za-z0-9_]*[ \t]*\(\)[ \t]*\{[ \t]*$/) return 1
-    if (ind == 0 && t ~ /^[A-Z_][A-Z0-9_]*[ \t]*=/) return 1
+    # The optional `: <type>` is what a type-hinted constant carries; without it the
+    # annotated form reads as a body statement and its doc comment prices as a body run.
+    if (ind == 0 && t ~ /^[A-Z_][A-Z0-9_]*[ \t]*(:[^=]*)?=/) return 1
     return 0
 }
 

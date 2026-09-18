@@ -24,7 +24,7 @@ set -uo pipefail
 # AWK_RUNNERS at the loop). A hardcoded floor, matching verify-workflow-safety.sh's and
 # verify-config-consistency.sh's EXPECTED_TESTS: update it by hand when a case is added
 # or removed above the loop.
-BASE_COUNT=186
+BASE_COUNT=187
 
 GREP=/usr/bin/grep
 SCRIPT="$(cd "$(dirname "$0")/.." && pwd)/platforms/claude/scripts/comment-gate.sh"
@@ -1399,6 +1399,23 @@ assert_not_contains "a long file-head run is excluded, so unmeasured" "$out" "lo
 # planning-ref — a comment citing a gitignored planning document or a §N section. Scoped
 # to comment text, so the same token as a code operand does not flag.
 # =====================================================================================
+new_repo case_annotated_const_decl
+commit_file f.py <<< ""
+{
+    printf 'import typing\n'
+    printf '\n'
+    printf '# Owns the emitted key set for one payload level.\n'
+    printf '# A producer test asserts the built dict equals it exactly.\n'
+    printf '# A dropped field therefore cannot drift out of the contract.\n'
+    printf 'ENVELOPE_FIELDS: typing.Tuple[str, ...] = (\n'
+    printf '    "viewer",\n'
+    printf ')\n'
+    filler 10 2
+} > "$CASE_DIR/f.py"
+out=$(run_gate)
+assert_not_contains "an annotated module-level constant is a declaration" "$out" \
+    "$(expected_flag_line long-comment-run f.py 3)"
+
 new_repo case_planning_ref
 commit_file f.py <<< ""
 {
