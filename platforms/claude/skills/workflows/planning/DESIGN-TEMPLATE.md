@@ -42,6 +42,8 @@ Sections whose content is itself the completeness argument are never compressed:
 
 *(`Class` is the change class from `/design` Step 1a, copied from `analysis.md` → `## Change Class`. It is what reviewers grade this document against — see `~/.claude/skills/domains/architecture/SKILL.md` → Change Class. Leaving it unset makes the document reviewable only as `PRODUCT-NEW`, with compatibility findings graded at `PRODUCT-SHIPPED`, and is itself a review finding.)*
 
+*(On approval — and not before — add an `**Approved:**` line to the header block, below `**Revision:**`. It pins what the approval covered, which `**Status:** Approved` alone does not: the revision moves on every fix pass and a review report names the revision it read, so a reader landing here later cannot tell whether the approval preceded or followed the last three edits. Write the date, the revision approved, and who approved it — and where the approval is the user's over a `CHANGES REQUESTED` review, say so and point at the review section recording what stayed open. The field is absent above because a Draft has nothing to record; an `**Approved:**` line on an unapproved design is worse than none.)*
+
 ---
 
 ## 1. Problem Statement

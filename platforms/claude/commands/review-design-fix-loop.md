@@ -61,7 +61,7 @@ Then follow the **Gate re-fire handling** in Actions below. Do not proceed to St
 
 Follow `/review-design` with the deviations listed above. Writes `design-review.md`.
 
-If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3. (No revision bump — the doc was not modified in this run.)
+If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, and add an `**Approved:** <YYYY-MM-DD>, at Revision <N>, by design review` line below `**Revision:**` — reading the doc's current revision rather than assuming it. Then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3. (No revision bump — the doc was not modified in this run.)
 
 If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Do not update the design doc status header.
 
@@ -117,7 +117,7 @@ Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md
 
 Follow `/review-design` with the deviations listed above. **Pass the current `design-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `design-review.md`.
 
-On the fragment's `APPROVED` row, before that row's route is taken, use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc.
+On the fragment's `APPROVED` row, before that row's route is taken, use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, and add an `**Approved:** <YYYY-MM-DD>, at Revision <N>, by design review` line below `**Revision:**`. Read the current revision rather than assuming it — the bump has not run yet, so the value on the doc is the revision this pass reviewed.
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that its `**Status:** Draft → Approved` edit sits here rather than on the review's removed final-clean-review step, that its Protocol Deviations status-header bullet and `## Agents` note the same two-step set with no third restatement, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file. Editing the step numbering, the status-header bullet, the pointer, or the launch sentence's opening word without re-running both is how this drifts silently.
 

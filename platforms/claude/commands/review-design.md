@@ -55,12 +55,13 @@ Only proceed when the gate passes.
    Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
    ```
 
-6. **If the review status is `APPROVED`, update the design doc header:**
+6. **If the review status is `APPROVED`, update the design doc header — two edits, not one:**
    ```bash
-   # In planning/<goal>/milestone-XX/issues/<NNN-name>/design.md, change:
+   # In planning/<goal>/milestone-XX/issues/<NNN-name>/design.md:
    # **Status:** Draft  →  **Status:** Approved
+   # and add below **Revision:**  —  **Approved:** <YYYY-MM-DD>, at Revision <N>, by design review
    ```
-   Use the Edit tool to make this change. Skip this step if status is `CHANGES REQUESTED` or `REJECTED`.
+   Use the Edit tool for both. Read the doc's current `**Revision:**` value rather than assuming it — the number recorded is the revision this review actually read, and it moves on every fix pass. Where the approval is the user's over a `CHANGES REQUESTED` review rather than this command's verdict, say so on the same line and point at the review section recording what stayed open. `DESIGN-TEMPLATE.md` omits the field by design: a Draft has nothing to record, so this step is what creates it. Skip both edits if status is `CHANGES REQUESTED` or `REJECTED`.
 
 7. **Update planning state** (`approved_phase = implementing 🔨`, `review_label = design review`, `approved_next = ready for implementation`, `escalation = standard`):
    ```
