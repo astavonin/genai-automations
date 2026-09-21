@@ -32,9 +32,11 @@ Resolve `<issue-folder>` in Step 1, before the batch file is opened — the ledg
 
 ## Conventions
 
-**Quoting.** Every scalar the batch file emits is collapsed to one line and single-quoted, whatever wrote it — this covers the claim and every note `body` (first written in Step 2a), the drafted reply (Step 3e), and each lens's reason (Step 3). Single-quoted YAML: wrap the value in `'...'` and double every embedded `'` as `''` — no other character is escaped, so a literal `\t` or `\n` sequence passes through unprocessed instead of being turned into a real control character, which is what double-quoted YAML does. Step 3e's transform strips backticks and line breaks but not colons, so this rule is what still yields a parsable document from a value carrying a colon, a leading `-`, an embedded `"`, or an unbalanced `'`, with no line reading as a key of its own. Step 2a, Step 3e, and Step 4c each point back here rather than restating it.
+**Quoting.** Every free-text scalar the batch file emits — a scalar carrying text that did not originate in this file — is collapsed to one line and single-quoted, whatever wrote it: the claim and every note `body` (first written in Step 2a), the drafted reply (Step 3e), each lens's reason (Step 3), and each `preconditions` entry (Step 3d). Structural scalars stay bare — `skip`, `resolvable`, and `approved` are booleans or null; `verdict` and `thread_action` are one of a small fixed vocabulary or null; `ordinal` and `line` are integers — since quoting `false` or `null` turns it into a truthy string, and `approved` is what the gate reads to decide whether a row was approved. Single-quoted YAML: wrap the value in `'...'` and double every embedded `'` as `''` — no other character is escaped, so a literal `\t` or `\n` sequence passes through unprocessed instead of being turned into a real control character, which is what double-quoted YAML does. Step 3e's transform strips backticks and line breaks but not colons, so this rule is what still yields a parsable document from a value carrying a colon, a leading `-`, an embedded `"`, or an unbalanced `'`, with no line reading as a key of its own. Step 2a, Step 3d, Step 3e, and Step 4c each point back here rather than restating it.
 
 **Placeholders.** Each fenced block in this file is a separate Bash invocation, so shell state set in one block is gone by the next. A value that must travel from one block into a later one is written as an orchestrator-substituted placeholder — `<base>`, `<source_branch>`, `<target_branch>`, `<web_url>`, `<issue-folder>`, `<mr_number>` among them — wrapped in **single** quotes at every point of use, including inside a composite argument like a refspec or a `..` range; a value used only inside the block that computes it may stay a `$var`. The orchestrator substitutes the **raw value**, never a shell-quoted literal — single quotes suppress parameter expansion entirely, so a legal branch name like `feat$foo` reaches git literally instead of silently narrowing to `feat`. A raw value carrying an apostrophe uses the `'\''` idiom: close the quote, insert an escaped literal quote, reopen the quote — the value `o'brien` becomes `o'\''brien` when substituted into the placeholder's own enclosing quotes. Every fenced block re-derives whatever placeholder value it needs under its own guards, unless an earlier block's own printed value is substituted into it — Step 3b's case, not Step 4a's, which re-derives its own merge-base independently.
+
+**This file is parsed by a test.** `tests/verify-config-consistency.sh` pins fix-mr.md's shell text: exactly `FIXMR_SHELL_BLOCK_COUNT` (6) fenced blocks, exactly `FIXMR_FETCH_CMD_COUNT` (2) `git fetch origin` command lines, and three prose anchors it extracts blocks by — `Lens A: failed` (Step 3a), `wc -c` (Step 3b), and `flag: unavailable` (Step 4a). Changing either count, or renaming any of the three anchors, without re-running that suite is how this drifts silently.
 
 ## Workflow
 
@@ -158,7 +160,7 @@ threads:
     # added as that thread is decided (Step 3), except `approved`, added at the gate (Step 4):
     verdict: null                # real | refuted | no claim | undecided
     split: [ ... ]                # each lens's answer and reason
-    preconditions: [ ... ]        # every precondition from every lens contributing to a `real` verdict — Step 3d
+    preconditions: [ ... ]        # every precondition from every lens contributing to a `real` verdict — Step 3d, each entry single-quoted — see Conventions → Quoting
     reply: null                  # the drafted reply, one line, quoted — see Conventions → Quoting
     thread_action: null          # resolved | left open, per Step 3d's table
     approved: null                # the gate's approval mark
@@ -212,7 +214,7 @@ BUNDLE_BYTE_BOUND = 300000    # UTF-8 bytes; hand-maintained against the harness
 PROMPT_FRAME_BYTES = 5000     # UTF-8 bytes; fixed allowance for the prompt frame, applied to every measurement regardless of scope
 ```
 
-Measure before assembling, never after, splitting the bound's terms by scope: run-level — the diff's byte count (Lens A only) and Lens B's ticket body and locator-table rows, both measured once alongside Step 3a's fetch and merge-base; thread-level — each file member the bundle would name (Lens C's file set) and that thread's notes; constant — the fixed `PROMPT_FRAME_BYTES` allowance for the prompt frame, applied to every measurement regardless of scope.
+Measure before assembling, never after, splitting the bound's terms by scope: run-level — the diff's byte count (Lens A only) and Lens B's ticket body and locator-table rows, both measured once alongside Step 3a's fetch and merge-base; thread-level — each file member the bundle would name (Lens C's file set) and that thread's notes, re-summed for each thread; constant — the fixed `PROMPT_FRAME_BYTES` allowance for the prompt frame, applied to every measurement regardless of scope.
 
 Measure the diff's byte count with the pipeline's own exit status checked, not read off its output alone — an unguarded `git diff … | wc -c` reports `0` for a failed diff, indistinguishable from a genuinely empty one, and would admit an unmeasured bundle under the bound as though it were tiny. This block is self-contained: `<base>` is the merge-base SHA Step 3a's block printed, substituted by the orchestrator — a fresh shell here holds no `$base` from that block. If Step 3a's guard recorded Lens A `failed` (no SHA printed), skip this measurement entirely — there is nothing to size and no lens to dispatch.
 
@@ -332,7 +334,7 @@ Adjudication inputs read before the gate — note bodies, `created_at` — stay 
 
 If no row is approvable — every adjudicated row resolved to `no claim` or `undecided`, and every other row was skipped — report the census and stop here, before presenting a gate with nothing to approve; Step 2b already stops this way for an all-`skip` run, and this is its counterpart for an all-unactionable one.
 
-**4c.** See Conventions → Quoting — it applies here too: the drafted reply and each lens's reason are free text carrying reviewer-authored fragment, which Step 3e's transform does not fully neutralize (it strips backticks and line breaks but not colons).
+**4c.** See Conventions → Quoting — it applies here too: the drafted reply, each lens's reason, and each precondition are free text carrying reviewer-authored fragment, which Step 3e's transform does not fully neutralize (it strips backticks and line breaks but not colons).
 
 **4d. Present the approvable rows to the operator**, stating plainly what approval buys — `CLAUDE.md` → Definitions scopes conversational acknowledgements to a phase transition and a regression-test waiver, and `/fix-mr` sits outside the 0–8 phase map, so no existing rule supplies this default; it is stated here in full:
 

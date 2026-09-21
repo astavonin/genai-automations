@@ -74,8 +74,8 @@ Use the source branch obtained from Step 2 (not `HEAD`, which may be on a differ
 
 ```bash
 git fetch origin '<source_branch>' '<target_branch>'
-git diff origin/<target_branch>...origin/<source_branch> --stat   # file summary
-git diff origin/<target_branch>...origin/<source_branch>           # full diff for review
+git diff origin/'<target_branch>'...origin/'<source_branch>' --stat   # file summary
+git diff origin/'<target_branch>'...origin/'<source_branch>'           # full diff for review
 ```
 
 **Large Diff Handling:** If the diff is very large (>100KB):

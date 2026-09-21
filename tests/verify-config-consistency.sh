@@ -2152,27 +2152,62 @@ FIXMR="$CLAUDE/commands/fix-mr.md"
 FIXMR_FETCH_CMD_COUNT=2      # Step 3a + Step 4a — bump when fix-mr.md gains or loses a fetch call
 FIXMR_SHELL_BLOCK_COUNT=6    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
 
-# 1: an unforced refspec rejects a non-fast-forward update. Scoped to COMMAND lines only (the two
-# echo diagnostics also mention the text), with a positive count so a dropped refspec is caught too.
-fetch_cmd_lines=$($GREP -F 'git fetch origin' "$FIXMR" | $GREP -v '^[[:space:]]*echo ')
+# Shared scope-limiters: confine every scan below to fix-mr.md's own fenced/inline shell text, never the whole file.
+fixmr_fenced_lines() {   # emits only lines inside a ```bash/```sh/```shell fenced block
+    awk '/^```(bash|sh|shell)/{f=1;next} /^```$/{f=0;next} f' "$FIXMR"
+}
+fixmr_full_block_containing() {   # $1: marker string; emits the first fenced block's full body containing it
+    awk -v marker="$1" '
+      /^```(bash|sh|shell)/ { buf=""; instream=1; next }
+      /^```$/ { if (instream && index(buf, marker)) { printf "%s", buf; exit } instream=0; next }
+      instream { buf = buf $0 "\n" }
+    ' "$FIXMR"
+}
+fixmr_unsafe_placeholder() {   # emits lines carrying a <placeholder> outside single quotes/a comment
+    awk '
+      {
+        in_dq=0; in_sq=0; hit=0
+        n=length($0)
+        for (i=1; i<=n; i++) {
+          c=substr($0,i,1)
+          if (!in_sq && c=="\"")   { in_dq = !in_dq; continue }
+          if (!in_dq && c=="\047") { in_sq = !in_sq; continue }
+          if (!in_sq && !in_dq && c=="#") { break }
+          if (!in_sq && c=="<") {
+            rest=substr($0,i)
+            if (match(rest, /^<[A-Za-z0-9_-]+>/)) { hit=1 }
+          }
+        }
+        if (hit) print
+      }
+    '
+}
+
+# 1: an unforced or name-swapped refspec breaks or misdirects the merge-base; scoped to fenced COMMAND lines.
+fetch_cmd_lines=$(fixmr_fenced_lines | $GREP -F 'git fetch origin' | $GREP -v '^[[:space:]]*echo ')
 n_fetch_cmd=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -c . || true)
 unforced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '[^+]<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
 forced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '\+<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
 n_forced=$(printf '%s\n' "$forced" | $GREP -c . || true)
+mismatched=$(printf '%s\n' "$forced" | $GREP -vE '^\+<([A-Za-z_]+)>:refs/remotes/origin/<\1>$' || true)
 if [ "$n_fetch_cmd" -ne "$FIXMR_FETCH_CMD_COUNT" ]; then
-    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "found $n_fetch_cmd command line(s) — extraction drifted from the expected literal"
 elif [ -n "$unforced" ]; then
-    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "unforced refspec(s): $(printf '%s' "$unforced" | tr '\n' ' ')"
 elif [ "$n_forced" -ne $((FIXMR_FETCH_CMD_COUNT * 2)) ]; then
-    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading +" \
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "expected $((FIXMR_FETCH_CMD_COUNT * 2)) forced refspecs (2 per line), found $n_forced — a refspec may be missing outright, not merely unforced"
+elif [ -n "$mismatched" ]; then
+    fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
+         "refspec(s) with swapped source/destination placeholder names: $(printf '%s' "$mismatched" | tr '\n' ' ')"
 else
-    pass "fix-mr.md's $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s) carry $n_forced forced refspecs, none unforced"
+    pass "fix-mr.md's $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s) carry $n_forced forced refspecs, none unforced, none with swapped names"
 fi
 
-# 2: shellcheck -s bash replaces a hand-rolled unassigned-$VAR scan that false-red on export/local/read.
+# 2: --enable=check-unassigned-uppercase catches an ALL-CAPS var like BATCH that shellcheck's 0.9.0
+# default otherwise presumes is an env var; SC2154 stays suppressed for a -z/-n-only use.
 blocks_dir=$(mktemp -d) && [ -d "$blocks_dir" ] || blocks_dir=""
 if [ -z "$blocks_dir" ]; then
     fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), each clean under shellcheck -s bash" \
@@ -2187,7 +2222,7 @@ else
     bad=""
     for blk in "$blocks_dir"/*; do
         [ -f "$blk" ] || continue
-        sc_out=$(shellcheck -s bash "$blk" 2>&1) || bad="$bad$(basename "$blk"): $sc_out\n"
+        sc_out=$(shellcheck -s bash --enable=check-unassigned-uppercase "$blk" 2>&1) || bad="$bad$(basename "$blk"): $sc_out\n"
     done
     rm -rf "$blocks_dir"
     if [ "$n_blocks" -ne "$FIXMR_SHELL_BLOCK_COUNT" ]; then
@@ -2200,65 +2235,67 @@ else
     fi
 fi
 
-# 3: shell state does not cross a fence — the block assigning a value must itself echo it (base in
-# 3a; diff_bytes/diff_rc in 3b, order pinned); Step 4a must re-derive its own base, not reuse 3a's.
-step3a_block=$(awk '/Lens A: failed/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
-step3b_block=$(awk '/diff_bytes=\$\(git diff/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
-step4a_block=$(awk '/flag: unavailable/ { f=1 } f && /^```$/ { exit } f { print }' "$FIXMR")
+# 3: shell state does not cross a fence, so each block must keep its own branch, guard, and echo.
+step3a_block=$(fixmr_full_block_containing 'Lens A: failed')
+step3b_block=$(fixmr_full_block_containing 'wc -c')
+step4a_block=$(fixmr_full_block_containing 'flag: unavailable')
 bad=""
 if [ -z "$step3a_block" ]; then
     bad="${bad}Step 3a's block (containing 'Lens A: failed') not found — extraction broken; "
 else
+    printf '%s\n' "$step3a_block" | $GREP -qE '^if ! git fetch' \
+        || bad="${bad}Step 3a's fetch is no longer branched on (missing leading 'if !'); "
     printf '%s\n' "$step3a_block" | $GREP -qE '^[[:space:]]*base=\$\(git merge-base' \
         || bad="${bad}Step 3a's block no longer assigns \$base; "
-    printf '%s\n' "$step3a_block" | $GREP -qE '^[[:space:]]*echo "\$base"[[:space:]]*$' \
-        || bad="${bad}Step 3a's block assigns \$base but has no echo \"\$base\"; "
+    printf '%s\n' "$step3a_block" | $GREP -qF -- '-z "$base"' \
+        || bad="${bad}Step 3a's block assigns \$base but its -z \"\$base\" guard is gone; "
+    n_stdout_echo=$(printf '%s\n' "$step3a_block" | $GREP -E '^[[:space:]]*echo ' | $GREP -v '>&2' | $GREP -c . || true)
+    if [ "$n_stdout_echo" -ne 1 ]; then
+        bad="${bad}Step 3a's block prints $n_stdout_echo value(s) to stdout via echo, expected exactly 1; "
+    else
+        printf '%s\n' "$step3a_block" | $GREP -qE '^[[:space:]]*echo "\$base"[[:space:]]*$' \
+            || bad="${bad}Step 3a's block prints exactly one value to stdout but it is not \$base; "
+    fi
 fi
 if [ -z "$step3b_block" ]; then
     bad="${bad}Step 3b's diff-measurement block not found — extraction broken; "
 else
-    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*echo "\$diff_bytes \$diff_rc"[[:space:]]*$' \
-        || bad="${bad}Step 3b's block assigns \$diff_bytes/\$diff_rc but has no echo \"\$diff_bytes \$diff_rc\" in that field order; "
+    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*set -o pipefail[[:space:]]*$' \
+        || bad="${bad}Step 3b's wc -c measurement block no longer sets -o pipefail; "
+    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*echo .*\$diff_bytes.*\$diff_rc' \
+        || bad="${bad}Step 3b's block assigns \$diff_bytes/\$diff_rc but has no echo naming \$diff_bytes before \$diff_rc; "
 fi
 if [ -z "$step4a_block" ]; then
     bad="${bad}Step 4a's block (containing 'flag: unavailable') not found — extraction broken; "
 else
     printf '%s\n' "$step4a_block" | $GREP -qE '^[[:space:]]*base=\$\(git merge-base' \
         || bad="${bad}Step 4a's block reads \$base but no longer assigns it — it must re-derive its own merge-base; "
+    printf '%s\n' "$step4a_block" | $GREP -qF -- '-z "$base"' \
+        || bad="${bad}Step 4a's block assigns \$base but its -z \"\$base\" guard is gone; "
 fi
 if [ -z "$bad" ]; then
-    pass "the block assigning \$base (Step 3a) echoes it, the block assigning \$diff_bytes/\$diff_rc (Step 3b) echoes both in that order, and Step 4a re-derives its own \$base"
+    pass "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's wc -c block runs under set -o pipefail and echoes \$diff_bytes before \$diff_rc, and Step 4a re-derives and guards its own \$base"
 else
-    fail "the block assigning \$base (Step 3a) echoes it, the block assigning \$diff_bytes/\$diff_rc (Step 3b) echoes both in that order, and Step 4a re-derives its own \$base" "$bad"
+    fail "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's wc -c block runs under set -o pipefail and echoes \$diff_bytes before \$diff_rc, and Step 4a re-derives and guards its own \$base" "$bad"
 fi
 
-# 4: the convention requires single quotes everywhere — a bare placeholder is invisible to a dq-only scan.
-placeholder_unsafe_hits=$(awk '
-  /^```(bash|sh|shell)/ { f=1; next }
-  /^```$/    { f=0; next }
-  f {
-    in_dq=0; in_sq=0; hit=0
-    n=length($0)
-    for (i=1; i<=n; i++) {
-      c=substr($0,i,1)
-      if (!in_sq && c=="\"")   { in_dq = !in_dq; continue }
-      if (!in_dq && c=="\047") { in_sq = !in_sq; continue }
-      if (!in_sq && c=="<") {
-        rest=substr($0,i)
-        if (match(rest, /^<[A-Za-z_-]+>/)) { hit=1 }
-      }
-    }
-    if (hit) print
-  }
-' "$FIXMR")
+# 4: single quotes are required at every real point of use, not inside a comment, including Step 1a's shell use outside any fence.
+placeholder_unsafe_hits=$(fixmr_fenced_lines | fixmr_unsafe_placeholder)
 n_bash_blocks=$($GREP -cE '^```(bash|sh|shell)' "$FIXMR" || true)
+step1a_line=$($GREP -m1 -F '**1a. One load.**' "$FIXMR")
+step1a_span=$(printf '%s' "$step1a_line" | $GREP -oE '`[^`]*`' | head -1 | tr -d '`')
+step1a_unsafe=$(printf '%s\n' "$step1a_span" | fixmr_unsafe_placeholder)
 if [ "$n_bash_blocks" -ne "$FIXMR_SHELL_BLOCK_COUNT" ]; then
-    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any" \
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any, plus Step 1a's inline command" \
          "found $n_bash_blocks block(s) — extraction drifted from the expected literal"
-elif [ -n "$placeholder_unsafe_hits" ]; then
-    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any" "$placeholder_unsafe_hits"
+elif [ -z "$step1a_span" ]; then
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any, plus Step 1a's inline command" \
+         "Step 1a's inline projctl command span was not found — extraction broken"
+elif [ -n "$placeholder_unsafe_hits" ] || [ -n "$step1a_unsafe" ]; then
+    fail "fix-mr.md has $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s), no placeholder outside single quotes in any, plus Step 1a's inline command" \
+         "fenced block(s): $placeholder_unsafe_hits Step 1a: $step1a_unsafe"
 else
-    pass "all $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s) in fix-mr.md keep every placeholder single-quoted at its point of use"
+    pass "all $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s) in fix-mr.md, plus Step 1a's inline projctl command, keep every placeholder single-quoted at its point of use"
 fi
 
 echo

@@ -31,7 +31,7 @@ A failure that **actually happened** in a real execution, as opposed to one anti
 2. A failure, crash, hang, or wrong behaviour observed on a device or in a real deployment
 3. A defect found by manual testing, exploratory use, a bug report, or any other defect reproduced by running the code, whoever reported it first
 4. A flaky or intermittent test — the flake itself is the observed failure
-5. Anything routed through `/diagnose`, `/ci-debug`, or `/fix-mr`
+5. Anything routed through `/diagnose`, `/ci-debug`, or `/fix-mr`'s Fix Chain
 
 If the failure is anticipated rather than observed, this fragment does not apply — `~/.claude/skills/domains/testing/SKILL.md` → Failure Scenario Coverage governs instead. Both can apply to the same change.
 

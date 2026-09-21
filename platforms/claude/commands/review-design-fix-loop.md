@@ -10,7 +10,7 @@ Run the full design review cycle autonomously: initial review → fix all findin
 ## Agents
 
 - **reviewer** (opus) — all review passes (full 3+1 consensus protocol each time)
-- **architecture-research-planner** (opus) — all substantive design doc edits (content, structure, sections) must go through this agent; the only exceptions are one-line header metadata updates — `**Status:**` (set on `APPROVED` per the Protocol Deviations status-header bullet below) and `**Revision:**` (incremented in Step 5 when `design_modified = true`) — both use the Edit tool directly
+- **architecture-research-planner** (opus) — all substantive design doc edits (content, structure, sections) must go through this agent; the only exceptions are one-line header metadata updates — `**Status:**` (set on `APPROVED` per the Protocol Deviations status-header bullet below), `**Approved:**` (added alongside `**Status:**` at Steps 1 and 3), and `**Revision:**` (incremented in Step 5 when `design_modified = true`) — all three use the Edit tool directly
 
 ## Prerequisite
 
@@ -42,7 +42,7 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is the step in `/review-design` that blocks until the user invokes `/implement`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
-- **Skip** the design doc status header update step (`**Status:** Draft → Approved`) — the fix-loop manages the header itself; it sets it when the initial review (Step 1) returns APPROVED, and on the fragment's APPROVED row in Step 3. (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
+- **Skip** the design doc status header update step (naming `**Status:**` and `**Approved:**`) — the fix-loop manages the header itself; it sets it when the initial review (Step 1) returns APPROVED, and on the fragment's APPROVED row in Step 3. (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
 
 **Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1 and 3). This is a separate invocation from the pre-Step-1 gate in the Prerequisite section — the gate re-evaluates on each pass because Step 2 may introduce new open questions despite the prohibition. If Step 2 introduces new open questions in `## 8. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Step 3 — not Step 1, which cannot re-fire since the pre-Step-1 gate just passed), use this specific message instead of the gate's default:
 

@@ -1395,10 +1395,6 @@ commit_file f.cc <<< ""
 out=$(run_gate)
 assert_not_contains "a long file-head run is excluded, so unmeasured" "$out" "long-comment-run"
 
-# =====================================================================================
-# planning-ref — a comment citing a gitignored planning document or a §N section. Scoped
-# to comment text, so the same token as a code operand does not flag.
-# =====================================================================================
 new_repo case_annotated_const_decl
 commit_file f.py <<< ""
 {
@@ -1416,6 +1412,8 @@ out=$(run_gate)
 assert_not_contains "an annotated module-level constant is a declaration" "$out" \
     "$(expected_flag_line long-comment-run f.py 3)"
 
+# planning-ref — a comment citing a gitignored planning document or a §N section. Scoped
+# to comment text, so the same token as a code operand does not flag.
 new_repo case_planning_ref
 commit_file f.py <<< ""
 {

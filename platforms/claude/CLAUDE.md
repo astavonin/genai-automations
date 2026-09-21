@@ -288,7 +288,7 @@ The `<epic-slug>/` folder is instantiated automatically by `/review-mr` on first
 
 **Layer count follows the tracker.** The 3-layer form above (`<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/`) is for GitLab work tracked under epics and milestones. Two 2-layer shapes are equally sanctioned, not drift — GitHub repos use them by default (GH has no epic/milestone nesting to mirror), and GitLab work without a milestone structure may too:
 
-- `planning/<goal>/<work-slug>/<step-or-issue-name>/` — multi-step work under one named effort (e.g. a rollout with `step-N-<name>` folders). The step folder plays the `issues/<NNN-name>/` role: same files inside (`analysis.md`, `design.md`, `design-review.md`, `code-review.md`, `observed-failures.md`), and `status.md` lives at the work-slug level.
+- `planning/<goal>/<work-slug>/<step-or-issue-name>/` — multi-step work under one named effort (e.g. a rollout with `step-N-<name>` folders). The step folder plays the `issues/<NNN-name>/` role: same files inside (`analysis.md`, `design.md`, `design-review.md`, `code-review.md`, `codex-review.md`, `observed-failures.md`), and `status.md` lives at the work-slug level.
 - `planning/<goal>/<issue-slug>/` — single-issue work; the slug folder plays the issue-folder role directly.
 
 Commands that print the 3-layer placeholder resolve against whichever shape is on disk (`issue-folder-resolve/SKILL.md` corroborates flat shapes explicitly); do not "correct" a 2-layer tree to 3 layers.
