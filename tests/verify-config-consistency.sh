@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=63
+EXPECTED_TESTS=68
 
 PASS=0
 FAIL=0
@@ -2150,7 +2150,7 @@ echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="
 # shell text stays invisible until someone reads the right paragraph. These four give it a surface.
 FIXMR="$CLAUDE/commands/fix-mr.md"
 FIXMR_FETCH_CMD_COUNT=2      # Step 3a + Step 4a — bump when fix-mr.md gains or loses a fetch call
-FIXMR_SHELL_BLOCK_COUNT=6    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
+FIXMR_SHELL_BLOCK_COUNT=7    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
 
 # Shared scope-limiters: confine every scan below to fix-mr.md's own fenced/inline shell text, never the whole file.
 fixmr_fenced_lines() {   # emits only lines inside a ```bash/```sh/```shell fenced block
@@ -2296,6 +2296,149 @@ elif [ -n "$placeholder_unsafe_hits" ] || [ -n "$step1a_unsafe" ]; then
          "fenced block(s): $placeholder_unsafe_hits Step 1a: $step1a_unsafe"
 else
     pass "all $FIXMR_SHELL_BLOCK_COUNT fenced shell block(s) in fix-mr.md, plus Step 1a's inline projctl command, keep every placeholder single-quoted at its point of use"
+fi
+
+# 5: an unpaired or missing exit branch lets the extractor's error text reach a lens as a
+# sanctioned decision; a deleted guard, stop, empty-body arm or re-emission is silent.
+record_block=$(fixmr_full_block_containing 'record: absent')
+bad=""
+if [ -z "$record_block" ]; then
+    bad="the block containing 'record: absent' was not found — extraction broken"
+else
+    n_calls=$(printf '%s\n' "$record_block" | $GREP -Fc 'extract-section "$design_doc"' || true)
+    n_rc_checks=$(printf '%s\n' "$record_block" | $GREP -cE '^[[:space:]]*if \[ "\$sec[0-9]+_rc" -ne 0 \]; then' || true)
+    n_guard=$(printf '%s\n' "$record_block" | $GREP -Fc 'command -v extract-section' || true)
+    n_stop=$(printf '%s\n' "$record_block" | $GREP -cE '\[ "\$n_extracted" -eq 0 \]' || true)
+    n_empty_arms=$(printf '%s\n' "$record_block" | $GREP -cE '^[[:space:]]*elif \[ -z "\$sec[0-9]+" \]; then' || true)
+    n_reemits=$(printf '%s\n' "$record_block" | $GREP -Fc 'record="$record## ' || true)
+    [ "$n_calls" -eq 4 ] || bad="${bad}found $n_calls extract-section invocation(s), expected 4; "
+    [ "$n_rc_checks" -eq 4 ] || bad="${bad}found $n_rc_checks exit-status branch(es), expected 4; "
+    [ "$n_guard" -eq 1 ] || bad="${bad}found $n_guard 'command -v extract-section' guard(s), expected exactly 1; "
+    [ "$n_stop" -eq 1 ] || bad="${bad}found $n_stop 'n_extracted -eq 0' stop branch(es), expected exactly 1; "
+    [ "$n_empty_arms" -eq 4 ] || bad="${bad}found $n_empty_arms empty-body arm(s), expected 4; "
+    [ "$n_reemits" -eq 4 ] || bad="${bad}found $n_reemits anchor re-emission(s), expected 4; "
+
+    # N is derived, not hardcoded, so the row survives a section-set change; adjacency is what
+    # an inserted line or a swapped rc variable break.
+    n_sections=0
+    unpaired=""
+    while IFS= read -r sec_n; do
+        [ -n "$sec_n" ] || continue
+        n_sections=$((n_sections + 1))
+        capture_pat='^[[:space:]]*sec'"${sec_n}"'=\$\(extract-section'
+        rc_pat='^[[:space:]]*sec'"${sec_n}"'_rc=\$\?[[:space:]]*$'
+        if_pat='^[[:space:]]*if \[ "\$sec'"${sec_n}"'_rc" -ne 0 \]; then'
+        next_line=$(printf '%s\n' "$record_block" | $GREP -A1 -E "$capture_pat" | tail -1)
+        printf '%s' "$next_line" | $GREP -qE "$rc_pat" \
+            || unpaired="${unpaired}sec${sec_n}_rc=\$? does not immediately follow sec${sec_n}=\$(extract-section...); "
+        printf '%s\n' "$record_block" | $GREP -qE "$if_pat" \
+            || unpaired="${unpaired}no 'if [ \"\$sec${sec_n}_rc\" -ne 0 ]' branch bound to sec${sec_n}; "
+    done < <(printf '%s\n' "$record_block" | $GREP -oE 'sec[0-9]+=\$\(extract-section' | $GREP -oE '[0-9]+')
+    [ "$n_sections" -eq 4 ] || bad="${bad}derived $n_sections section number(s) from secN=\$(extract-section lines, expected 4; "
+    [ -n "$unpaired" ] && bad="${bad}$unpaired"
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's record block carries four extract-section invocations, each branched on its own exit status and paired to its own section, plus the preflight guard, the all-missing stop, the four empty-body arms, and the four anchor re-emissions"
+else
+    fail "fix-mr.md's record block carries four extract-section invocations, each branched on its own exit status and paired to its own section, plus the preflight guard, the all-missing stop, the four empty-body arms, and the four anchor re-emissions" "$bad"
+fi
+
+# 6: the span stops at the next bold lead-in because the whole paragraph is one line and names
+# the tool downstream, so a whole-line grep passes even with the Preflight mention rewritten away.
+step3_body=$(extract-section "$FIXMR" '### Step 3: Quorum' 2>/dev/null)
+bad=""
+if [ -z "$step3_body" ]; then
+    bad="extract-section found no '### Step 3: Quorum' body in fix-mr.md — extraction broken"
+else
+    preflight_span=$(printf '%s\n' "$step3_body" \
+        | $GREP -oE '\*\*Preflight:\*\*.*\*\*No sections:\*\*' | sed -E 's/\*\*No sections:\*\*$//')
+    if [ -z "$preflight_span" ]; then
+        bad="${bad}no '**Preflight:**' span found ahead of the next bold lead-in; "
+    else
+        printf '%s' "$preflight_span" | $GREP -qF 'extract-section' \
+            || bad="${bad}'**Preflight:**' span does not name extract-section within its own bound; "
+    fi
+    printf '%s\n' "$step3_body" | $GREP -qF '**No sections:**' \
+        || bad="${bad}no '**No sections:**' lead-in found; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md Step 3's extracted body carries both record run-stopping arms (**Preflight:**, **No sections:**), each under its own lead-in"
+else
+    fail "fix-mr.md Step 3's extracted body carries both record run-stopping arms, each under its own lead-in" "$bad"
+fi
+
+# 7: scoped to Step 4's own body, because a whole-file -m1 binds to the first occurrence — a
+# decoy earlier in the file would leave the gate's real line unchecked.
+step4_body=$(extract-section "$FIXMR" '### Step 4: Approval Gate' 2>/dev/null)
+bad=""
+if [ -z "$step4_body" ]; then
+    bad="extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
+else
+    authority_line=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '**Authority held:**')
+    if [ -z "$authority_line" ]; then
+        bad="${bad}no '**Authority held:**' line found within Step 4's extracted body; "
+    else
+        printf '%s' "$authority_line" | $GREP -qF 'the whole document' || bad="${bad}does not name 'the whole document'; "
+        printf '%s' "$authority_line" | $GREP -qF 'the record' || bad="${bad}does not name 'the record'; "
+        printf '%s' "$authority_line" | $GREP -qF 'record: absent' || bad="${bad}does not name 'record: absent'; "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 4 **Authority held:** span names all three authority values (the whole document, the record, record: absent), scoped to Step 4's own body"
+else
+    fail "fix-mr.md's Step 4 **Authority held:** span names all three authority values, scoped to Step 4's own body" "$bad"
+fi
+
+# 8: the only row that fails from the far side — a renamed template heading or an anchor typo
+# silently drops that section from every record the command builds.
+DESIGN_TEMPLATE="$CLAUDE/skills/workflows/planning/DESIGN-TEMPLATE.md"
+record_anchors=$(printf '%s\n' "$record_block" \
+    | $GREP -oE 'extract-section "\$design_doc" .[^'"'"']+.' \
+    | sed -E "s/^extract-section \"\\\$design_doc\" '//; s/'\$//" | sort -u)
+n_anchors=$(printf '%s\n' "$record_anchors" | $GREP -c . || true)
+expected_anchors=$(printf '%s\n' \
+    '## 2. Goals and Non-Goals' \
+    '## 3. Implementation Context' \
+    '## 4. Architecture Overview' \
+    '## 7. Trade-offs and Alternatives' | sort -u)
+bad=""
+if [ "$n_anchors" -eq 0 ]; then
+    bad="no anchor literals extracted from the record block — extraction broken"
+elif [ "$record_anchors" != "$expected_anchors" ]; then
+    bad="anchor set mismatch: $(diff <(printf '%s\n' "$expected_anchors") <(printf '%s\n' "$record_anchors") | tr '\n' ' ')"
+else
+    while IFS= read -r anchor; do
+        [ -n "$anchor" ] || continue
+        extract-section "$DESIGN_TEMPLATE" "$anchor" >/dev/null 2>&1 \
+            || bad="${bad}extract-section exited nonzero for '$anchor' against DESIGN-TEMPLATE.md; "
+    done <<EOF
+$record_anchors
+EOF
+fi
+if [ -z "$bad" ]; then
+    pass "the record block's four anchor literals equal DESIGN-TEMPLATE.md's §2/§3/§4/§7 headings and each resolves with the real extractor"
+else
+    fail "the record block's four anchor literals equal DESIGN-TEMPLATE.md's §2/§3/§4/§7 headings and each resolves with the real extractor" "$bad"
+fi
+
+# 9: scoped to Step 3's body so a decoy figure elsewhere cannot satisfy it by co-occurrence.
+word_bound_body=$(extract-section "$FIXMR" '### Step 3: Quorum' 2>/dev/null)
+word_bound_line=$(printf '%s\n' "$word_bound_body" | $GREP -m1 -F '**Word bound.**')
+bad=""
+if [ -z "$word_bound_body" ]; then
+    bad="extract-section found no '### Step 3: Quorum' body in fix-mr.md — extraction broken"
+elif [ -z "$word_bound_line" ]; then
+    bad="no '**Word bound.**' lead-in found inside Step 3's body"
+else
+    printf '%s' "$word_bound_line" | $GREP -qF '25' && printf '%s' "$word_bound_line" | $GREP -qF '30' \
+        || bad="${bad}the word-bound line does not carry a ~25-30 figure: $word_bound_line; "
+    printf '%s' "$word_bound_line" | $GREP -qF 'real' || bad="${bad}the word-bound line does not name a 'real' reply; "
+    printf '%s' "$word_bound_line" | $GREP -qF 'refuted' || bad="${bad}the word-bound line does not name a 'refuted' reply; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md Step 3e states a ~25-30 word bound for a real reply's first sentence and a refuted reply"
+else
+    fail "fix-mr.md Step 3e states a ~25-30 word bound for a real reply's first sentence and a refuted reply" "$bad"
 fi
 
 echo
