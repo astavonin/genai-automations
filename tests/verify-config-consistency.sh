@@ -2371,19 +2371,21 @@ else
     fail "fix-mr.md Step 3's extracted body carries both record run-stopping arms, each under its own lead-in" "$bad"
 fi
 
-# 7: scoped to Step 4's own body, because a whole-file -m1 binds to the first occurrence — a
-# decoy earlier in the file would leave the gate's real line unchecked.
+# 7: scoped to Step 4's own body and count-checked to exactly one match — a decoy earlier in the
+# file, or a superseded line planted earlier in the same body, must not survive unchecked.
 bad=""
 if [ -z "$step4_body" ]; then
     bad="extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
 else
+    n_authority_lines=$(printf '%s\n' "$step4_body" | $GREP -cF '**Authority held:**')
     authority_line=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '**Authority held:**')
-    if [ -z "$authority_line" ]; then
-        bad="${bad}no '**Authority held:**' line found within Step 4's extracted body; "
+    if [ "$n_authority_lines" -ne 1 ]; then
+        bad="found $n_authority_lines '**Authority held:**' line(s) within Step 4's extracted body, want exactly 1"
     else
         printf '%s' "$authority_line" | $GREP -qF 'the whole document' || bad="${bad}does not name 'the whole document'; "
         printf '%s' "$authority_line" | $GREP -qF 'the record' || bad="${bad}does not name 'the record'; "
         printf '%s' "$authority_line" | $GREP -qF 'record: absent' || bad="${bad}does not name 'record: absent'; "
+        printf '%s' "$authority_line" | $GREP -qF 'real' || bad="${bad}does not name 'real'; "
         printf '%s' "$authority_line" | $GREP -qF 'by-design' || bad="${bad}does not name 'by-design'; "
         printf '%s' "$authority_line" | $GREP -qF 'Decision:' || bad="${bad}does not name the cited 'Decision:' clause; "
     fi
@@ -2435,7 +2437,7 @@ if [ -z "$step3_body" ]; then
 elif [ -z "$word_bound_line" ]; then
     bad="no '**Word bound.**' lead-in found inside Step 3's body"
 else
-    printf '%s' "$word_bound_line" | $GREP -qE '~?25[–-]30 words' \
+    printf '%s' "$word_bound_line" | $GREP -qE '~?25(–|-)30 words' \
         || bad="${bad}the word-bound line does not carry an anchored ~25-30 words figure: $word_bound_line; "
     printf '%s' "$word_bound_line" | $GREP -qF 'real' || bad="${bad}the word-bound line does not name a 'real' reply; "
     printf '%s' "$word_bound_line" | $GREP -qF 'by-design' || bad="${bad}the word-bound line does not name a 'by-design' reply; "
@@ -2447,8 +2449,8 @@ else
     fail "fix-mr.md Step 3e states a ~25-30 word bound for a real reply's first sentence, a by-design reply, and a refuted reply" "$bad"
 fi
 
-# 10: the key lines at whatever depth `verdict:` sits at, inside Step 2's one ```yaml fence — a
-# key hoisted to the document's top level, or a decoy fence ahead of a gutted schema, must fail.
+# 10: the key lines at whatever depth `verdict:` sits at, inside the `- ordinal:` block of Step 2's
+# one ```yaml fence — a sibling top-level mapping at the same depth must not satisfy this row.
 step2_body=$(extract-section "$FIXMR" '### Step 2: Select Threads' 2>/dev/null)
 bad=""
 if [ -z "$step2_body" ]; then
@@ -2461,21 +2463,30 @@ else
     elif [ -z "$step2_yaml" ]; then
         bad="no fenced \`\`\`yaml block found inside Step 2's extracted body"
     else
-        thread_indent=$(printf '%s\n' "$step2_yaml" | $GREP -m1 -E '^[[:space:]]*verdict:' | $GREP -oE '^[[:space:]]*')
-        if [ -z "$thread_indent" ]; then
-            bad="no 'verdict:' key line found to anchor the thread row's indentation depth"
+        ordinal_lineno=$(printf '%s\n' "$step2_yaml" | $GREP -nE '^[[:space:]]*- ordinal:' | head -1 | cut -d: -f1)
+        if [ -z "$ordinal_lineno" ]; then
+            bad="no '- ordinal:' sequence item found to anchor the thread row's block"
         else
-            for key in 'fix_adds:' 'disposition:' 'scope_decision:' 'branch_movement:'; do
-                printf '%s\n' "$step2_yaml" | $GREP -qE "^${thread_indent}${key}" \
-                    || bad="${bad}no '${key}' key line found at the thread row's own indentation depth; "
-            done
+            # Bounded to the span from `- ordinal:` to the next unindented key, so a sibling
+            # mapping hoisted to the same depth falls outside it despite aligning with the keys.
+            thread_block=$(printf '%s\n' "$step2_yaml" | tail -n "+$ordinal_lineno" \
+                | awk 'NR==1{print;next} /^[^[:space:]]/{exit} {print}')
+            thread_indent=$(printf '%s\n' "$thread_block" | $GREP -m1 -E '^[[:space:]]*verdict:' | $GREP -oE '^[[:space:]]*')
+            if [ -z "$thread_indent" ]; then
+                bad="no 'verdict:' key line found inside the thread row's own block to anchor its indentation depth"
+            else
+                for key in 'fix_adds:' 'disposition:' 'scope_decision:' 'branch_movement:'; do
+                    printf '%s\n' "$thread_block" | $GREP -qE "^${thread_indent}${key}" \
+                        || bad="${bad}no '${key}' key line found inside the thread row's own block, at its indentation depth; "
+                done
+            fi
         fi
     fi
 fi
 if [ -z "$bad" ]; then
-    pass "fix-mr.md Step 2's single \`\`\`yaml fence opens fix_adds, disposition, scope_decision, and branch_movement at the thread row's own indentation depth"
+    pass "fix-mr.md Step 2's single \`\`\`yaml fence opens fix_adds, disposition, scope_decision, and branch_movement inside the thread row's own block, at its indentation depth"
 else
-    fail "fix-mr.md Step 2's single \`\`\`yaml fence opens fix_adds, disposition, scope_decision, and branch_movement at the thread row's own indentation depth" "$bad"
+    fail "fix-mr.md Step 2's single \`\`\`yaml fence opens fix_adds, disposition, scope_decision, and branch_movement inside the thread row's own block, at its indentation depth" "$bad"
 fi
 
 # 11: keyed on the Carries cell alone, cut at the second and third pipe — the four names moved
@@ -2488,8 +2499,6 @@ else
     adjudicated_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -E '^\| *adjudicated thread *\|')
     if [ "$n_adjudicated_rows" -ne 1 ]; then
         bad="found $n_adjudicated_rows '| adjudicated thread |' row(s) within Step 4's extracted body, want exactly 1"
-    elif [ -z "$adjudicated_row" ]; then
-        bad="no '| adjudicated thread |' table row found within Step 4's extracted body"
     else
         carries_cell=$(printf '%s' "$adjudicated_row" | awk -F'|' '{print $3}')
         for field in 'fix_adds' 'disposition' 'scope_decision' 'branch_movement'; do
@@ -2504,15 +2513,16 @@ else
     fail "fix-mr.md Step 4b's adjudicated-thread row's Carries cell names fix_adds, disposition, scope_decision, and branch_movement" "$bad"
 fi
 
-# 12: scoped to Step 4's own body, matched on the lead-in's one line — the trigger narrowing back
-# to the refuted literal.
+# 12: scoped to Step 4's own body and count-checked to exactly one match — a superseded lead-in
+# planted earlier in the same body must not survive alongside a gutted live line.
 bad=""
 if [ -z "$step4_body" ]; then
     bad="extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
 else
+    n_bm_lines=$(printf '%s\n' "$step4_body" | $GREP -cF '**4a. Branch-movement flag')
     bm_line=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '**4a. Branch-movement flag')
-    if [ -z "$bm_line" ]; then
-        bad="no '**4a. Branch-movement flag' lead-in found within Step 4's extracted body"
+    if [ "$n_bm_lines" -ne 1 ]; then
+        bad="found $n_bm_lines '**4a. Branch-movement flag' lead-in(s) within Step 4's extracted body, want exactly 1"
     else
         printf '%s' "$bm_line" | $GREP -qF 'refuted' || bad="${bad}does not name 'refuted'; "
         printf '%s' "$bm_line" | $GREP -qF 'by-design' || bad="${bad}does not name 'by-design'; "
@@ -2526,48 +2536,82 @@ else
     fail "fix-mr.md's Step 4a branch-movement lead-in derives unconditionally and keys the reply class (refuted, by-design), including a row the gate moves into that class" "$bad"
 fi
 
-# 13: Step 3d's verdict table and Step 3e's reply table each open a by-design row; deleting
-# either drops the count below 2 with nothing else here to catch it.
-n_by_design=$(printf '%s\n' "$step3_body" | $GREP -cE '^\| *by-design *\|')
+# 13: bound to each table's own span, not a shared count over all of Step 3's body — a decoy row
+# added elsewhere and a genuine row deleted from either table can net the same total either way.
+verdict_table_body=$(printf '%s\n' "$step3_body" | awk '
+  /^\| Verdict \| Thread action \|$/ { f=1; next }
+  f && /^\|---/ { next }
+  f && /^\|/ { print; next }
+  f { exit }
+')
+reply_table_body=$(printf '%s\n' "$step3_body" | awk '
+  /^\| Verdict \| Reply \|$/ { f=1; next }
+  f && /^\|---/ { next }
+  f && /^\|/ { print; next }
+  f { exit }
+')
+n_verdict_by_design=$(printf '%s\n' "$verdict_table_body" | $GREP -cE '^\| *by-design *\|')
+n_reply_by_design=$(printf '%s\n' "$reply_table_body" | $GREP -cE '^\| *by-design *\|')
 if [ -z "$step3_body" ]; then
-    fail "fix-mr.md Step 3's verdict table and reply table each carry a by-design row" \
+    fail "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row" \
          "extract-section found no '### Step 3: Quorum' body in fix-mr.md — extraction broken"
-elif [ "$n_by_design" -lt 2 ]; then
-    fail "fix-mr.md Step 3's verdict table and reply table each carry a by-design row" \
-         "found $n_by_design '| by-design |' row(s) in Step 3's body, want at least 2"
+elif [ -z "$verdict_table_body" ]; then
+    fail "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row" \
+         "no '| Verdict | Thread action |' table found in Step 3's body"
+elif [ -z "$reply_table_body" ]; then
+    fail "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row" \
+         "no '| Verdict | Reply |' table found in Step 3's body"
+elif [ "$n_verdict_by_design" -ne 1 ] || [ "$n_reply_by_design" -ne 1 ]; then
+    fail "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row" \
+         "verdict table has $n_verdict_by_design, reply table has $n_reply_by_design — each wants exactly 1"
 else
-    pass "fix-mr.md Step 3's verdict table and reply table each carry a by-design row ($n_by_design found)"
+    pass "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row"
 fi
 
-# 14: Step 4d's approval-buys table is the single artifact deciding what force-pushes — rewriting
-# it to promise a by-design row a force-push must not satisfy this row.
-buys_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`real` + `fix`')
+# 14: Step 4d's approval-buys table is the single artifact deciding what force-pushes — each grant
+# row is cut at its own pipes, so a promise anywhere else cannot satisfy this row.
+bad=""
 if [ -z "$step4_body" ]; then
-    fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch" \
-         "extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
-elif [ -z "$buys_row" ]; then
-    fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch" \
-         "no table row naming 'real' + 'fix' found within Step 4's extracted body"
+    bad="extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
 else
-    bad=""
-    printf '%s' "$buys_row" | $GREP -qF 'force-push' || bad="${bad}Buys cell does not name the force-push; "
-    printf '%s' "$buys_row" | $GREP -qF 'coder dispatch' || bad="${bad}Buys cell does not name the coder dispatch; "
-    if [ -z "$bad" ]; then
-        pass "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch"
+    n_fix_rows=$(printf '%s\n' "$step4_body" | $GREP -cF '`real` + `fix`')
+    fix_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`real` + `fix`')
+    propose_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`real` + `propose`')
+    decline_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`by-design` or `refuted`')
+    if [ "$n_fix_rows" -ne 1 ]; then
+        bad="found $n_fix_rows '\`real\` + \`fix\`' row(s) within Step 4's extracted body, want exactly 1"
+    elif [ -z "$propose_row" ]; then
+        bad="no '\`real\` + \`propose\`' table row found within Step 4's extracted body"
+    elif [ -z "$decline_row" ]; then
+        bad="no '\`by-design\` or \`refuted\`' table row found within Step 4's extracted body"
     else
-        fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch" "$bad"
+        fix_buys=$(printf '%s' "$fix_row" | awk -F'|' '{print $3}')
+        propose_buys=$(printf '%s' "$propose_row" | awk -F'|' '{print $3}')
+        decline_buys=$(printf '%s' "$decline_row" | awk -F'|' '{print $3}')
+        printf '%s' "$fix_buys" | $GREP -qF 'force-push' || bad="${bad}the real+fix row's Buys cell does not name the force-push; "
+        printf '%s' "$fix_buys" | $GREP -qF 'coder dispatch' || bad="${bad}the real+fix row's Buys cell does not name the coder dispatch; "
+        printf '%s' "$propose_buys" | $GREP -qiE 'force-push|coder dispatch' \
+            && bad="${bad}the real+propose row's Buys cell wrongly names a force-push or coder dispatch; "
+        printf '%s' "$decline_buys" | $GREP -qiE 'force-push|coder dispatch' \
+            && bad="${bad}the by-design/refuted row's Buys cell wrongly names a force-push or coder dispatch; "
     fi
 fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch in its Buys cell, and neither the real+propose nor by-design/refuted rows do"
+else
+    fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch in its Buys cell, and neither the real+propose nor by-design/refuted rows do" "$bad"
+fi
 
-# 15: the declined-row thread_action clause — a revert to scoping thread_action to "on a real
-# row" alone drops it for a row the gate declines out of real, the defect this row exists to catch.
+# 15: the declined-row thread_action clause, count-checked to exactly one match — a revert to
+# scoping thread_action to "on a real row" alone, or a surviving superseded line, must not pass.
+n_gate_writer_lines=$(printf '%s\n' "$step4_body" | $GREP -cF '**The gate is the last writer of what it writes**')
 gate_writer_line=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '**The gate is the last writer of what it writes**')
 if [ -z "$step4_body" ]; then
     fail "fix-mr.md's gate-last-writer line covers a declined row's thread_action" \
          "extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
-elif [ -z "$gate_writer_line" ]; then
+elif [ "$n_gate_writer_lines" -ne 1 ]; then
     fail "fix-mr.md's gate-last-writer line covers a declined row's thread_action" \
-         "no '**The gate is the last writer of what it writes**' line found within Step 4's extracted body"
+         "found $n_gate_writer_lines '**The gate is the last writer of what it writes**' line(s) within Step 4's extracted body, want exactly 1"
 else
     bad=""
     printf '%s' "$gate_writer_line" | $GREP -qF 'on every row whose verdict or disposition it sets' \
