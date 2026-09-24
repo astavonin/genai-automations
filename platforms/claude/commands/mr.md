@@ -9,21 +9,80 @@ Create a merge request from the current branch using projctl (supports GitLab an
 
 ## Prerequisites
 
-- Current branch has commits
-- Branch is pushed to remote (or will be pushed)
+- Work exists — committed on a feature or the default branch, or still in the working tree for Step 0 to land
+- A remote named `origin` with a resolvable default branch (`origin/<default>`) — Step 0 hard-exits otherwise
 - `projctl` installed and configured
 - `projctl` configured and platform authenticated (run: `projctl --help` to verify)
 
 ## Workflow
+
+### 0. Establish a branch with commits
+
+**Step 1 needs two things: a branch that is not the default one, and at least one commit on it that the default branch does not have.** Where either is missing, this step establishes it rather than stopping — the common case is work finished in the editor and never committed, and "there is nothing to push" is a state the command can fix, not a reason to send the user away.
+
+```bash
+# Do not pipe the first command — a pipeline's exit status is sed's, which is 0 even where
+# symbolic-ref printed nothing, so the fallback would never fire and DEFAULT would be empty.
+DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) \
+  || DEFAULT=$(git remote show origin | sed -n 's/.*HEAD branch: //p')
+DEFAULT=${DEFAULT#origin/}
+# `git remote show origin` prints the literal "(unknown)" where the remote HEAD is unset, which is
+# non-empty and would reach git as origin/(unknown) — verify the ref rather than only the string.
+git rev-parse --verify --quiet "origin/${DEFAULT:?could not resolve the default branch}" >/dev/null \
+  || {
+    if git remote show origin 2>/dev/null | grep -q 'HEAD branch: (unknown)'; then
+      echo "origin's HEAD is unset — run: git remote set-head origin <default-branch-name>" >&2
+    else
+      echo "origin/$DEFAULT does not resolve — run: git fetch origin" >&2
+    fi
+    exit 1
+  }
+BRANCH=$(git branch --show-current)
+echo "branch: ${BRANCH:-<detached HEAD>}   default: $DEFAULT"
+git status --porcelain
+git rev-parse --verify --quiet HEAD >/dev/null \
+  && git log --oneline "origin/$DEFAULT..HEAD" \
+  || echo "(no commits yet)"
+```
+
+Read all three outputs before acting. Both conditions below can hold at once, and 0a runs first so 0b's commit lands on the new branch.
+
+**Detached HEAD.** Where `$BRANCH` is empty, neither 0a nor 0b's branch-equality check can fire — there is no branch to compare against `$DEFAULT`. Offer `git switch -c <name>` under 0a's propose-and-wait rule to give the work a branch, or stop.
+
+**Resolve the linked issue before proposing anything.** Both 0a's branch name and the commit message rule below choose their form based on whether an issue is linked, and on this path neither a commit nor a branch name exists yet to parse one from. Run `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md` Procedure step 1 to resolve it: if it does not settle the question, ask the user rather than guessing. Where the user confirms the work is genuinely unlinked, say so explicitly in the run output before proceeding — do not let Step 2 discover the absence on its own.
+
+**0a. On the default branch.** Where `$BRANCH` equals `$DEFAULT`, no MR can be opened — a merge request needs a source branch distinct from its target. Propose a name and **wait**: `<type>/<issue>-<slug>` where an issue is linked (`bug/498-version-string-comparison`), otherwise `<type>/<slug>` from the work itself. On approval:
+
+```bash
+git switch -c '<proposed-branch-name>'
+```
+
+`git switch -c` carries the working tree across unchanged, so nothing is committed, stashed, or lost by this step.
+
+**0b. No commit the default branch does not already have.** Where `git log origin/$DEFAULT..HEAD` printed nothing, there is nothing to push and nothing to diff an MR against.
+
+- **Working tree also clean** — this is the one case Step 0 cannot fix. Stop and say so plainly: the branch holds no work, committed or otherwise.
+- **Working tree dirty** — the work exists and is uncommitted. Land it under the rules below.
+
+**0c. Commits exist but the tree is still dirty.** Surface every uncommitted path and ask whether it belongs in this MR before continuing. An MR opened over a dirty tree is an MR missing part of its own change, and the omission is invisible in the diff the reviewer reads.
+
+**Landing uncommitted work — two rules, neither negotiable:**
+
+1. **Never `git add -A`.** List what `git status --porcelain` reported, tracked modifications and untracked files separately, and ask which belong to this MR. An untracked file is as often a scratch script, a local config, or a downloaded artifact as it is a deliverable, and a stray one committed here is published by Step 5's push. Stage the named paths explicitly.
+2. **Propose the commit message and wait for explicit approval**, per `CLAUDE.md` → Commit Message Format: one line, `<short description>` or `<short description>. Ref #<number>` with the reference last. The standing rule that the user approves every commit message is not suspended because the commit was this command's idea rather than theirs.
+
+Then commit the staged paths, and re-run this step's three commands before Step 1 — the analysis below reads the state Step 0 just changed.
 
 ### 1. Analyze Current Branch
 
 ```bash
 git status
 # Detect default branch (main or master), then show commits and diff
-DEFAULT=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-git log origin/${DEFAULT}..HEAD --oneline
-git diff origin/${DEFAULT}...HEAD --stat
+DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) \
+  || DEFAULT=$(git remote show origin | sed -n 's/.*HEAD branch: //p')
+DEFAULT=${DEFAULT#origin/}
+git log "origin/${DEFAULT}..HEAD" --oneline
+git diff "origin/${DEFAULT}...HEAD" --stat
 ```
 
 ### 2. Verify Issue Acceptance Criteria
@@ -237,7 +296,8 @@ Follow the steps in that fragment. Surface the §8.2 warning block on failure; d
 7. **Follow template structure** - MR description must have Summary, Implementation Details, and How It Was Tested sections
 8. **Keep it concise** - Architecture-level descriptions, not implementation details
 9. **Push before creating** - Ensure branch is pushed to remote before MR creation
-10. **Label allowlist** - Run the `label-allowlist` shared fragment at the start of Step 3 before writing any `labels:` field, and re-invoke it at Step 4 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt` (see `~/.claude/skills/workflows/label-allowlist/SKILL.md`). If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior MRs, or copy from a stale draft. Whether `projctl create-mr` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; if `projctl create-mr` applies `labels.default` from projctl config, those entries are NOT verified here (see the fragment's Residual failure paths).
+10. **Step 0 may create a branch and a commit; it may never do either silently** - a branch name is proposed and approved before `git switch -c`, and a commit message is proposed and approved before `git commit`, exactly as if the user had asked for the commit themselves. Stage only paths the user named — `git add -A` here publishes whatever else is lying in the tree, since Step 5 pushes what Step 0 committed
+11. **Label allowlist** - Run the `label-allowlist` shared fragment at the start of Step 3 before writing any `labels:` field, and re-invoke it at Step 4 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt` (see `~/.claude/skills/workflows/label-allowlist/SKILL.md`). If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior MRs, or copy from a stale draft. Whether `projctl create-mr` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; if `projctl create-mr` applies `labels.default` from projctl config, those entries are NOT verified here (see the fragment's Residual failure paths).
 
 ## Example
 
