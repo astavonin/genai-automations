@@ -52,7 +52,13 @@ if [ -z "$FOUND" ]; then
     exit 1
 fi
 
-AWK_STATUS=$(mktemp)
+# Unchecked, a failed mktemp leaves this empty: the `>> ""` redirect below discards the
+# awk failure and `[ -s "" ]` is false, so the scan reports clean having tracked nothing.
+AWK_STATUS=$(mktemp) || AWK_STATUS=
+if [ -z "$AWK_STATUS" ]; then
+    echo "BLOCKER: could not create a temp file to track $AWK failures — a clean result would not be trustworthy" >&2
+    exit 1
+fi
 trap 'rm -f "$AWK_STATUS"' EXIT
 
 HITS=$(printf '%s\n' "$FOUND" | while IFS= read -r f; do

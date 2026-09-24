@@ -75,6 +75,15 @@ out=$(bash "$SCRIPT" "$TMPDIR_ROOT/empty" 2>&1); rc=$?
     && pass "directory with no .md is a BLOCKER" \
     || fail "directory with no .md is a BLOCKER" "rc=$rc out=$out"
 
+# An unwritable temp dir left the awk-failure tracker unset, so its blocker could never fire
+# and a scan that tracked nothing reported clean. The fixture is defect-free to reproduce that.
+mkdir -p "$TMPDIR_ROOT/mktemp-guard"
+printf 'see `src/pipeline/pipeline.cc` -> `process_frame`\n' > "$TMPDIR_ROOT/mktemp-guard/design.md"
+out=$(TMPDIR="$TMPDIR_ROOT/no-such-tmp" bash "$SCRIPT" "$TMPDIR_ROOT/mktemp-guard" 2>&1); rc=$?
+[ $rc -eq 1 ] && printf '%s' "$out" | $GREP -q BLOCKER \
+    && pass "an unusable temp dir is a BLOCKER, not clean" \
+    || fail "an unusable temp dir is a BLOCKER, not clean" "rc=$rc out=$out"
+
 # --- the rule's three outcomes ----------------------------------------------
 assert_class "unpinned source line is flagged"           'see `src/pipeline/pipeline.cc:88`'                 unpinned
 assert_class "unpinned range is flagged"                 'see `src/pipeline/pipeline.cc:88-92`'              unpinned
