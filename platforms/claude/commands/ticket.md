@@ -23,6 +23,8 @@ If the user's request is ambiguous, ask:
 
 Do NOT guess — ask before generating YAML.
 
+**Record the scope statement, on every run, ambiguous or not.** Write down what the user asked for **in their own words** — the request verbatim, and where the questions above fired, their answers verbatim beneath it. Step 6's T1 criterion grades the draft against this and against nothing else, so a paraphrase is the thing being graded and destroys the check. Where the request arrived as a YAML blob rather than prose, the scope statement is whatever the user said around it; where they said nothing around it, record that — T1 then has no ground to grade against and Step 6 reports it as unrunnable rather than guessing.
+
 ### 2. Load Context (if referencing existing tickets)
 
 If the user references an existing epic or milestone, load it first:
@@ -242,35 +244,78 @@ Add any references, related issues, or notes.
 - Acceptance criteria state observable outcomes, not implementation steps ("configuration survives reboot" not "write config to /etc/…")
 - Titles are concise, under 70 characters. Titles may describe the user-visible outcome with action verbs (e.g., "Persist preferences across sessions", "Support concurrent writes") but must not name a specific technology or implementation target (e.g., "Add Redis cache", "Migrate to Postgres", "Refactor auth middleware").
 
-### 6. Show YAML for Verification
+### 6. Review the Draft
+
+**The rules in Step 5 have never been checked by anything.** They are written as instructions to the author, and an author who has just written a description is the reader least able to see that it says more than it needs to. This step reads the draft as someone who did not write it. It runs on every ticket — the size that would justify skipping it is not known until implementation.
+
+It improves the draft and surfaces one class of question. It is not a gate: Step 8's dry-run and Step 9's confirmation remain the approval points.
+
+**6a — One reviewer.** Launch a single **reviewer (opus)** agent. Pass it, inline: the generated `tickets.yaml` in full; the Step 1 scope statement verbatim; and the five criteria below, pasted whole.
+
+**The criteria set replaces the eight quality attributes `~/.claude/agents/reviewer.md` mandates, and the three enumeration passes it requires; the agent returns a raw findings list rather than its own `# Review Summary` document.** Say that in the prompt in those words. Without it the agent's own file outranks a caller's explanation — its attributes are marked MANDATORY and its passes "apply to every review type" — and the output arrives in a shape 6b and 6c cannot consume. A finding naming no T criterion is discarded; there is no branch for one.
+
+**Where no scope statement exists** — Step 1 recorded none because the request was a bare YAML blob with nothing said around it — grade T2 through T5 and report T1 as unrunnable in 6d. Do not reconstruct a scope statement from the draft: T1 would then grade the draft against itself and confirm every time.
+
+**Grade issue and epic descriptions both.** Epics carry the same wordiness and HOW defects. T5 applies only where `# Acceptance Criteria` is required — Step 5 has epics omit that section entirely, so T5 has no subject on an epic.
+
+**The criteria (paste verbatim):**
+
+| | Criterion | Field | What a finding looks like |
+|---|---|---|---|
+| **T1** | **Faithful** — the ticket asks for what the user asked for, and no more. | description, acceptance criteria, and the issue set | Scope the draft added on its own: an issue the user never mentioned, an acceptance criterion covering a case they did not raise, a split into three issues where they described one. |
+| **T2** | **Not over-constrained** — no acceptance criterion is narrower than the need. | acceptance criteria | "config written to `/etc/x.conf` with mode 0644" where "configuration survives reboot" is the actual requirement. A criterion that forecloses an implementation choice the design phase should make. |
+| **T3** | **Nothing unnecessary** — every sentence earns its place. | description and acceptance criteria | Restating the title in the first line of the description; a third acceptance criterion that is the second one reworded. |
+| **T4** | **No HOW** — Step 5's rule, finally checked. | description | Implementation verbs, named technologies, file or class names, "use X pattern". Step 5's rewrite-trigger list is the detector and is description-scoped; the rule outranks the list. |
+| **T5** | **Each criterion observable** — verifiable done or not-done. | acceptance criteria | An activity rather than an outcome ("investigate whether…", "consider adding…"), or a criterion whose truth nobody can check. |
+
+The Field column is Step 5's own partition: its rewrite-trigger list governs descriptions, and a separate sibling bullet governs acceptance criteria. Keeping it explicit is what stops T2 and T4 firing twice on one defect.
+
+Each finding names its criterion, the issue and field it sits in, and the concrete replacement text. A finding with no replacement text is not actionable and does not count.
+
+**6b — Confirm what it found.** Nothing returned, skip to Step 7 — no cost.
+
+**T4 and T5 findings are included directly, without verification.** Both are decidable by reading: an implementation verb or a named file is present or it is not, and a criterion either names an outcome or names an activity. This is the protocol's own direct-inclusion rule for enumerable facts, applied the way `~/.claude/commands/review-spec.md` applies it to its decidable criteria — a default-to-refute filter would discard mechanical facts, and T4 is the rule whose absence motivated this step.
+
+**T1, T2 and T3 findings go to a quorum**, where the judgment is genuine. Run Step G of `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` — two **reviewer (opus)** verifiers per finding, its strict first-line output contract, its aggregation rules 1 to 5 including the `Unparseable` retry and discard-with-warning, and its concurrency cap of 20. Each verifier gets the same YAML, scope statement and criteria set. Include only where both return `VERDICT: CONFIRMED`.
+
+**6c — Apply, or ask.** Confirmed findings split two ways, and the split is the point:
+
+- **T2, T3, T4, T5 are craft.** Apply the replacement text to `planning/<goal>/milestone-XX-<name>/tickets.yaml` — the file Step 7c displays and Step 9 submits, not an in-context copy. Then re-run Step 4's post-write check, and confirm every issue still carries the `# Description` and `# Acceptance Criteria` sections Critical Rule 7 requires: a T3 deletion can take the last acceptance criterion with it.
+- **T1 is scope, and scope is the user's.** Never apply a T1 fix. Surface each one at Step 7 as a question — name what the draft added, quote where it went beyond the scope statement, and ask whether to keep it or cut it. A ticket that quietly drops work the user wanted is worse than a wordy one.
+
+**6d — Hand the outcome to Step 7d**, which is where it is reported: the applied changes one line each as `<criterion> — <what changed>`, the T1 questions, and where the reviewer found nothing or T1 was unrunnable, that.
+
+### 7. Show YAML for Verification
 
 Execute these sub-steps in strict order. The fragment re-invocation MUST run before any `cat` of the YAML — otherwise the confirmation-time snapshot check cannot gate the display, and the compaction-safety property of the invoke-twice pattern is lost.
 
-**Sub-step 6a — Re-invoke the shared fragment (only Step 5 fires on this invocation):**
+**Sub-step 7a — Re-invoke the shared fragment (only Step 5 fires on this invocation):**
 
 ```
 Read ~/.claude/skills/workflows/label-allowlist/SKILL.md
 ```
 
-The fragment's Step 5 verifies `planning/.label-allowlist.txt` is present and re-runs Steps 1–2 if it is missing or stale. Do not proceed to sub-step 6b until Step 5 completes.
+The fragment's Step 5 verifies `planning/.label-allowlist.txt` is present and re-runs Steps 1–2 if it is missing or stale. Do not proceed to sub-step 7b until Step 5 completes. **Expect the stale branch here.** The fragment's freshness bound is five minutes and Step 6 spends one reviewer plus a verifier batch inside it, so the snapshot is routinely refreshed at this point. That refresh re-runs the fragment's Steps 1–2 only — it never re-runs its match — so after it fires, re-verify every `labels:` value already written into the YAML against the refreshed snapshot, and drop any the refreshed allowlist no longer carries. Otherwise 7c displays a label that 7b's own snapshot does not list, with nothing comparing the two.
 
-**Sub-step 6b — Show the allowlist snapshot:**
+**Sub-step 7b — Show the allowlist snapshot:**
 
 ```bash
 cat planning/.label-allowlist.txt
 ```
 
-**Sub-step 6c — Show the generated YAML:**
+**Sub-step 7c — Show the generated YAML:**
 
 ```bash
 cat planning/<goal>/milestone-XX-<name>/tickets.yaml
 ```
 
-**Sub-step 6d — State any label omissions explicitly.** For any issue or epic where `labels:` was omitted — no listed label fit, or the fragment's empty-allowlist / pre-feature-projctl branches fired — name the omission in the summary rather than hiding it.
+**Sub-step 7d — State the Step 6 outcome.** One line per applied change as `<criterion> — <what changed>`, then each T1 question with what the draft added and where it went beyond the scope statement. Where the reviewer found nothing, say so; where T1 was unrunnable for want of a scope statement, say that. A review that reports nothing and a review that never ran are indistinguishable otherwise, and this is the ordered step an agent that skipped Step 6 still has to answer.
 
-**Sub-step 6e — Ask about opening:** ask the user if they want to `open planning/<goal>/milestone-XX-<name>/tickets.yaml`, then wait for confirmation before proceeding.
+**Sub-step 7e — State any label omissions explicitly.** For any issue or epic where `labels:` was omitted — no listed label fit, or the fragment's empty-allowlist / pre-feature-projctl branches fired — name the omission in the summary rather than hiding it.
 
-### 7. Dry Run
+**Sub-step 7f — Ask about opening:** ask the user if they want to `open planning/<goal>/milestone-XX-<name>/tickets.yaml`, then wait for confirmation before proceeding.
+
+### 8. Dry Run
 
 Always run dry-run first:
 ```bash
@@ -279,7 +324,7 @@ projctl create --dry-run planning/<goal>/milestone-XX-<name>/tickets.yaml
 
 Show the output. If anything looks wrong, stop and ask the user.
 
-### 8. Create Tickets
+### 9. Create Tickets
 
 After explicit user confirmation:
 ```bash
@@ -299,8 +344,9 @@ Show the created issue/epic/milestone URLs. Ask if the user wants to `open <url>
 7. **Required sections** — every issue description must have `# Description` and `# Acceptance Criteria`
 8. **YAML file first** — always write `planning/<goal>/milestone-XX-<name>/tickets.yaml` before running any projctl command; for user-supplied YAML, insert `# weight estimate:` comments before saving to disk
 9. **Dry run before create** — always run `--dry-run` and show output; wait for confirmation
-10. **Label allowlist** — before writing any `labels:` field (issue-level or epic-level), run the `label-allowlist` shared fragment (`~/.claude/skills/workflows/label-allowlist/SKILL.md`), and re-invoke it at Step 6 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt`. If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior tickets, or copy from a stale draft. Whether `projctl create` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; labels merged in by projctl from `labels.default` in config are NOT verified here (see the fragment's Residual failure paths).
+10. **Label allowlist** — before writing any `labels:` field (issue-level or epic-level), run the `label-allowlist` shared fragment (`~/.claude/skills/workflows/label-allowlist/SKILL.md`), and re-invoke it at Step 7 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt`. If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior tickets, or copy from a stale draft. Whether `projctl create` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; labels merged in by projctl from `labels.default` in config are NOT verified here (see the fragment's Residual failure paths).
 11. **User confirmation required** — do NOT run `projctl create` without explicit approval after dry-run review
+12. **Review the draft before showing it** — Step 6 runs on every ticket: one reviewer against the five named criteria. T4 and T5 are decidable by reading and are included directly; T1, T2 and T3 go to Step G's 2-of-2 quorum. T2–T5 findings are applied to the YAML file itself; **a T1 finding is never applied** — scope is the user's, so it is surfaced as a question at Step 7d. That sub-step also reports a run where the reviewer found nothing, or where T1 had no scope statement to grade against; silence and a skipped review are indistinguishable otherwise
 
 ## Examples
 
