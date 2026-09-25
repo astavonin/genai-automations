@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=74
+EXPECTED_TESTS=75
 
 PASS=0
 FAIL=0
@@ -2150,7 +2150,7 @@ echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="
 # shell text stays invisible until someone reads the right paragraph. These four give it a surface.
 FIXMR="$CLAUDE/commands/fix-mr.md"
 FIXMR_FETCH_CMD_COUNT=2      # Step 3a + Step 4a — bump when fix-mr.md gains or loses a fetch call
-FIXMR_SHELL_BLOCK_COUNT=7    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
+FIXMR_SHELL_BLOCK_COUNT=6    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
 
 # Shared scope-limiters: confine every scan below to fix-mr.md's own fenced/inline shell text, never the whole file.
 fixmr_fenced_lines() {   # emits only lines inside a ```bash/```sh/```shell fenced block
@@ -2237,7 +2237,7 @@ fi
 
 # 3: shell state does not cross a fence, so each block must keep its own branch, guard, and echo.
 step3a_block=$(fixmr_full_block_containing 'Lens A: failed')
-step3b_block=$(fixmr_full_block_containing 'wc -c')
+step3b_block=$(fixmr_full_block_containing 'review-pack.sh')
 step4a_block=$(fixmr_full_block_containing 'flag: unavailable')
 bad=""
 if [ -z "$step3a_block" ]; then
@@ -2258,12 +2258,23 @@ else
     fi
 fi
 if [ -z "$step3b_block" ]; then
-    bad="${bad}Step 3b's diff-measurement block not found — extraction broken; "
+    bad="${bad}Step 3b's block (containing 'review-pack.sh') not found — extraction broken; "
 else
-    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*set -o pipefail[[:space:]]*$' \
-        || bad="${bad}Step 3b's wc -c measurement block no longer sets -o pipefail; "
-    printf '%s\n' "$step3b_block" | $GREP -qE '^[[:space:]]*echo .*\$diff_bytes.*\$diff_rc' \
-        || bad="${bad}Step 3b's block assigns \$diff_bytes/\$diff_rc but has no echo naming \$diff_bytes before \$diff_rc; "
+    printf '%s\n' "$step3b_block" | $GREP -qE '^if ! git diff' \
+        || bad="${bad}Step 3b's git diff is no longer branched on (missing leading 'if !'); "
+    printf '%s\n' "$step3b_block" | $GREP -qE '^elif ! bash .*review-pack\.sh' \
+        || bad="${bad}Step 3b's packer is no longer invoked in an arm branching on its exit status; "
+
+    # M3: the invocation names the installed location; resolve it under the shipped
+    # location, mirroring the comment-gate.sh check above.
+    invoked_packer=$(printf '%s\n' "$step3b_block" | $GREP -oE '[^[:space:]]*review-pack\.sh' | head -1)
+    if [ -z "$invoked_packer" ]; then
+        bad="${bad}Step 3b's block: could not extract the invoked packer path; "
+    else
+        resolved_packer="$CLAUDE/scripts/$(basename "$invoked_packer")"
+        [ -f "$resolved_packer" ] \
+            || bad="${bad}invoked packer path '$invoked_packer' does not resolve under platforms/claude/scripts/ (looked for $resolved_packer); "
+    fi
 fi
 if [ -z "$step4a_block" ]; then
     bad="${bad}Step 4a's block (containing 'flag: unavailable') not found — extraction broken; "
@@ -2274,9 +2285,9 @@ else
         || bad="${bad}Step 4a's block assigns \$base but its -z \"\$base\" guard is gone; "
 fi
 if [ -z "$bad" ]; then
-    pass "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's wc -c block runs under set -o pipefail and echoes \$diff_bytes before \$diff_rc, and Step 4a re-derives and guards its own \$base"
+    pass "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's git diff is branched on with a leading 'if !' and the packer is invoked in an arm branching on its exit status, and Step 4a re-derives and guards its own \$base"
 else
-    fail "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's wc -c block runs under set -o pipefail and echoes \$diff_bytes before \$diff_rc, and Step 4a re-derives and guards its own \$base" "$bad"
+    fail "Step 3a branches on its fetch and echoes its guarded \$base exactly once, Step 3b's git diff is branched on with a leading 'if !' and the packer is invoked in an arm branching on its exit status, and Step 4a re-derives and guards its own \$base" "$bad"
 fi
 
 # 4: single quotes are required at every real point of use, not inside a comment, including Step 1a's shell use outside any fence.
@@ -2369,6 +2380,22 @@ if [ -z "$bad" ]; then
     pass "fix-mr.md Step 3's extracted body carries both record run-stopping arms (**Preflight:**, **No sections:**), each under its own lead-in"
 else
     fail "fix-mr.md Step 3's extracted body carries both record run-stopping arms, each under its own lead-in" "$bad"
+fi
+
+# H3: the packed file must actually be routed to Lens A's dispatch — a producer with no
+# consumer sentence leaves the lens grading whatever it was given before.
+bad=""
+if [ -z "$step3_body" ]; then
+    bad="extract-section found no '### Step 3: Quorum' body in fix-mr.md — extraction broken"
+else
+    dispatch_line=$(printf '%s\n' "$step3_body" | $GREP -F '$packed_path' | $GREP -F 'short read')
+    [ -n "$dispatch_line" ] \
+        || bad="Step 3's body has no sentence naming \$packed_path and requiring a short-read report for Lens A"
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md Step 3's body routes \$packed_path and the printed lines count to Lens A's dispatch, with a short-read report instead of a vote"
+else
+    fail "fix-mr.md Step 3's body routes \$packed_path and the printed lines count to Lens A's dispatch, with a short-read report instead of a vote" "$bad"
 fi
 
 # 7: scoped to Step 4's own body and count-checked to exactly one match — a decoy earlier in the

@@ -103,6 +103,8 @@ Severity scale (same for all agents):
 Group findings from all three agents by topic. Two findings refer to the same issue if they
 describe the same root cause in the same code location (fuzzy match on concept, not wording).
 
+**Declining agent:** before grouping, check whether any of the three agents reported that it could not read its evidence to the point its instructions required, in place of a findings list — the calling command's read-to-the-end instructions require an agent in that position to say so explicitly instead of returning findings. Treat that report as a decline, not as an empty findings list, and do not run Steps B–D to completion on this round: a decline is not "found nothing," and aggregating the remaining agents as if it were downgrades a 2-of-3 consensus to 2-of-2 and starves genuine findings into single-source, where Step G's default-to-refute discards them. Surface `⚠️ <agent> declined — could not read its evidence to the required point; round incomplete` and have the calling command re-run that agent (per its own read-window guidance) before resuming aggregation. If every agent in the round declines, Steps B–D produce zero findings — do not report that as APPROVED; surface the same warning and require a re-run before any assessment is issued.
+
 **Inclusion rule:** include a finding only if **2 or more agents** flagged it.
 
 Do not discard single-agent findings — route them to Step G for adversarial reverification (see "Non-exception single-agent findings by review type" below). This applies to every review type; only the verifier prompt differs.

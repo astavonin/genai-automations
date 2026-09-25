@@ -36,7 +36,7 @@ Resolve `<issue-folder>` in Step 1, before the batch file is opened — the ledg
 
 **Placeholders.** Each fenced block in this file is a separate Bash invocation, so shell state set in one block is gone by the next. A value that must travel from one block into a later one is written as an orchestrator-substituted placeholder — `<base>`, `<source_branch>`, `<target_branch>`, `<web_url>`, `<issue-folder>`, `<mr_number>` among them — wrapped in **single** quotes at every point of use, including inside a composite argument like a refspec or a `..` range; a value used only inside the block that computes it may stay a `$var`. The orchestrator substitutes the **raw value**, never a shell-quoted literal — single quotes suppress parameter expansion entirely, so a legal branch name like `feat$foo` reaches git literally instead of silently narrowing to `feat`. A raw value carrying an apostrophe uses the `'\''` idiom: close the quote, insert an escaped literal quote, reopen the quote — the value `o'brien` becomes `o'\''brien` when substituted into the placeholder's own enclosing quotes. Every fenced block re-derives whatever placeholder value it needs under its own guards, unless an earlier block's own printed value is substituted into it — Step 3b's case, not Step 4a's, which re-derives its own merge-base independently.
 
-**This file is parsed by a test.** `tests/verify-config-consistency.sh` pins fix-mr.md's shell text: exactly `FIXMR_SHELL_BLOCK_COUNT` (7) fenced blocks, exactly `FIXMR_FETCH_CMD_COUNT` (2) `git fetch origin` command lines, and four prose anchors it extracts blocks by — `Lens A: failed` (Step 3a), `wc -c` (Step 3b), `flag: unavailable` (Step 4a), and `record: absent` (Step 3a, the only one of the four that extracts a block, not all four as an earlier revision of this paragraph said). The suite also extracts whole sections by heading — `### Step 2: Select Threads`, `### Step 3: Quorum`, and `### Step 4: Approval Gate` — and, inside those bodies, pins the bold lead-ins `**Preflight:**`, `**No sections:**`, `**Authority held:**` with its `real` and `by-design` labels and cited `Decision:` clause, and `**Word bound.**` with its `real`, `by-design` and `refuted` reply classes and its ~25-30 figure, and the literal `extract-section "$design_doc"` inside the record block, plus, added for the verdict model, Step 2's `fix_adds:`, `disposition:`, `scope_decision:` and `branch_movement:` schema key lines inside the `- ordinal:` sequence item of a fence opened by exactly ` ```yaml `, Step 4b's adjudicated-thread table row naming all four of those keys, the `**4a. Branch-movement flag` lead-in's `refuted`, `by-design`, `unconditionally` and `the gate moves into that class`, one `by-design` row each in Step 3d's verdict table and Step 3e's reply table, Step 4d's `real` + `fix` table row's Buys cell naming the force-push and the coder dispatch and its `real` + `propose` and `by-design` or `refuted` rows' Buys cells naming neither, and the `**The gate is the last writer of what it writes**` line's declined-row `thread_action` clause. Changing either count, renaming any of the four block anchors or the three section headings, or dropping a bold lead-in, a schema key line, a table row's field list, or the literal, without re-running that suite is how this drifts silently.
+**This file is parsed by a test.** `tests/verify-config-consistency.sh` pins fix-mr.md's shell text: exactly `FIXMR_SHELL_BLOCK_COUNT` fenced blocks, exactly `FIXMR_FETCH_CMD_COUNT` `git fetch origin` command lines, and four prose anchors it extracts blocks by — `Lens A: failed` (Step 3a), `review-pack.sh` (Step 3b), `flag: unavailable` (Step 4a), and `record: absent` (Step 3a). The suite also extracts whole sections by heading — `### Step 2: Select Threads`, `### Step 3: Quorum`, and `### Step 4: Approval Gate` — and, inside those bodies, pins the bold lead-ins `**Preflight:**`, `**No sections:**`, `**Authority held:**` with its `real` and `by-design` labels and cited `Decision:` clause, and `**Word bound.**` with its `real`, `by-design` and `refuted` reply classes and its ~25-30 figure, and the literal `extract-section "$design_doc"` inside the record block, plus, added for the verdict model, Step 2's `fix_adds:`, `disposition:`, `scope_decision:` and `branch_movement:` schema key lines inside the `- ordinal:` sequence item of a fence opened by exactly ` ```yaml `, Step 4b's adjudicated-thread table row naming all four of those keys, the `**4a. Branch-movement flag` lead-in's `refuted`, `by-design`, `unconditionally` and `the gate moves into that class`, one `by-design` row each in Step 3d's verdict table and Step 3e's reply table, Step 4d's `real` + `fix` table row's Buys cell naming the force-push and the coder dispatch and its `real` + `propose` and `by-design` or `refuted` rows' Buys cells naming neither, and the `**The gate is the last writer of what it writes**` line's declined-row `thread_action` clause. Changing either count, renaming any of the four block anchors or the three section headings, or dropping a bold lead-in, a schema key line, a table row's field list, or the literal, without re-running that suite is how this drifts silently.
 
 ## Workflow
 
@@ -292,7 +292,7 @@ else
 fi
 ```
 
-`<base>` is the SHA this block prints on success. Step 3b's blocks substitute that value in place of the shell variable `$base`, which does not survive past this block (see Conventions → Placeholders); Step 4a needs a merge-base too but re-derives its own under its own fetch and guards, rather than taking this substitution.
+`<base>` is the SHA this block prints on success. Step 3b's block substitutes that value in place of the shell variable `$base`, which does not survive past this block (see Conventions → Placeholders); Step 4a needs a merge-base too but re-derives its own under its own fetch and guards, rather than taking this substitution.
 
 An unguarded, empty merge-base is not a hypothetical: `git diff ..origin/<source_branch>` parses as `HEAD..origin/<source_branch>`, prints a full diff and **exits 0** — so a block that treated an empty result as usable would silently diff local `HEAD` against the source branch instead of the intended range. The guard above covers each way the merge-base goes bad: a rejected or partial fetch (`git fetch` exits nonzero), `merge-base` finding no common ancestor (exits nonzero, `$base` empty), and, belt and suspenders, a zero-exit `merge-base` that still yields an empty string.
 
@@ -307,37 +307,31 @@ BUNDLE_BYTE_BOUND = 300000    # UTF-8 bytes; hand-maintained against the harness
 PROMPT_FRAME_BYTES = 5000     # UTF-8 bytes; fixed allowance for the prompt frame, applied to every measurement regardless of scope
 ```
 
-Measure before assembling, never after, splitting the bound's terms by scope: run-level — the diff's byte count (Lens A only), Lens B's ticket body and locator-table rows, and the authority member every lens now carries (the record, sized from the file Step 3a wrote it to rather than from text still held, or the whole document for Lens A, sized on disk the same way), all measured once alongside Step 3a's fetch, merge-base, and the record's file; thread-level — each file member the bundle would name (Lens C's file set) and that thread's notes, re-summed for each thread; constant — the fixed `PROMPT_FRAME_BYTES` allowance for the prompt frame, applied to every measurement regardless of scope.
+Measure before assembling, never after, splitting the bound's terms by scope: run-level — the packed diff's printed `bytes` (Lens A only), Lens B's ticket body and locator-table rows, and the authority member every lens now carries (the record, sized from the file Step 3a wrote it to rather than from text still held, or the whole document for Lens A, sized on disk the same way), all measured once alongside Step 3a's fetch, merge-base, and the record's file; thread-level — each file member the bundle would name (Lens C's file set) and that thread's notes, re-summed for each thread; constant — the fixed `PROMPT_FRAME_BYTES` allowance for the prompt frame, applied to every measurement regardless of scope.
 
-Lens A's authority member is chosen once per run: sum its run-level terms plus `PROMPT_FRAME_BYTES` against the whole document first — under the bound, Lens A holds the document; over it, the record takes the document's place, and the per-thread notes below still decide that lens's own abstention as before. A record too large to fit shows as that lens abstaining, the same arm as any other bundle over the bound — no separate stop belongs here, unlike Step 3a's no-sections stop. Where no design document resolves, the authority term drops out of every lens's sum and today's bound arithmetic is unchanged.
+Lens A's authority member is chosen once per run: sum its run-level terms — the packed diff's printed `bytes` and the authority member's own on-disk size — plus `PROMPT_FRAME_BYTES` against the whole document first — under the bound, Lens A holds the document; over it, the record takes the document's place, and the per-thread notes below still decide that lens's own abstention as before. A record too large to fit shows as that lens abstaining, the same arm as any other bundle over the bound — no separate stop belongs here, unlike Step 3a's no-sections stop. Where no design document resolves, the authority term drops out of every lens's sum and today's bound arithmetic is unchanged.
 
-Measure the diff's byte count with the pipeline's own exit status checked, not read off its output alone — an unguarded `git diff … | wc -c` reports `0` for a failed diff, indistinguishable from a genuinely empty one, and would admit an unmeasured bundle under the bound as though it were tiny. This block is self-contained: `<base>` is the merge-base SHA Step 3a's block printed, substituted by the orchestrator — a fresh shell here holds no `$base` from that block. If Step 3a's guard recorded Lens A `failed` (no SHA printed), skip this measurement entirely — there is nothing to size and no lens to dispatch.
+This block is self-contained: `<base>` is the merge-base SHA Step 3a's block printed, substituted by the orchestrator — a fresh shell here holds no `$base` from that block. If Step 3a's guard recorded Lens A `failed` (no SHA printed), skip this measurement entirely — there is nothing to size and no lens to dispatch.
 
 ```bash
-set -o pipefail
-diff_bytes=$(git diff '<base>..origin/<source_branch>' | wc -c)
-diff_rc=$?
-set +o pipefail
-echo "$diff_bytes $diff_rc"
+diff_path='<scratchpad>/fix-mr-lens-a.diff'
+packed_path='<scratchpad>/fix-mr-lens-a-packed.txt'
+if ! git diff '<base>..origin/<source_branch>' > "$diff_path"; then
+  echo 'Lens A: failed — git diff <base>..origin/<source_branch> exited nonzero; do not dispatch' >&2
+elif ! bash ~/.claude/scripts/review-pack.sh "$packed_path" "$diff_path"; then
+  echo 'Lens A: failed — review-pack.sh exited nonzero over the diff (127 where sync-configs.sh has not delivered it); do not dispatch' >&2
+fi
 ```
 
-The echoed line is what the orchestrator reads: `$diff_bytes` against `BUNDLE_BYTE_BOUND` below, `$diff_rc` for the failed arm two paragraphs down — neither value survives past this block otherwise.
+The printed line's `bytes` is what the orchestrator reads into that sum against `BUNDLE_BYTE_BOUND` below — both `failed` outcomes are the block's own stderr lines above, and nothing else survives past this block.
 
-Discard the diff text immediately either way — do not keep it just to have measured it. A nonzero `$diff_rc` is an execution failure, not a size finding: record the lens `failed` with the git error as the reason — the same outcome this step's own production-diff guard below reaches on the identical command — and do not dispatch it.
+Both failure arms sit in this one block: `git diff` failing and the packer exiting non-zero are execution failures, not size findings — each records the lens `failed` with the failing command named in its own stderr line, and neither dispatches it. The diff now lives in a file at `$diff_path`.
+
+Lens A's dispatch names `$packed_path` and the printed `lines` count as its evidence — the prompt instructs it to read that file to the reported count and report a short read instead of voting if it cannot reach it.
 
 A bundle at or over `BUNDLE_BYTE_BOUND` is never assembled — record that lens `abstained` with the measured size as its reason, and do not dispatch it. This runs deliberately high against the bound (whole files where the lens may read only part of one, a constant frame allowance rather than the real one) — refusing slightly early costs a visible abstention; refusing late costs a truncated vote nothing here can see.
 
 One abstention leaves two lenses, which still decide by agreement. Two or three abstentions leave no deciding pair — the thread is `undecided`, the expected shape on a large MR, since the same diff that over-fills Lens A is attached to the changed set that over-fills Lens C.
-
-Only once the bundle clears the bound is the diff text itself produced, for assembly into Lens A's prompt, checked the same way as the measurement above:
-
-```bash
-git diff '<base>..origin/<source_branch>'
-diff_rc=$?
-if [ "$diff_rc" -ne 0 ]; then
-  echo "Lens A: failed — git diff "'<base>..origin/<source_branch>'" exited $diff_rc" >&2
-fi
-```
 
 **3c. Dispatch contract.** The type withholds `Agent`, `Artifact`, `ExitPlanMode`, `Edit`, `Write`, and `NotebookEdit`, and injects no memory block; `Bash`, the worktree tools, `WebFetch`, `WebSearch`, and the connected MCP set all remain available. Do not overstate what that buys:
 
