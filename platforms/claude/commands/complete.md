@@ -19,7 +19,7 @@ Read ~/.claude/skills/workflows/planning/SKILL.md
 Before running this command:
 - ✅ Code review approved
 - ✅ All verification checks passed
-- ✅ On-device verification: either passed locally, or passing CI/HIL device evidence is recorded (from /verify Step 7c)
+- ✅ On-device verification settled — the `progress.md` Active entry carries an `on-device:` line written by `/verify` Step 7a, reading `run`, `declined by user`, or `not asked (no interactive user)`. On `run`, verification passed locally or passing CI/HIL device evidence is recorded (`/verify` Step 7e). A missing line means `/verify` never asked: send it back rather than assuming the answer
 - ✅ Observed-failure regression coverage: every entry in the issue folder's `observed-failures.md` (path per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`) is resolved — covered, waived with user approval, or justified as out-of-scope (from `/verify` Steps 6a–6d, or from `/review-fix`'s Step F gate for hotfixes that never entered Phase 6)
 - ✅ User confirms issue is complete
 - ✅ User handled git commits (Phase 7)
@@ -31,7 +31,7 @@ Before running this command:
    - For every issue marked active/in-progress, run `projctl load issue N`
    - For every MR marked open/in-review, run `projctl load mr N`
    - Flag any that are now merged, closed, or have changed labels
-   - Check whether /verify Step 7c left an on-device verification pending for the active issue (look for "On-device verification pending" in the /verify output or a corresponding note in the issue folder). If found, surface it explicitly: "On-device verification is still pending for this issue — run `<entry-point>` on a device or record passing CI/HIL evidence before closing." Stop before step 2 until that evidence exists.
+   - Check whether `/verify` Step 7e left an on-device verification pending for the active issue — read the `on-device:` line in the `progress.md` Active entry first, then look for "On-device verification pending" in the issue folder. If found, surface it explicitly: "On-device verification is still pending for this issue — run `<entry-point>` on a device or record passing CI/HIL evidence before closing." Stop before step 2 until that evidence exists.
    - Incorporate the live states into the planning update proposed in step 2
 
 2. **Propose update to progress.md:**
