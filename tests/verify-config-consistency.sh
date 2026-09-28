@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=75
+EXPECTED_TESTS=89
 
 PASS=0
 FAIL=0
@@ -2149,8 +2149,10 @@ echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="
 # fix-mr.md is Markdown an agent reads, not a script a harness runs, so a regression in its
 # shell text stays invisible until someone reads the right paragraph. These four give it a surface.
 FIXMR="$CLAUDE/commands/fix-mr.md"
-FIXMR_FETCH_CMD_COUNT=2      # Step 3a + Step 4a — bump when fix-mr.md gains or loses a fetch call
-FIXMR_SHELL_BLOCK_COUNT=6    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
+FIXMR_FETCH_CMD_COUNT=3      # Step 3a + Step 4a + Step 5b's guard block — bump when fix-mr.md gains or loses a fetch call
+FIXMR_FORCED_REFSPEC_COUNT=5 # forced refspecs across those three lines — 2 + 2 + 1
+FIXMR_TARGET_REFSPEC_COUNT=2 # of those, the ones naming <target_branch>; Step 5b's guard fetch names only <source_branch>
+FIXMR_SHELL_BLOCK_COUNT=8    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
 
 # Shared scope-limiters: confine every scan below to fix-mr.md's own fenced/inline shell text, never the whole file.
 fixmr_fenced_lines() {   # emits only lines inside a ```bash/```sh/```shell fenced block
@@ -2183,27 +2185,37 @@ fixmr_unsafe_placeholder() {   # emits lines carrying a <placeholder> outside si
     '
 }
 
-# 1: an unforced or name-swapped refspec breaks or misdirects the merge-base; scoped to fenced COMMAND lines.
+# 1: an unforced or name-swapped refspec breaks or misdirects the merge-base; scoped to fenced
+# COMMAND lines. Arity is now per-line, since the new guard fetch names one branch, not two.
 fetch_cmd_lines=$(fixmr_fenced_lines | $GREP -F 'git fetch origin' | $GREP -v '^[[:space:]]*echo ')
 n_fetch_cmd=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -c . || true)
 unforced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '[^+]<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
-forced=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '\+<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
-n_forced=$(printf '%s\n' "$forced" | $GREP -c . || true)
-mismatched=$(printf '%s\n' "$forced" | $GREP -vE '^\+<([A-Za-z_]+)>:refs/remotes/origin/<\1>$' || true)
+forced_all=$(printf '%s\n' "$fetch_cmd_lines" | $GREP -oE '\+<[A-Za-z_]+>:refs/remotes/origin/<[A-Za-z_]+>' || true)
+n_forced_total=$(printf '%s\n' "$forced_all" | $GREP -c . || true)
+mismatched=$(printf '%s\n' "$forced_all" | $GREP -vE '^\+<([A-Za-z_]+)>:refs/remotes/origin/<\1>$' || true)
+# Totals, not a per-line expectation derived from the line under test. Deriving `want` from
+# whether the line already mentions <target_branch> is self-referential: deleting that refspec
+# makes the line self-consistent at one, so the check passes on the corpus it should reject.
+n_target_refspec=$(printf '%s\n' "$forced_all" | $GREP -cF '+<target_branch>:refs/remotes/origin/<target_branch>' || true)
+arity_bad=""
+[ "$n_forced_total" -eq "$FIXMR_FORCED_REFSPEC_COUNT" ] \
+    || arity_bad="${arity_bad}expected $FIXMR_FORCED_REFSPEC_COUNT forced refspec(s) across all fetch lines, found $n_forced_total; "
+[ "$n_target_refspec" -eq "$FIXMR_TARGET_REFSPEC_COUNT" ] \
+    || arity_bad="${arity_bad}expected $FIXMR_TARGET_REFSPEC_COUNT '+<target_branch>:refs/remotes/origin/<target_branch>' refspec(s), found $n_target_refspec; "
 if [ "$n_fetch_cmd" -ne "$FIXMR_FETCH_CMD_COUNT" ]; then
     fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "found $n_fetch_cmd command line(s) — extraction drifted from the expected literal"
 elif [ -n "$unforced" ]; then
     fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "unforced refspec(s): $(printf '%s' "$unforced" | tr '\n' ' ')"
-elif [ "$n_forced" -ne $((FIXMR_FETCH_CMD_COUNT * 2)) ]; then
+elif [ -n "$arity_bad" ]; then
     fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
-         "expected $((FIXMR_FETCH_CMD_COUNT * 2)) forced refspecs (2 per line), found $n_forced — a refspec may be missing outright, not merely unforced"
+         "$arity_bad"
 elif [ -n "$mismatched" ]; then
     fail "fix-mr.md has $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s), each refspec forced with a leading + and its source/destination names matching" \
          "refspec(s) with swapped source/destination placeholder names: $(printf '%s' "$mismatched" | tr '\n' ' ')"
 else
-    pass "fix-mr.md's $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s) carry $n_forced forced refspecs, none unforced, none with swapped names"
+    pass "fix-mr.md's $FIXMR_FETCH_CMD_COUNT 'git fetch origin' command line(s) carry $n_forced_total forced refspecs total, each line matching its own expected arity, none unforced, none with swapped names"
 fi
 
 # 2: --enable=check-unassigned-uppercase catches an ALL-CAPS var like BATCH that shellcheck's 0.9.0
@@ -2354,10 +2366,12 @@ else
     fail "fix-mr.md's record block carries four extract-section invocations, each branched on its own exit status and paired to its own section, plus the preflight guard, the all-missing stop, the four empty-body arms, and the four anchor re-emissions" "$bad"
 fi
 
-# Hoisted once — rows 6, 7, 9, and 13-15 below all read Step 3's or Step 4's extracted body;
-# one extraction each avoids five redundant subprocess calls to the same two sections.
+# Hoisted once — rows 6, 7, 9, and 13-18 below all read one of these four extracted bodies;
+# one extraction each avoids repeated subprocess calls to the same sections.
 step3_body=$(extract-section "$FIXMR" '### Step 3: Quorum' 2>/dev/null)
 step4_body=$(extract-section "$FIXMR" '### Step 4: Approval Gate' 2>/dev/null)
+step5_body=$(extract-section "$FIXMR" '### Step 5: Fix Chain' 2>/dev/null)
+step6_body=$(extract-section "$FIXMR" '### Step 6: Post' 2>/dev/null)
 
 # 6: the span stops at the next bold lead-in because the whole paragraph is one line and names
 # the tool downstream, so a whole-line grep passes even with the Preflight mention rewritten away.
@@ -2595,18 +2609,26 @@ else
     pass "fix-mr.md Step 3d's verdict table and Step 3e's reply table each carry exactly one by-design row"
 fi
 
-# 14: Step 4d's approval-buys table is the single artifact deciding what force-pushes — each grant
-# row is cut at its own pipes, so a promise anywhere else cannot satisfy this row.
+# 14: Step 4d's approval-buys table decides what force-pushes. M2: scoped to the table's own
+# span, counting occurrences (grep -o) rather than lines (grep -c) over Step 4's whole body.
 bad=""
 if [ -z "$step4_body" ]; then
     bad="extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken"
 else
-    n_fix_rows=$(printf '%s\n' "$step4_body" | $GREP -cF '`real` + `fix`')
-    fix_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`real` + `fix`')
-    propose_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`real` + `propose`')
-    decline_row=$(printf '%s\n' "$step4_body" | $GREP -m1 -F '`by-design` or `refuted`')
-    if [ "$n_fix_rows" -ne 1 ]; then
-        bad="found $n_fix_rows '\`real\` + \`fix\`' row(s) within Step 4's extracted body, want exactly 1"
+    buys_table_body=$(printf '%s\n' "$step4_body" | awk '
+      /^\| Row \| Approval buys \|$/ { f=1; next }
+      f && /^\|---/ { next }
+      f && /^\|/ { print; next }
+      f { exit }
+    ')
+    n_fix_rows=$(printf '%s\n' "$buys_table_body" | $GREP -oF '`real` + `fix`' | $GREP -c . || true)
+    fix_row=$(printf '%s\n' "$buys_table_body" | $GREP -m1 -F '`real` + `fix`')
+    propose_row=$(printf '%s\n' "$buys_table_body" | $GREP -m1 -F '`real` + `propose`')
+    decline_row=$(printf '%s\n' "$buys_table_body" | $GREP -m1 -F '`by-design` or `refuted`')
+    if [ -z "$buys_table_body" ]; then
+        bad="no '| Row | Approval buys |' table found within Step 4's extracted body"
+    elif [ "$n_fix_rows" -ne 1 ]; then
+        bad="found $n_fix_rows occurrence(s) of '\`real\` + \`fix\`' within the approval-buys table, want exactly 1"
     elif [ -z "$propose_row" ]; then
         bad="no '\`real\` + \`propose\`' table row found within Step 4's extracted body"
     elif [ -z "$decline_row" ]; then
@@ -2616,7 +2638,9 @@ else
         propose_buys=$(printf '%s' "$propose_row" | awk -F'|' '{print $3}')
         decline_buys=$(printf '%s' "$decline_row" | awk -F'|' '{print $3}')
         printf '%s' "$fix_buys" | $GREP -qF 'force-push' || bad="${bad}the real+fix row's Buys cell does not name the force-push; "
-        printf '%s' "$fix_buys" | $GREP -qF 'coder dispatch' || bad="${bad}the real+fix row's Buys cell does not name the coder dispatch; "
+        printf '%s' "$fix_buys" | $GREP -qF "the run's own edit" || bad="${bad}the real+fix row's Buys cell does not name the run's own edit; "
+        printf '%s' "$step4_body" | $GREP -qiF 'coder dispatch' \
+            && bad="${bad}Step 4's body still names the coder dispatch, which this design deletes; "
         printf '%s' "$propose_buys" | $GREP -qiE 'force-push|coder dispatch' \
             && bad="${bad}the real+propose row's Buys cell wrongly names a force-push or coder dispatch; "
         printf '%s' "$decline_buys" | $GREP -qiE 'force-push|coder dispatch' \
@@ -2624,9 +2648,9 @@ else
     fi
 fi
 if [ -z "$bad" ]; then
-    pass "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch in its Buys cell, and neither the real+propose nor by-design/refuted rows do"
+    pass "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the run's own edit in its Buys cell, neither the real+propose nor by-design/refuted rows do, and the coder dispatch appears nowhere in Step 4's body"
 else
-    fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the coder dispatch in its Buys cell, and neither the real+propose nor by-design/refuted rows do" "$bad"
+    fail "fix-mr.md Step 4d's real+fix approval-buys row names the force-push and the run's own edit in its Buys cell, neither the real+propose nor by-design/refuted rows do, and the coder dispatch appears nowhere in Step 4's body" "$bad"
 fi
 
 # 15: the declined-row thread_action clause, count-checked to exactly one match — a revert to
@@ -2650,6 +2674,442 @@ else
     else
         fail "fix-mr.md's gate-last-writer line covers a declined row's thread_action via Step 3d's table" "$bad"
     fi
+fi
+
+# 16: the push line — a valueless lease and a bare `git push` both parse cleanly, so the
+# literal itself, not mere presence of `--force-with-lease`, is what this row must pin.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    printf '%s\n' "$step5_body" | $GREP -qF -- "--force-with-lease='<source_branch>:<base_sha>'" \
+        || bad="${bad}no push line carries an explicit lease value '<source_branch>:<base_sha>'; "
+    printf '%s\n' "$step5_body" | $GREP -qF "'refs/heads/<source_branch>:refs/heads/<source_branch>'" \
+        || bad="${bad}no push line carries the explicit refs/heads/ destination refspec; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 5 push line carries an explicit --force-with-lease value and an explicit refs/heads/ destination refspec, both sourced from Step 5b's base SHA"
+else
+    fail "fix-mr.md's Step 5 push line carries an explicit --force-with-lease value and an explicit refs/heads/ destination refspec, both sourced from Step 5b's base SHA" "$bad"
+fi
+
+# 17: the guard block and the re-check. Each guard's command is pinned as its own executed
+# `if`-condition line, scanned with echo lines excluded first (the way row 1's fetch extraction
+# already excludes `echo`) — a bare substring match on the command name would still pass a
+# mutant that relocates the command into its own BLOCKER: echo, leaving it out of the executed
+# condition (the convention Step 3a and Step 4a already use elsewhere), since the substring
+# would still appear inside the echo's message text. A count, not presence, guards against
+# `exit 1` being replaced with `:` throughout the block: message and condition pins alone stay
+# green on that mutant since neither the guard names nor the commands change, only the
+# consequence of failing them. The two `-z` checks are pinned by name, since dropping them
+# leaves two empty strings comparing equal, the hole design §5.2 names explicitly.
+step5b_block=$(fixmr_full_block_containing 'checked-out-branch guard')
+bad=""
+if [ -z "$step5b_block" ]; then
+    bad="Step 5b's guard block (containing 'checked-out-branch guard') not found — extraction broken"
+else
+    step5b_noecho=$(printf '%s\n' "$step5b_block" | $GREP -v '^[[:space:]]*echo ')
+    for g in 'checked-out-branch guard' 'clean-tree guard' 'tip-authorship guard' 'tip-freshness guard'; do
+        printf '%s\n' "$step5b_block" | $GREP -qF "$g" \
+            || bad="${bad}guard block is missing the '$g'; "
+    done
+    printf '%s\n' "$step5b_noecho" | $GREP -qF 'if [ "$(git rev-parse --abbrev-ref HEAD)" != '"'"'<source_branch>'"'"' ]; then' \
+        || bad="${bad}checked-out-branch guard's executed 'if' condition line is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF 'if ! git diff --quiet HEAD; then' \
+        || bad="${bad}clean-tree guard's executed 'if' condition line is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF "tip_author=\$(git log -1 --format='%ae')" \
+        || bad="${bad}tip-authorship guard's tip_author assignment is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF 'operator_email=$(git config user.email)' \
+        || bad="${bad}tip-authorship guard's operator_email assignment is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF -- '-z "$tip_author"' \
+        || bad="${bad}tip-authorship guard's -z \"\$tip_author\" empty-operand check is missing (two empty strings would otherwise compare equal); "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF -- '-z "$operator_email"' \
+        || bad="${bad}tip-authorship guard's -z \"\$operator_email\" empty-operand check is missing (two empty strings would otherwise compare equal); "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF '"$tip_author" != "$operator_email"' \
+        || bad="${bad}tip-authorship guard's inequality comparison is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF "if ! git fetch origin '+<source_branch>:refs/remotes/origin/<source_branch>'; then" \
+        || bad="${bad}tip-freshness guard's fetch 'if' condition line is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF "git rev-parse 'refs/remotes/origin/<source_branch>'" \
+        || bad="${bad}tip-freshness guard's lease-source command is missing outside any echo line; "
+    printf '%s\n' "$step5b_noecho" | $GREP -qF 'if [ "$local_tip" != "$base_sha" ]; then' \
+        || bad="${bad}tip-freshness guard's equality-comparison 'if' condition line is missing outside any echo line; "
+
+    n_exit1=$(printf '%s\n' "$step5b_block" | $GREP -cE '^[[:space:]]*exit 1[[:space:]]*$' || true)
+    [ "$n_exit1" -eq 5 ] || bad="${bad}guard block has $n_exit1 'exit 1' statement(s), want exactly 5 (the tip-freshness guard's fetch check and its equality check each stop the run) — a guard that does not exit on failure is a warning, not a guard; "
+
+    # M4: matches Step 3a's sibling pattern (leading whitespace allowed) — the prior column-0
+    # anchor let an indented second stdout print keep this count at 1.
+    n_stdout_echo=$(printf '%s\n' "$step5b_block" | $GREP -E '^[[:space:]]*echo ' | $GREP -v '>&2' | $GREP -c . || true)
+    if [ "$n_stdout_echo" -ne 1 ]; then
+        bad="${bad}guard block prints $n_stdout_echo value(s) to stdout via echo, expected exactly 1; "
+    else
+        printf '%s\n' "$step5b_block" | $GREP -qE '^[[:space:]]*echo "\$base_sha"[[:space:]]*$' \
+            || bad="${bad}guard block's one stdout print is not \$base_sha; "
+    fi
+fi
+if [ -z "$step5_body" ]; then
+    bad="${bad}extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    recheck_line=$(printf '%s\n' "$step5_body" | $GREP -m1 -F 're-take HEAD and compare the tree')
+    if [ -z "$recheck_line" ]; then
+        bad="${bad}no re-check sentence found; "
+    else
+        # H11: the selector already contains 'HEAD', making that assertion a tautology — pin
+        # <base_sha>, the value actually compared, instead.
+        printf '%s' "$recheck_line" | $GREP -qF '<base_sha>' || bad="${bad}re-check sentence does not name <base_sha>; "
+        printf '%s' "$recheck_line" | $GREP -qF 'recorded' || bad="${bad}re-check sentence does not name the recorded path set; "
+    fi
+    recheck_block=$(fixmr_full_block_containing 'git diff --name-only HEAD')
+    if [ -z "$recheck_block" ]; then
+        bad="${bad}no fenced block found containing 'git diff --name-only HEAD' (M9); "
+    else
+        printf '%s\n' "$recheck_block" | $GREP -qF "!= '<base_sha>'" \
+            || bad="${bad}the re-check's fenced block does not compare HEAD against '<base_sha>'; "
+        printf '%s\n' "$recheck_block" | $GREP -qF 'git status --porcelain' \
+            && bad="${bad}the re-check's fenced block uses git status --porcelain, which lists untracked files (M9); "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 5b guard block carries all four guard commands with their own operands, exactly one stdout print (\$base_sha), and Step 5's re-check names <base_sha>, the recorded path set, and uses git diff --name-only HEAD in its own fenced block"
+else
+    fail "fix-mr.md's Step 5b guard block carries all four guard commands with their own operands, exactly one stdout print (\$base_sha), and Step 5's re-check names <base_sha>, the recorded path set, and uses git diff --name-only HEAD in its own fenced block" "$bad"
+fi
+
+# 18: the two eligibility clauses whose loss makes the git leg unconditional again — the guard
+# section's real+fix condition, and the git leg's own changed-tree condition.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    printf '%s\n' "$step5_body" | $GREP -qF 'the approved set holds at least one `real` + `fix` row' \
+        || bad="${bad}the guard section's eligibility clause (a real+fix row in the approved set) is missing; "
+    printf '%s\n' "$step5_body" | $GREP -qF 'the tree differs from the tip the guards recorded' \
+        || bad="${bad}the git leg's changed-tree eligibility clause is missing; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 5 states both eligibility clauses — the guard section's real+fix condition and the git leg's changed-tree condition"
+else
+    fail "fix-mr.md's Step 5 states both eligibility clauses — the guard section's real+fix condition and the git leg's changed-tree condition" "$bad"
+fi
+
+# 19: both posting YAML templates — approval: none, and exactly one of replies:/resolve: each.
+# Blocks are extracted by position, since each is a distinct, unlabelled ```yaml fence.
+bad=""
+if [ -z "$step6_body" ]; then
+    bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
+else
+    n_yaml_fences=$(printf '%s\n' "$step6_body" | $GREP -cE '^```yaml')
+    if [ "$n_yaml_fences" -ne 2 ]; then
+        bad="Step 6's body carries $n_yaml_fences \`\`\`yaml fence(s), want exactly 2"
+    else
+        block1=$(printf '%s\n' "$step6_body" | awk '/^```yaml/{n++} n==1{print} /^```$/{if(n==1)exit}' | tail -n +2)
+        block2=$(printf '%s\n' "$step6_body" | awk '/^```yaml/{n++} n==2{print} /^```$/{if(n==2)exit}' | tail -n +2)
+        idx=0
+        for blk in "$block1" "$block2"; do
+            idx=$((idx + 1))
+            printf '%s\n' "$blk" | $GREP -qF 'approval: none' \
+                || bad="${bad}yaml block $idx does not carry 'approval: none'; "
+            has_replies=$(printf '%s\n' "$blk" | $GREP -cE '^replies:' || true)
+            has_resolve=$(printf '%s\n' "$blk" | $GREP -cE '^resolve:' || true)
+            if [ "$((has_replies + has_resolve))" -ne 1 ]; then
+                bad="${bad}yaml block $idx does not carry exactly one of replies:/resolve: (replies=$has_replies resolve=$has_resolve); "
+            fi
+        done
+        # The first template posted (6a) is replies:; the second (6d) is resolve: — order
+        # matters, not just that one of each exists somewhere among the two blocks.
+        printf '%s\n' "$block1" | $GREP -qE '^replies:' || bad="${bad}the first yaml block (6a) is not the replies: template; "
+        printf '%s\n' "$block2" | $GREP -qE '^resolve:' || bad="${bad}the second yaml block (6d) is not the resolve: template; "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 6 carries two \`\`\`yaml templates, each with 'approval: none' and exactly one of replies:/resolve:, in that order"
+else
+    fail "fix-mr.md's Step 6 carries two \`\`\`yaml templates, each with 'approval: none' and exactly one of replies:/resolve:, in that order" "$bad"
+fi
+
+# 20: Step 6's call order — replies comment, then load, then resolve comment, then load —
+# matched by line number so a reorder inside the extracted body is caught, not just presence.
+bad=""
+if [ -z "$step6_body" ]; then
+    bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
+else
+    # Matched as one adjacent phrase, not two independent substrings — the intro paragraph's own
+    # prose names both filenames and "projctl comment" in one sentence and would otherwise match.
+    replies_comment_ln=$(printf '%s\n' "$step6_body" | $GREP -nF "projctl comment '<issue-folder>/fix-mr-MR<mr_number>-replies.yaml'" | head -1 | cut -d: -f1)
+    first_load_ln=$(printf '%s\n' "$step6_body" | $GREP -nF 'projctl load mr' | head -1 | cut -d: -f1)
+    resolve_comment_ln=$(printf '%s\n' "$step6_body" | $GREP -nF "projctl comment '<issue-folder>/fix-mr-MR<mr_number>-resolve.yaml'" | head -1 | cut -d: -f1)
+    second_load_ln=$(printf '%s\n' "$step6_body" | $GREP -nF 'projctl load mr' | tail -1 | cut -d: -f1)
+    if [ -z "$replies_comment_ln" ] || [ -z "$first_load_ln" ] || [ -z "$resolve_comment_ln" ] || [ -z "$second_load_ln" ]; then
+        bad="one of the four calls was not found (replies_comment=$replies_comment_ln first_load=$first_load_ln resolve_comment=$resolve_comment_ln second_load=$second_load_ln)"
+    elif [ "$first_load_ln" = "$second_load_ln" ]; then
+        bad="only one 'projctl load mr' line found — Step 6 needs two distinct re-reads"
+    elif ! { [ "$replies_comment_ln" -lt "$first_load_ln" ] && [ "$first_load_ln" -lt "$resolve_comment_ln" ] && [ "$resolve_comment_ln" -lt "$second_load_ln" ]; }; then
+        bad="calls are out of order: replies_comment=$replies_comment_ln first_load=$first_load_ln resolve_comment=$resolve_comment_ln second_load=$second_load_ln"
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 6 issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr"
+else
+    fail "fix-mr.md's Step 6 issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr" "$bad"
+fi
+
+# 21: the end-state table names all ten state tokens as first cells — omitting one leaves a
+# reachable row with no report line, silently.
+bad=""
+if [ -z "$step6_body" ]; then
+    bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
+else
+    for state in 'answered' 'reply missing' 'unresolved' 'reply issued' 'fixed, not landed' 'fix not made' 'not acted on' 'rejected' 'unactionable' 'skipped'; do
+        printf '%s\n' "$step6_body" | $GREP -qE "^\| \`${state}\` \|" \
+            || bad="${bad}no table row's first cell is '$state'; "
+    done
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 6 end-state table names all ten state tokens as first cells"
+else
+    fail "fix-mr.md's Step 6 end-state table names all ten state tokens as first cells" "$bad"
+fi
+
+# 22: 5a's leg table carries all five legs the design assigns it, not three — a dropped
+# reply or resolve row leaves Step 6's back-references dangling. The reply and resolve
+# cells are pinned as one exact clause apiece, counted for exactly one occurrence within the
+# table, rather than as independent bare-word substrings — a mutation that inverts "carries
+# neither X nor Y" to "carries X or Y", or drops the resolve row's pushed-SHA condition, leaves
+# every bare word intact and would otherwise still pass.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    leg_table_body=$(printf '%s\n' "$step5_body" | awk '
+      /^\| Leg \| Runs when, over what \| Where the condition fails \|$/ { f=1; next }
+      f && /^\|---/ { next }
+      f && /^\|/ { print; next }
+      f { exit }
+    ')
+    n_leg_rows=$(printf '%s\n' "$leg_table_body" | $GREP -c '^|' || true)
+    reply_clause="the row carries neither \`fix not made\` nor \`not acted on\`; that row"
+    resolve_clause="the reply leg ran for it, \`thread_action\` is \`resolved\`, \`resolvable\` is true, a \`real\` + \`fix\` row's reply names the pushed SHA rather than 6a's no-push arm, and the re-read shows the reply present and the thread open; that row"
+    if [ -z "$leg_table_body" ]; then
+        bad="no '| Leg | Runs when, over what | Where the condition fails |' table found within Step 5's extracted body"
+    elif [ "$n_leg_rows" -ne 5 ]; then
+        bad="found $n_leg_rows leg row(s) in 5a's table, want exactly 5 (guards, edit, amend-and-push, reply, resolve)"
+    else
+        n_reply=$(printf '%s\n' "$leg_table_body" | $GREP -cF "$reply_clause" || true)
+        n_resolve=$(printf '%s\n' "$leg_table_body" | $GREP -cF "$resolve_clause" || true)
+        [ "$n_reply" -eq 1 ] || bad="${bad}the reply row's exact clause occurs $n_reply time(s) in the leg table, want exactly 1 — it may have been reworded, e.g. neither/nor inverted to either/or while both bare words survive; "
+        [ "$n_resolve" -eq 1 ] || bad="${bad}the resolve row's exact clause occurs $n_resolve time(s) in the leg table, want exactly 1 — the pushed-SHA condition may be missing or reworded; "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 5a leg table carries all five legs, with the reply row's neither/nor clause and the resolve row's pushed-SHA clause each pinned as one exact, single-occurrence sentence"
+else
+    fail "fix-mr.md's 5a leg table carries all five legs, with the reply row's neither/nor clause and the resolve row's pushed-SHA clause each pinned as one exact, single-occurrence sentence" "$bad"
+fi
+
+# 23: 6d's resolve predicate is modelled in the git-contract stand-in; fix-mr.md's own
+# prose must state the same five conjuncts, including the pushed-SHA condition, pinned as one
+# exact sentence rather than four independent substrings — a substring-only check stays green
+# on a mutation that negates the sentence around an untouched keyword (e.g. "shows" becoming
+# "does not show" while "the reply present and the thread still open" survives intact). The
+# absent-reply sentence is guarded the way the `**Appendix pages:` check already guards its own
+# sentence — the keyword phrase present, and a negation word ahead of the verb it modifies.
+bad=""
+if [ -z "$step6_body" ]; then
+    bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
+else
+    n_6d_lines=$(printf '%s\n' "$step6_body" | $GREP -cF '**6d. Compose and write the resolve YAML**')
+    resolve_line=$(printf '%s\n' "$step6_body" | $GREP -m1 -F '**6d. Compose and write the resolve YAML**')
+    conjunct_sentence="exactly the threads 5a's resolve row admits: the reply leg ran for it, \`thread_action\` is \`resolved\`, \`resolvable\` is true, a \`real\` + \`fix\` row's reply names the pushed SHA rather than 6a's no-push arm, and 6c's read shows the reply present and the thread still open."
+    no_sha_sentence="neither is a \`real\` + \`fix\` row resolved on a reply that names no pushed SHA"
+    if [ "$n_6d_lines" -ne 1 ]; then
+        bad="found $n_6d_lines '**6d. Compose and write the resolve YAML**' lead-in(s), want exactly 1"
+    else
+        n_conjunct=$(printf '%s\n' "$step6_body" | $GREP -cF "$conjunct_sentence" || true)
+        [ "$n_conjunct" -eq 1 ] || bad="${bad}the five-conjunct sentence occurs $n_conjunct time(s), want exactly 1 — a conjunct may be missing or the sentence reworded around it; "
+
+        APOS="'"
+        neg_pattern_resolved="(do not|don${APOS}t|does not|doesn${APOS}t|never)[^.]*resolved"
+        printf '%s' "$resolve_line" | $GREP -qF 'A thread whose reply is absent is never resolved' \
+            || bad="${bad}the 'a thread whose reply is absent' sentence is missing; "
+        printf '%s' "$resolve_line" | $GREP -qiE "$neg_pattern_resolved" \
+            || bad="${bad}no negation sits ahead of 'resolved' in the absent-reply sentence — it may have been inverted to resolve an unanswered thread; "
+
+        n_no_sha=$(printf '%s\n' "$step6_body" | $GREP -cF "$no_sha_sentence" || true)
+        [ "$n_no_sha" -eq 1 ] || bad="${bad}the H1 no-push resolve exclusion occurs $n_no_sha time(s), want exactly 1; "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 6d states all five conjuncts of the resolve predicate as one exact sentence, the absent-reply sentence carries a negation ahead of 'resolved', and the no-push resolve exclusion is stated exactly once"
+else
+    fail "fix-mr.md's 6d states all five conjuncts of the resolve predicate as one exact sentence, the absent-reply sentence carries a negation ahead of 'resolved', and the no-push resolve exclusion is stated exactly once" "$bad"
+fi
+
+# 24: 6a needs a no-push arm for a real+fix row with no push behind it, and Step 4d's
+# readback must be qualified — its SHA-naming sentence is composed later, after the push. Each
+# clause is checked for a negation word ahead of its verb, the same shape as row 23's guard —
+# a bare substring match is satisfied even when "posts" is preceded by "does not".
+bad=""
+APOS="'"
+if [ -z "$step6_body" ]; then
+    bad="${bad}extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken; "
+else
+    n_nopush=$(printf '%s\n' "$step6_body" | $GREP -cF 'posts the approved first sentence alone, naming no SHA' || true)
+    nopush_line=$(printf '%s\n' "$step6_body" | $GREP -m1 -F 'posts the approved first sentence alone, naming no SHA')
+    if [ "$n_nopush" -ne 1 ]; then
+        bad="${bad}Step 6a's no-push-arm sentence occurs $n_nopush time(s), want exactly 1; "
+    else
+        printf '%s' "$nopush_line" | $GREP -qiE "(do not|don${APOS}t|does not|doesn${APOS}t|never)[^.]*posts the approved first sentence" \
+            && bad="${bad}a negation sits ahead of 'posts the approved first sentence alone, naming no SHA' — the no-push arm may have been inverted; "
+    fi
+fi
+if [ -z "$step4_body" ]; then
+    bad="${bad}extract-section found no '### Step 4: Approval Gate' body in fix-mr.md — extraction broken; "
+else
+    n_readback=$(printf '%s\n' "$step4_body" | $GREP -cF "except a \`real\` + \`fix\` row's reply, whose second sentence naming the pushed SHA" || true)
+    readback_line=$(printf '%s\n' "$step4_body" | $GREP -m1 -F "except a \`real\` + \`fix\` row's reply, whose second sentence naming the pushed SHA")
+    if [ "$n_readback" -ne 1 ]; then
+        bad="${bad}Step 4d's readback qualification occurs $n_readback time(s), want exactly 1; "
+    else
+        printf '%s' "$readback_line" | $GREP -qiE "(do not|don${APOS}t|does not|doesn${APOS}t|never)[^.]*except a \`real\`" \
+            && bad="${bad}a negation sits ahead of the real+fix readback exception clause — it may have been inverted; "
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 6a states an explicit no-push arm for a real+fix row with no push behind it, and Step 4d's readback sentence is qualified for it, neither carrying a negation ahead of its verb"
+else
+    fail "fix-mr.md's Step 6a states an explicit no-push arm for a real+fix row with no push behind it, and Step 4d's readback sentence is qualified for it, neither carrying a negation ahead of its verb" "$bad"
+fi
+
+# 25: 5c restores by mark (checkout vs rm -f), and 5d's git add is scoped to a
+# completing row's own fix paths, not every path the run created. Each clause is pinned whole
+# and counted for exactly one occurrence, so a mutation that inverts a word inside it
+# (excluding -> including, or dropping the decision command) no longer matches, rather than
+# surviving because a shorter, invariant fragment of the same clause stayed intact.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    restore_decision="Restore decides which command applies with \`git cat-file -e \"HEAD:<path>\"\`, not a distinction the record stores"
+    gitadd_scope="scoped to a row whose edit completed, excluding a \`preconditions\` entry's scaffolding and a row that took \`fix not made\`"
+    n_restore=$(printf '%s\n' "$step5_body" | $GREP -cF "$restore_decision" || true)
+    n_gitadd=$(printf '%s\n' "$step5_body" | $GREP -cF "$gitadd_scope" || true)
+    [ "$n_restore" -eq 1 ] || bad="${bad}5c's restore-decision clause occurs $n_restore time(s), want exactly 1; "
+    # Each arm pinned to the case it serves, not merely to the presence of both commands.
+    # Swapping the two commands leaves every separate literal intact, and the swapped text
+    # runs `git checkout --` on a path the row created — which exits non-zero and leaves the
+    # file standing, the defect the decision clause above exists to prevent.
+    checkout_arm="present at the tip 5b guarded (\`git cat-file -e\` exits 0) is restored with \`git checkout -- <path>\`"
+    rmf_arm="absent from that tip (\`git cat-file -e\` exits non-zero) — is restored with \`rm -f -- <path>\`"
+    n_checkout_arm=$(printf '%s\n' "$step5_body" | $GREP -cF "$checkout_arm" || true)
+    n_rmf_arm=$(printf '%s\n' "$step5_body" | $GREP -cF "$rmf_arm" || true)
+    [ "$n_checkout_arm" -eq 1 ] \
+        || bad="${bad}5c's present-at-tip arm does not map to git checkout -- (found $n_checkout_arm exact match(es)) — the two restore arms may have been swapped; "
+    [ "$n_rmf_arm" -eq 1 ] \
+        || bad="${bad}5c's created-path arm does not map to rm -f -- (found $n_rmf_arm exact match(es)) — the two restore arms may have been swapped; "
+    [ "$n_gitadd" -eq 1 ] || bad="${bad}5d's git add scope clause occurs $n_gitadd time(s), want exactly 1 — it may have been inverted from excluding to including; "
+    printf '%s\n' "$step5_body" | $GREP -qF 'each new path recorded as a completing row'"'"'s fix'"'"'s' \
+        || bad="${bad}5d's git add line is not scoped to a completing row's fix paths; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 5c restores by mark (checkout vs rm -f) via one exact decision clause, and 5d's git add is scoped to a completing row's fix paths with its excluding clause pinned whole"
+else
+    fail "fix-mr.md's 5c restores by mark (checkout vs rm -f) via one exact decision clause, and 5d's git add is scoped to a completing row's fix paths with its excluding clause pinned whole" "$bad"
+fi
+
+# 26: Step 6's failure-outcomes table was previously unpinned — deletable whole with both
+# suites green. Keyed on its own header and each of its five Call cells.
+bad=""
+if [ -z "$step6_body" ]; then
+    bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
+else
+    failure_table_body=$(printf '%s\n' "$step6_body" | awk '
+      /^\| Call or write \| On failure \|$/ { f=1; next }
+      f && /^\|---/ { next }
+      f && /^\|/ { print; next }
+      f { exit }
+    ')
+    n_failure_rows=$(printf '%s\n' "$failure_table_body" | $GREP -c '^|' || true)
+    if [ -z "$failure_table_body" ]; then
+        bad="no '| Call or write | On failure |' table found within Step 6's extracted body"
+    elif [ "$n_failure_rows" -ne 5 ]; then
+        bad="found $n_failure_rows row(s) in Step 6's failure-outcomes table, want exactly 5"
+    else
+        for cell in \
+            '`projctl comment` over the replies YAML (6b)' \
+            "the first \`projctl load\` (6c)" \
+            '`projctl comment` over the resolve YAML (6e)' \
+            "the second \`projctl load\` (6f)" \
+            "any file this half writes"; do
+            printf '%s\n' "$failure_table_body" | $GREP -qF "$cell" \
+                || bad="${bad}failure-outcomes table is missing the Call cell '$cell'; "
+        done
+    fi
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's Step 6 failure-outcomes table is present with its header and all five Call cells"
+else
+    fail "fix-mr.md's Step 6 failure-outcomes table is present with its header and all five Call cells" "$bad"
+fi
+
+# 27: 5a's git-leg stop list must name git add among the failing steps — the clause was
+# previously unpinned and deletable with both suites green.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    stop_list_sentence="a guard, a shared-path collision in 5c, 5d's re-check, \`git add\`, the amend, or the push"
+    n_stop_list=$(printf '%s\n' "$step5_body" | $GREP -cF "$stop_list_sentence" || true)
+    [ "$n_stop_list" -eq 1 ] || bad="${bad}5a's git-leg stop list occurs $n_stop_list time(s), want exactly 1, and must name \`git add\` among the failing steps; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 5a names git add in its git-leg stop list, exactly once"
+else
+    fail "fix-mr.md's 5a names git add in its git-leg stop list, exactly once" "$bad"
+fi
+
+# 28: 5c's exit-status sentence was previously unpinned and deletable with both suites green.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    exit_status_sentence="Each restore's own exit status is checked, and a failing one is named in the report beside the row rather than left silently standing"
+    n_exit_status=$(printf '%s\n' "$step5_body" | $GREP -cF "$exit_status_sentence" || true)
+    [ "$n_exit_status" -eq 1 ] || bad="${bad}5c's exit-status sentence occurs $n_exit_status time(s), want exactly 1; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 5c states that each restore's own exit status is checked and a failing one is named in the report"
+else
+    fail "fix-mr.md's 5c states that each restore's own exit status is checked and a failing one is named in the report" "$bad"
+fi
+
+# 29: 5d's ledger-write paragraph — both Status shapes, the Test path, the Evidence field,
+# the Reason clause, the replace-by-discussion_id rule, and the after-push ordering — was
+# previously unpinned and deletable whole with both suites green.
+bad=""
+if [ -z "$step5_body" ]; then
+    bad="extract-section found no '### Step 5: Fix Chain' body in fix-mr.md — extraction broken"
+else
+    ordering_sentence="Ledger entries are written after the push succeeds"
+    replace_sentence="A run finding an entry already carrying this \`discussion_id\` replaces it"
+    printf '%s\n' "$step5_body" | $GREP -qF "$ordering_sentence" \
+        || bad="${bad}5d's ledger-write paragraph does not state it is written after the push succeeds; "
+    printf '%s\n' "$step5_body" | $GREP -qF '`**Status:** covered`' \
+        || bad="${bad}5d's ledger-write paragraph is missing the covered Status shape; "
+    printf '%s\n' "$step5_body" | $GREP -qF '`**Test:**` path' \
+        || bad="${bad}5d's ledger-write paragraph is missing the Test path; "
+    printf '%s\n' "$step5_body" | $GREP -qF '`**Evidence:**`' \
+        || bad="${bad}5d's ledger-write paragraph is missing the Evidence field; "
+    printf '%s\n' "$step5_body" | $GREP -qF '`**Status:** out-of-scope`' \
+        || bad="${bad}5d's ledger-write paragraph is missing the out-of-scope Status shape; "
+    printf '%s\n' "$step5_body" | $GREP -qF '`**Reason:**` naming that clause' \
+        || bad="${bad}5d's ledger-write paragraph is missing the Reason clause; "
+    printf '%s\n' "$step5_body" | $GREP -qF "$replace_sentence" \
+        || bad="${bad}5d's ledger-write paragraph does not state the replace-by-discussion_id rule; "
+fi
+if [ -z "$bad" ]; then
+    pass "fix-mr.md's 5d ledger-write paragraph states both Status shapes, the Test path, the Evidence field, the Reason clause, the replace-by-discussion_id rule, and the after-push ordering"
+else
+    fail "fix-mr.md's 5d ledger-write paragraph states both Status shapes, the Test path, the Evidence field, the Reason clause, the replace-by-discussion_id rule, and the after-push ordering" "$bad"
 fi
 
 echo
