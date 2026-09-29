@@ -271,12 +271,16 @@ IDs are prefixed by severity in `## Findings` (B = Blocker, C = Critical, H = Hi
 
 ## Assessment
 
-- ✅ **Approve:** zero Critical, zero High and zero Medium **across `## Findings` and `## Reverified Findings` combined** — reverified findings carry the same weight, so an approval that ignores them is wrong. Sets the spec's `**Status:**` field per Step 2 item 3.
-- ⚠️ **Request Changes:** one or more High or Medium findings → fix and re-run.
+- ✅ **Approve:** zero Critical and zero High **across `## Findings` and `## Reverified Findings` combined**, and every Medium fixed — reverified findings carry the same weight, so an approval that ignores them is wrong. Sets the spec's `**Status:**` field per Step 2 item 3.
+- ⚠️ **Request Changes:** one or more Critical or High findings, or open Mediums. **Critical or High → fix and re-run.** Mediums only → fix them and close it without a second review, per the paragraph below; a Medium costs a fix, not a round.
 - ❌ **Reject:** one or more Critical findings → the spec is re-authored.
 
 **An SP-9 blocker forces at least `CHANGES REQUESTED` whatever those counts are, and heads `## Findings`.** It sets a floor, not a ceiling: a Critical finding alongside it still escalates the same review to `REJECTED`. The structural outcome is a blocker rather than a finding, so a bar that counts only Critical/High/Medium findings would report `APPROVED` for a spec with no numbered sections at all.
 
+## After Resolving a Mediums-Only Review
+
+Where the review carried zero Critical and zero High and the only findings were Mediums, fixing them earns the approval without a second review pass. This command is the writer: after the fixes land, overwrite `spec-review.md`'s `**Status:**` to `APPROVED`, its `**Assessment:**` to `✅ Approve`, and its `## Recommendation` to name the closed findings; add a `## Mediums Fixed Without Re-Review` heading listing them; then set `spec.md`'s `**Status:**` to `Approved` per Step 2 item 3's table. No other actor may write that field — see the Critical Rule below — so without this path a Mediums-only spec parks at `Draft` and the approval never lands.
+
 ## Critical Rule
 
-**A spec reaches `Approved` only through this command.** The field records a review, not the author's decision that the document was done.
+**A spec reaches `Approved` only through this command** — including through the Mediums-only path above, which is this command closing its own review rather than a third party overwriting the field. The field records a review, not the author's decision that the document was done.

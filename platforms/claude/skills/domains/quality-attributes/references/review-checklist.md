@@ -338,8 +338,8 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 
 | Rating | Criteria |
 |--------|----------|
-| ✅ **Approve** | Zero Critical, High, or Medium findings; Low findings are acceptable |
-| ⚠️ **Request Changes** | Issues found that must be fixed before approval |
+| ✅ **Approve** | Zero Critical and zero High findings, and every Medium fixed; Low findings are acceptable and stay open |
+| ⚠️ **Request Changes** | One or more Critical or High findings, or open Mediums — but only a Critical or High costs another review round |
 | ❌ **Reject** | Fundamental problems requiring redesign |
 
 ## Severity Levels
@@ -348,7 +348,7 @@ This pass is language-agnostic: applies to C++ struct members, Go struct fields,
 |-------|-------------|-----------------|
 | **Critical** | Security vulnerability, data loss risk, system instability | Reject until resolved |
 | **High** | Significant correctness, security, maintainability, performance, or safety issue | Must fix before approval |
-| **Medium** | Material test, maintainability, clarity, or consistency issue | Must fix before approval |
+| **Medium** | Material test, maintainability, clarity, or consistency issue | Must fix before approval; costs a fix, not another review round |
 | **Low** | Optional enhancement or minor polish | Non-blocking |
 
 Severity is assigned after the Change Class Calibration at the top of this file, not before it. The same unhandled edge case is High in `PRODUCT-SHIPPED` and Low in `CI`; the finding text is the same either way, only its severity moves.

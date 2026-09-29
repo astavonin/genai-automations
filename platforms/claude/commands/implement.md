@@ -50,7 +50,14 @@ DESIGN_STATE=$(head -20 "$REVIEW" | grep -m 1 '^\*\*Status:\*\*' | sed 's/^\*\*S
 # If analysis.md '## On-Device Scope' is YES or YES-UNKNOWN, verify that the Open
 # Questions section of design.md contains no open (unchecked) items mentioning on-device scope:
 ANALYSIS="planning/<goal>/milestone-XX/issues/<NNN-name>/analysis.md"
-if grep -q '## On-Device Scope' "$ANALYSIS" 2>/dev/null && grep -A1 '## On-Device Scope' "$ANALYSIS" | grep -qiE '^(YES|YES-UNKNOWN)'; then
+# -A3 with a class covering both `*` and backticks, not -A1 on a bare token: real analysis.md
+# files put the label one to three lines below the heading, and wrap it in bold or backticks.
+# Measured over 54 declaring files: -A1 bare read 2 of 25 YES-scoped, bold-only read 19 of 25,
+# this form reads 25 of 25 with no false positive on a NO. A fenced value or a `**Label:** NO`
+# line is still unreadable by any of them.
+if grep -q '## On-Device Scope' "$ANALYSIS" 2>/dev/null \
+   && grep -A3 '## On-Device Scope' "$ANALYSIS" \
+      | grep -qiE '^[[:space:]]*[*`]*(YES|YES-UNKNOWN)[*`]*[[:space:]]*$'; then
     ! grep -iE 'on-device verification|device procedures' "$DESIGN" | grep -q '^\- \[ \]'
 fi
 ```

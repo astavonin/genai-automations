@@ -130,9 +130,11 @@ Applicability and the trigger list live in that fragment — do not work from a 
 
 ## Assessment
 
-- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings → proceed to `/verify`
-- ⚠️ **Request Changes:** One or more High or Medium findings → fix and re-review
+- ✅ **Approve:** Zero Critical and zero High findings, and every Medium fixed → proceed to `/verify`
+- ⚠️ **Request Changes:** One or more Critical or High findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → redesign needed
+
+**A Medium costs a fix, not a round.** This command only reports; it fixes nothing. Where it finds zero Critical and zero High with Mediums open, write `CHANGES REQUESTED` so the next actor has an obligation on disk — then the fix pass clears the Mediums and the approval follows without a second review. `/review-code-fix-loop` does exactly that in one run; outside the loop it is the user's call whether to fix now or defer, and the report is where that decision is read from.
 
 ## After Resolving CHANGES REQUESTED Findings
 
@@ -141,6 +143,8 @@ When a review returns CHANGES REQUESTED and fixes touch `docs/` or `planning/**/
 1. Run `/verify-docs`, passing the resolved `<issue-folder>` (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). The folder argument is required — the command enumerates planning docs from it and from nothing else, so omitting it makes both scans report `Clean` over an empty file list.
 2. Fix any blockers reported by `/verify-docs`.
 3. Only then re-run `/review-code`.
+
+**Unless the resolved findings were Mediums only.** A Medium costs a fix, not a round, so re-running `/review-code` would spend the round this bar exists to save. Where the review carried zero Critical and zero High, and the Mediums are now fixed with the build and test suites passing, close it without another review pass: overwrite `code-review.md`'s `**Status:**` to `APPROVED`, its `**Assessment:**` to `✅ Approve`, and its `## Recommendation` to name the closed findings; add a `## Mediums Fixed Without Re-Review` heading listing them; then run `~/.claude/skills/workflows/review-planning-update/SKILL.md` so the phase leaves `changes requested 🔄`. Without this step the work parks there indefinitely, because no other command writes that approval.
 
 ## Next Step
 

@@ -65,6 +65,7 @@ A loop that never reaches `REJECTED` at the cap needs only the first form.
 - **`### Cap-pause`** — a heading the caller provides, in the shape `## The Cap-Pause Block` above fixes.
 - **`### Stall stop`** — a heading the caller provides, stating both its own stall condition and its own procedure; this fragment routes to it by name and defines neither.
 - **Step 2 and Step 5** — the caller's fix step and its report-and-stop step; the Next column above routes to them by number.
+- **`exit_to`** — Step 2's mandatory parameter, naming the step Step 2 exits to. **This fragment's own route into Step 2 sets `exit_to = Step 3`**, because a below-cap round always re-reviews. Only the caller's Medium-only branch at Step 1 sets `Step 5`. Without this, the fragment routes into a step whose mandatory parameter is unset from the first round onward.
 - **the message's four values** — `label`, `report path`, `command`, `recovery` — filled in per loop, per verdict, from that loop's own other paused stops.
 - **the `Read` call precedes the launch sentence** — the caller's Step 3 reads this fragment before running its own review pass; a launch sentence read first runs the pass twice, once on its own and once again as this fragment's position 2.
 

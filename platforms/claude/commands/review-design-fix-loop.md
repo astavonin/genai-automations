@@ -10,7 +10,7 @@ Run the full design review cycle autonomously: initial review → fix all findin
 ## Agents
 
 - **reviewer** (opus) — all review passes (full 3+1 consensus protocol each time)
-- **architecture-research-planner** (opus) — all substantive design doc edits (content, structure, sections) must go through this agent; the only exceptions are one-line header metadata updates — `**Status:**` (set on `APPROVED` per the Protocol Deviations status-header bullet below), `**Approved:**` (added alongside `**Status:**` at Steps 1 and 3), and `**Revision:**` (incremented in Step 5 when `design_modified = true`) — all three use the Edit tool directly
+- **architecture-research-planner** (opus) — all substantive design doc edits (content, structure, sections) must go through this agent; the only exceptions are one-line header metadata updates — `**Status:**` (set on `APPROVED` per the Protocol Deviations status-header bullet below), `**Approved:**` (added alongside `**Status:**` at Step 1 — both branch 1 and branch 2, the latter at Step 5 after the bump — and at Step 3), and `**Revision:**` (incremented in Step 5 when `design_modified = true`) — all three use the Edit tool directly
 
 ## Prerequisite
 
@@ -42,7 +42,7 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is the step in `/review-design` that blocks until the user invokes `/implement`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
-- **Skip** the design doc status header update step (naming `**Status:**` and `**Approved:**`) — the fix-loop manages the header itself; it sets it when the initial review (Step 1) returns APPROVED, and on the fragment's APPROVED row in Step 3. (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
+- **Skip** the design doc status header update step (naming `**Status:**` and `**Approved:**`) — the fix-loop manages the header itself; it sets it in three places: when the initial review (Step 1) returns APPROVED on branch 1; on branch 2, at Step 5 after the revision bump; and on the fragment's APPROVED row in Step 3. (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
 
 **Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1 and 3). This is a separate invocation from the pre-Step-1 gate in the Prerequisite section — the gate re-evaluates on each pass because Step 2 may introduce new open questions despite the prohibition. If Step 2 introduces new open questions in `## 8. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Step 3 — not Step 1, which cannot re-fire since the pre-Step-1 gate just passed), use this specific message instead of the gate's default:
 
@@ -61,9 +61,27 @@ Then follow the **Gate re-fire handling** in Actions below. Do not proceed to St
 
 Follow `/review-design` with the deviations listed above. Writes `design-review.md`.
 
-If result is `APPROVED`: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, and add an `**Approved:** <YYYY-MM-DD>, at Revision <N>, by design review` line below `**Revision:**` — reading the doc's current revision rather than assuming it. Then proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3. (No revision bump — the doc was not modified in this run.)
+**The header edit**, referenced by branches 1 and 2 below: use the Edit tool to change `**Status:** Draft` to `**Status:** Approved` in the design doc, and add an `**Approved:** <YYYY-MM-DD>, at Revision <N>, by design review` line below `**Revision:**` — reading the doc's current revision rather than assuming it. On branch 1 there is no revision bump, because the doc was not modified in this run; branch 2 amends both the revision and the wording, as stated there.
 
-If result is `CHANGES REQUESTED` or `REJECTED`: proceed to Step 2. Do not update the design doc status header.
+**Three exclusive branches. Evaluate in order and take the first that matches** — the finding counts decide, not the `**Status:**` string alone, because a Medium-only review and a High-bearing review both write `CHANGES REQUESTED`:
+
+1. **`APPROVED`** → the header edit above, then Step 5. Skip Steps 2 and 3.
+2. **`CHANGES REQUESTED` with zero Critical and zero High** — the Medium-only path → **Step 2 with `exit_to = Step 5`**, then Step 5. Skip Step 3. This path counts as no loop pass.
+3. **`CHANGES REQUESTED` with one or more Critical or High, or `REJECTED`** → **Step 2 with `exit_to = Step 3`**, the full cycle. Do not update the design doc status header.
+
+`exit_to` is Step 2's only parameter and it is mandatory: Step 2's own terminal lines name it rather than a literal step number, so branch 2 cannot be overridden by the step it delegates to.
+
+**Branch 2 runs the open-questions gate once, between Step 2 and the approval write.** Step 2 edits `design.md` and may introduce new `## 8. Open Questions` items despite the prohibition; the gate that catches that is scoped to Step 3, and branch 2 has no Step 3. Without this the doc reaches `**Status:** Approved` carrying unresolved open questions — the Phase 2 blocking condition — and nothing downstream recovers it: `/verify-docs` has no open-question handling and `/implement`'s precondition 1(e) checks only *on-device* open questions.
+
+```
+Read ~/.claude/skills/workflows/design-open-questions-gate/SKILL.md
+```
+
+A fire routes to the **Gate re-fire handling** in Actions, with the same message the Protocol Deviations section states. Do not write the approval and do not proceed to Step 5.
+
+**On branch 2 the orchestrator writes the approval itself, in two places.** **Perform this write only after Step 2 completes and its own gate passes — `/verify-docs` reporting no blockers, and `doc-metrics` showing no `OVER-CEILING` row — immediately before entering Step 5**; never before Step 2 runs. An early write publishes `APPROVED` planning state and sets the design doc's header on a doc whose fixes are blocked, turning a loud stop into a silently approved design. In `design-review.md`, overwrite `**Status:**` to `APPROVED`, `**Assessment:**` to `✅ Approve`, and `## Recommendation` to name the closed findings, then add a `## Mediums Fixed Without Re-Review` heading listing them. The `design.md` half is **not** written here: it is a numbered item inside Step 5, performed after the revision bump, because Step 2 modified the doc and the bump moves it to `N+1`. Step 5 sets `**Status:** Approved` and writes `**Approved:** <YYYY-MM-DD>, at Revision <N+1>, by design review (Mediums fixed without re-review)`, reading the bumped value rather than the pre-fix one. Branch 1's parenthetical — "the doc was not modified in this run" — is false here and must not be copied.
+
+**What branch 2 gives up:** no review pass grades those fixes; it rests on `/verify-docs` reporting no blockers at the end of Step 2. Take branch 3 instead when Step 2's report says a fix **changed a heading, requirement ID, or contract read by more than one section**, or **added a subsection, option, or mechanism rather than removing text** — Step 2's agent instructions require that report. A design fix pass produced all seven of one round's Highs on this repo's own record.
 
 ### Step 2: Fix all findings
 
@@ -73,6 +91,7 @@ Invoke **architecture-research-planner agent** with:
 - The full design doc (`design.md`)
 - The analysis doc (`analysis.md`) if it exists — for original decision context
 - The full list of findings selected above
+- **Report per finding, so the caller can choose its exit:** whether the fix changed a heading, requirement ID, or contract read by **more than one section**, and whether it **added** a subsection, option, or mechanism rather than removing text. Branch 2's decision to skip the re-review reads this and nothing else.
 - Instruction: apply all fixes to `design.md` in one pass; stay at the architectural level; validate any Mermaid diagrams that are added or modified; do not insert RESOLVED markers or finding IDs into the design doc; do NOT add new items to `## 8. Open Questions` — if something cannot be resolved architecturally while applying fixes, flag it as an unaddressable finding instead; flag explicitly any finding that cannot be addressed; do not modify the `**Revision:**` or `**Status:**` header fields — these are managed by the command outside the agent invocation
 - **Instruction — resolve by subtraction where subtraction is the honest fix:** rewriting or deleting text is a valid way to resolve a finding, not a lesser one. Reach for it first when the finding reports ambiguity, contradiction, redundancy, or an unsupported claim — the cause is usually text that should not be there, and adding a clarification on top leaves the original problem in place with a caveat attached. Add text when the finding reports a genuine gap; remove or rewrite it when the finding reports that existing text is wrong, unclear, or duplicated. Before deleting a section, check for inbound cross-references and update them in the same pass — an orphaned reference trips `/verify-docs` on the next step.
 
@@ -92,7 +111,7 @@ Invoke **architecture-research-planner agent** with:
 
 **After the agent completes, set `design_modified = true`.**
 
-**If the architecture-research-planner flags any finding as unaddressable:** run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md` (the agent just completed, so the doc may have been partially modified — bump unconditionally). Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Surface the finding and output:
+**If the architecture-research-planner flags any finding as unaddressable:** run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md` (the agent just completed, so the doc may have been partially modified — bump unconditionally). Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the finding and output:
 ```
 Design review loop paused — unaddressable finding
 Iterations completed: [iteration]
@@ -101,13 +120,13 @@ Re-invoke /review-design-fix-loop after resolving the unaddressable finding via 
 Do not proceed to Step 3.
 
 **Run `/verify-docs`** on the modified design doc, passing the `<issue-folder>` resolved in the Prerequisite section. Without the folder, `/verify-docs` has nothing to enumerate — `git diff` never lists a planning doc — so both its scans run over an empty file list and it reports `Clean`, taking the citation gate and the register gate with it.
-- If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles (2 is sufficient; more signals a structural issue requiring design changes, not iterative fixes). If blockers clear within 2 cycles, proceed to Step 3. If blockers persist after 2 cycles, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Surface the blocker and output:
+- If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles (2 is sufficient; more signals a structural issue requiring design changes, not iterative fixes). If blockers clear within 2 cycles, proceed to `exit_to`. If blockers persist after 2 cycles, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the blocker and output:
 ```
 Design review loop paused — consistency blockers after 2 fix cycles
 Iterations completed: [iteration]
 Re-invoke /review-design-fix-loop after resolving the doc consistency issues.
 ```
-- If warnings only: proceed to Step 3 (warnings are non-blocking).
+- If warnings only: proceed to `exit_to` (warnings are non-blocking) — Step 3 on branch 3, Step 5 on branch 2. Never a literal step number.
 
 ### Step 3: Re-review
 
@@ -123,7 +142,7 @@ On the fragment's `APPROVED` row, before that row's route is taken, use the Edit
 
 ### Stall stop
 
-If the same root-cause area (same section + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes (3 provides enough signal that the finding requires design-level intervention, not iterative fixes), run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Surface the stall and output:
+If the same root-cause area (same section + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes (3 provides enough signal that the finding requires design-level intervention, not iterative fixes), run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the stall and output:
 ```
 Design review loop paused — stall detected
 Finding area [section/component] unresolved after 3 passes.
@@ -164,7 +183,7 @@ Redesign is required — resolve via /design, then re-invoke /review-design-fix-
 
 Step 1 gate re-fire is not possible — the pre-Step-1 gate in the Prerequisite section just passed, so no new open questions exist at that point. This section covers only Step 3.
 
-When the open questions gate fires during a review pass (Step 3): if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`. Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`). This is a terminal stop. Output:
+When the open questions gate fires during a review pass (Step 3): if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`. Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Output:
 ```
 Design review loop paused — new open questions introduced
 Iterations completed: [iteration]
@@ -180,21 +199,26 @@ Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md
 ```
 This is one increment per fix loop run regardless of how many iterations Step 2 executed.
 
+**On branch 2 only, write the `design.md` header now — after the bump, never before it.** Set `**Status:** Draft` to `**Status:** Approved` and add `**Approved:** <YYYY-MM-DD>, at Revision <N+1>, by design review (Mediums fixed without re-review)`, reading `**Revision:**` after the bump above so the recorded number is the one the doc carries. Branch 1 wrote its header at Step 1 with no bump and reaches this step with nothing to do; branch 3 reaches it through the fragment's `APPROVED` row, which writes its own.
+
 Verify the status marker:
 ```bash
 head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md | grep -m 1 '^\*\*Status:\*\*'
 ```
 
+**Branch on the value, do not print it unchecked.** If the marker is not `APPROVED`, stop and surface the mismatch instead of running the planning fragment or printing the completion line — branch 2 is the first route on which the orchestrator writes this marker itself, so it is the first on which the marker and the report can disagree.
+
 Run the review-planning-update fragment (which includes push):
 ```
 Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 ```
-(`approved_phase = implementing 🔨`, `review_label = design review`, `approved_next = ready for implementation`, `escalation = standard`)
+(`approved_phase = implementing 🔨`, `review_label = design review`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`)
 
 Output:
 ```
 Design review loop complete: APPROVED
-Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
+Mediums fixed without re-review: [finding IDs, or "none"]
 Design doc: [before] → [after] prose words ([+/-N]), register [before] → [after]
 Design doc: not modified   (print this line instead when Step 1 returned APPROVED)
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md

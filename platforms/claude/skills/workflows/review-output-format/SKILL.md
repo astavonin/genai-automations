@@ -13,6 +13,8 @@ metadata:
 
 Markdown report template for **code reviews** and **fix reviews**. Design and spec reviews use their own templates (see `review-design.md` and `review-spec.md`).
 
+**`## Assessment Criteria` below is the exception — it is the canonical approval bar for every review type**, including the design, spec and article reviews whose report templates live elsewhere. Those commands restate it; this is the copy to edit.
+
 ## Caller Must Specify
 
 - **`review_type`** — `Code Review` or `Fix Review` (used as the H1 title)
@@ -123,8 +125,18 @@ IDs are prefixed by severity: `C` = Critical, `H` = High, `M` = Medium, `L` = Lo
 
 ## Assessment Criteria
 
-- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings
-- ⚠️ **Request Changes:** One or more High or Medium findings — fix and re-review
+- ✅ **Approve:** Zero Critical and zero High findings, **and every Medium fixed**
+- ⚠️ **Request Changes:** One or more Critical or High findings — fix and re-review
 - ❌ **Reject:** One or more Critical findings — redesign needed
 
-**Fix reviews use a different bar** — zero Critical and zero High, defined in `review-fix.md` → Assessment. Its scope is one fix, not a whole feature, and its regression severities are all raised to High to compensate. When `review_type = Fix Review`, that command's thresholds govern.
+**A Medium costs a fix, not a round.** Only a Critical or a High sends the work back through another review. Where a review returns zero Critical and zero High with Mediums open, those Mediums are fixed and the approval follows — no re-review of the Medium fixes. This is what the change buys: the fix work is unchanged, the extra review round is not spent.
+
+**Name every Medium fixed on that path** in the conversational report, since no review pass ever graded those fixes. An approval reached this way rests on the fixes being small and mechanically verified — the build and test suites still run — not on a reviewer having read them.
+
+**Scope of this criterion:** the **initial** review pass of code, design, spec and article reviews, and of the three `*-fix-loop` commands that wrap them. Three callers are out of scope and stay out:
+
+- **Fix reviews keep their own bar** (`review-fix.md` → Assessment) — zero Critical and zero High, **Mediums uncounted**, with every observed-failure regression severity raised to High in compensation. That is a looser bar on Mediums and a stricter one on regressions, not this criterion.
+- **`/review-mr` reviews merge requests we do not own** (`review-mr.md` → Step 6) — zero Critical and zero High, **Mediums uncounted**. There is no issue folder, no ledger and no fix loop, so a Medium gate would have no mechanism to satisfy.
+- **`/review-iterate` runs one unconditional final sweep** (`review-iterate.md` → Key Constraints). A Medium sends work back through a review there, which this criterion does not permit — that divergence is known and tracked, not licensed.
+
+**After the initial pass, the three fix loops diverge the same way.** Their three-branch routing sits at Step 1 only; a Step 3 re-review returning zero Critical and zero High with Mediums open matches the fragment's below-cap row and takes another full round. Known and tracked, not licensed — the same status as `/review-iterate`.

@@ -779,7 +779,7 @@ Run the full code review cycle autonomously: initial review → fix all findings
 **Preamble:** Initialize `iteration = 0` before Step 0. This counter is set exactly once at command start and is never reset mid-run.
 Code review loop paused — iteration cap reached
 Iterations completed: [iteration]
-Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 EOF
             ;;
         "$LOOP_DESIGN") cat <<'EOF'
@@ -788,7 +788,7 @@ Run the full design review cycle autonomously: initial review → fix all findin
 **Preamble:** Initialize `iteration = 0` and `design_modified = false` before Step 1. These are set exactly once at command start and never reset mid-run. Invariant: `**Revision:**` in `design.md` is incremented at most once per invocation — in Step 5 (or any earlier terminal stop path) — contingent on `design_modified = true`.
 Iterations completed: [iteration]
 Design review loop paused — iteration cap reached
-Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 EOF
             ;;
         "$LOOP_ARTICLE") cat <<'EOF'
@@ -797,7 +797,7 @@ Run the full article review cycle autonomously: initial review → fix all findi
 **Preamble:** Initialize `iteration = 0` before Step 1. Set exactly once at command start; never reset mid-run.
 Iterations completed: [iteration]
 Article review loop paused — iteration cap reached
-Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 EOF
             ;;
     esac

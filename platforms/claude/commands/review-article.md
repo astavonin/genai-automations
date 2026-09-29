@@ -295,8 +295,8 @@ Always include. Write "None." if empty.
 
 ## Assessment
 
-- ✅ **Approve:** Zero High findings. Medium findings do not block (unlike `/review-code`).
-- ⚠️ **Request Changes:** One or more High findings.
+- ✅ **Approve:** Zero Critical and zero High findings, and every Medium fixed — the same Approve and Request-Changes bar every review type now uses (`review-output-format/SKILL.md` → Assessment Criteria); the ❌ Reject row does not apply here, since `## File Overwrite Convention` admits only two Status values. A Medium costs a fix, not a round.
+- ⚠️ **Request Changes:** One or more Critical or High findings, **or open Mediums**. Without the Medium clause, zero-Critical/zero-High with Mediums open matches neither bullet, and `## File Overwrite Convention` admits only two Status values — so the reachable value is `APPROVED`, the loop skips Step 2, and the Mediums this command's own frontmatter promises to fix are never fixed.
 
 Verify the status marker:
 
@@ -317,6 +317,8 @@ or any revision cycle. Articles do not carry a status header in the article file
 
 1. Edit the article file to address the findings.
 2. Re-run `/review-article`.
+
+**Unless the resolved findings were Mediums only.** A Medium costs a fix, not a round, so re-running would spend the round this bar exists to save. Where the review carried zero Critical and zero High, and the Mediums are now fixed, close it without another review pass: overwrite `article-review.md`'s `**Status:**` to `APPROVED`, its `**Assessment:**` to `✅ Approve`, and its `## Recommendation` to name the closed findings; add a `## Mediums Fixed Without Re-Review` heading listing them; then run `~/.claude/skills/workflows/review-planning-update/SKILL.md` so the phase leaves `changes requested 🔄`. Without this step the work parks there indefinitely, because no other command writes that approval.
 
 ## After Final Approval: Update todos.md
 

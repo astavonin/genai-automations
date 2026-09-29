@@ -46,9 +46,17 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 
 Follow `/review-article` with the deviations listed above. Writes `article-review.md`.
 
-If result is `APPROVED`: proceed directly to Step 5. Step 1's output is already a clean report — skip Steps 2 and 3.
+**Three exclusive branches. Evaluate in order and take the first that matches** — the finding counts decide, not the `**Status:**` string alone, because a Medium-only review and a High-bearing review both write `CHANGES REQUESTED`:
 
-If result is `CHANGES REQUESTED`: proceed to Step 2.
+1. **`APPROVED`** → Step 5. Skip Steps 2 and 3.
+2. **`CHANGES REQUESTED` with zero Critical and zero High** — the Medium-only path → **Step 2 with `exit_to = Step 5`**, then Step 5. Skip Step 3. This path counts as no loop pass.
+3. **`CHANGES REQUESTED` with one or more Critical or High** → **Step 2 with `exit_to = Step 3`**, the full cycle.
+
+`exit_to` is Step 2's only parameter and it is mandatory, so branch 2 cannot be overridden by the step it delegates to.
+
+**On branch 2 the orchestrator writes the approval itself.** **Perform this write only after Step 2 completes and its own gate passes — both post-writer checks, TODO-marker preservation and annotation coherence — immediately before entering Step 5**; never before Step 2 runs. An early write publishes `APPROVED` planning state and fires the `todos.md` update on an article whose fixes are blocked. Overwrite `article-review.md`'s `**Status:**` to `APPROVED`, its `**Assessment:**` to `✅ Approve`, and its `## Recommendation` to name the closed findings, then add a `## Mediums Fixed Without Re-Review` heading listing them. Writing `**Status:**` alone leaves a report whose header approves and whose body still demands the fixes just made.
+
+**What branch 2 gives up:** no review pass grades those fixes; it rests on Step 2's two post-writer checks passing. Take branch 3 instead when Step 2's report says a fix **rewrote a claim's evidence rather than its wording**, or **moved or added a code citation** — an unreviewed prose fix can introduce the drift Scope 1.1 exists to catch.
 
 ### Step 2: Fix all findings
 
@@ -65,6 +73,7 @@ Invoke **writer (opus)** with:
 - The full `spec.md` content (for accuracy and completeness context)
 - Companion repo source files that were pre-read during the review (pass inline; the writer must not call Read itself)
 - The full list of findings selected above
+- **Report per finding, so the caller can choose its exit:** whether the fix **rewrote a claim's evidence rather than its wording**, and whether it **moved or added a code citation**. Branch 3's decision to run the re-review reads this and nothing else; without it the caller has no evidence and defaults to skipping, and the citation drift `SCOPES.md` Scope 1.1 exists to catch never escalates.
 - Instruction: apply all fixes to `draft.md` in one pass; preserve all source annotations in either form — GitHub permalinks and legacy `<!-- file: path:L10-L25 -->` comments — and all `<!-- TODO[ID] -->` markers — do not remove or reformat them; fix prose, code accuracy, completeness, and consistency issues as stated in each finding; do not add new `<!-- TODO[ID] -->` markers unless a finding explicitly requires it; flag explicitly any finding that cannot be addressed; do not make changes beyond the scope of the listed findings
 
 **If the writer flags any finding as unaddressable:** delete the snapshot, run the review-planning-update fragment (which includes push):
@@ -131,6 +140,8 @@ After both checks pass (or after surfacing a blocker), delete the snapshot:
 rm -f /tmp/article-review-todos-before.txt
 ```
 
+Then proceed to `exit_to` — Step 3 on branch 3, Step 5 on branch 2. Never a literal step number: a hardcoded Step 3 here would override the caller's branch and spend the round the Medium-only path exists to save.
+
 ### Step 3: Re-review
 
 ```
@@ -187,6 +198,8 @@ Verify the status marker:
 head -20 <issue-folder>/article-review.md | grep -m 1 '^\*\*Status:\*\*'
 ```
 
+**Branch on the value, do not print it unchecked.** If the marker is not `APPROVED`, stop and surface the mismatch instead of running the planning fragment or printing the completion line — branch 2 is the first route on which the orchestrator writes this marker itself, so it is the first on which the marker and the report can disagree.
+
 **Cross-article TODO update:** If `planning/book/todos.md` exists and the TODO scan ran (check the `**TODO scan:**` field in `article-review.md` — skip this step if the field is missing OR reads `✗ skipped`), check whether any open entries were resolved during this review cycle:
 - Type A entries (Referenced in this article) whose `<!-- TODO[ID] -->` marker was removed from the draft
 - Type B entries (Resolves in this article) whose content is now covered
@@ -202,7 +215,8 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 Output:
 ```
 Article review loop complete: APPROVED
-Iterations: [iteration]  (fix+re-review cycles; 0 if approved on first pass)
+Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
+Mediums fixed without re-review: [finding IDs, or "none"]
 Final report: <issue-folder>/article-review.md
 ```
 

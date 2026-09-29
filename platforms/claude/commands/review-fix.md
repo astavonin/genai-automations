@@ -162,7 +162,7 @@ The fix under review resolves a failure that actually happened, which makes the 
 Read ~/.claude/skills/workflows/regression-test/SKILL.md
 ```
 
-Apply its Review Severities table with the `/review-fix` rule: every finding in it is **High** here. That is what makes the gate binding under this command's Assessment thresholds below, which govern fix reviews in place of the stricter zero-Medium bar in `review-output-format/SKILL.md`.
+Apply its Review Severities table with the `/review-fix` rule: every finding in it is **High** here. That is what makes the gate binding under this command's Assessment thresholds below, which govern fix reviews in place of the canonical bar in `review-output-format/SKILL.md` — that bar requires every Medium fixed before an approval lands; this command leaves Mediums uncounted and raises every observed-failure regression severity to High instead.
 
 ## Assessment
 

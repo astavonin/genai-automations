@@ -165,9 +165,11 @@ IDs are prefixed by severity for the main Findings section (C = Critical, H = Hi
 
 ## Assessment
 
-- ✅ **Approve:** Zero Critical, zero High, and zero Medium findings **across `## Findings` and `## Reverified Findings` combined** — reverified findings carry the same weight, so an approval that ignores them is wrong → proceed to implementation
-- ⚠️ **Request Changes:** One or more High or Medium findings → fix and re-review
+- ✅ **Approve:** Zero Critical and zero High findings **across `## Findings` and `## Reverified Findings` combined**, and every Medium fixed — reverified findings carry the same weight, so an approval that ignores them is wrong → proceed to implementation
+- ⚠️ **Request Changes:** One or more Critical or High findings → fix and re-review
 - ❌ **Reject:** One or more Critical findings → return to Phase 2
+
+**A Medium costs a fix, not a round.** Zero Critical and zero High with Mediums open takes `CHANGES REQUESTED` here, since this command only reports; the Mediums are then fixed and the approval follows without a second review. `/review-design-fix-loop` does both in one run.
 
 ## After Resolving CHANGES REQUESTED Findings
 
@@ -176,6 +178,8 @@ When a review returns CHANGES REQUESTED and the findings are resolved through Q&
 1. Run `/verify-docs`, passing the resolved `<issue-folder>` (per `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md`). The folder argument is required — the command enumerates planning docs from it and from nothing else, so omitting it makes both scans report `Clean` over an empty file list.
 2. Fix any blockers reported by `/verify-docs`.
 3. Only then re-run `/review-design` for the follow-up review cycle.
+
+**Unless the resolved findings were Mediums only.** A Medium costs a fix, not a round, so re-running `/review-design` would spend the round this bar exists to save. Where the review carried zero Critical and zero High, and the Mediums are now fixed with the build and test suites passing, close it without another review pass: overwrite `design-review.md`'s `**Status:**` to `APPROVED`, its `**Assessment:**` to `✅ Approve`, and its `## Recommendation` to name the closed findings; add a `## Mediums Fixed Without Re-Review` heading listing them; then run `~/.claude/skills/workflows/review-planning-update/SKILL.md` so the phase leaves `changes requested 🔄`. Without this step the work parks there indefinitely, because no other command writes that approval.
 
 This prevents the next reviewer from raising findings that are artifacts of incomplete or inconsistent doc updates rather than genuine design issues.
 

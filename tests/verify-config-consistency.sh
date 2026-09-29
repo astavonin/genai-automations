@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=89
+EXPECTED_TESTS=91
 
 PASS=0
 FAIL=0
@@ -3110,6 +3110,169 @@ if [ -z "$bad" ]; then
     pass "fix-mr.md's 5d ledger-write paragraph states both Status shapes, the Test path, the Evidence field, the Reason clause, the replace-by-discussion_id rule, and the after-push ordering"
 else
     fail "fix-mr.md's 5d ledger-write paragraph states both Status shapes, the Test path, the Evidence field, the Reason clause, the replace-by-discussion_id rule, and the after-push ordering" "$bad"
+fi
+
+# ---------------------------------------------------------------------------
+# What these two rows do NOT catch, stated so nobody reads green as proof:
+# a sentence that keeps every pinned substring and inverts its meaning around
+# it — "…stop. This applies on branch 3 only", or "A Medium costs a fix, not a
+# round. That framing is retired." Three probes of that shape pass this gate.
+# Anti-inversion here is a keyword denylist, which loses to synonyms by
+# construction, so the denylists below are a floor and not a guarantee. What is
+# mechanically covered is deletion, renaming, count drift, misplacement between
+# branches, and reinstatement inside a pinned line or its section body.
+# ---------------------------------------------------------------------------
+# The approval bar is one text invariant across nine sites. Presence greps are
+# not enough: the reversal shape this corpus keeps producing keeps every pinned
+# literal and inverts the meaning around it, or moves a compliant line to a
+# section nobody reads. Each pin below is anchored to its own line, scoped to
+# its own section, counted, or end-anchored for that reason.
+# ---------------------------------------------------------------------------
+echo "== Approval bar agrees across every review type =="
+
+OUTFMT="$CLAUDE/skills/workflows/review-output-format/SKILL.md"
+bad=""
+canon=$(extract-section "$OUTFMT" '## Assessment Criteria' 2>/dev/null)
+if [ -z "$canon" ]; then
+    bad="extract-section found no '## Assessment Criteria' body in review-output-format/SKILL.md"
+else
+    # End-anchored: a trailing clause can otherwise reinstate the old bar inside the pinned line.
+    printf '%s\n' "$canon" | $GREP -qE '^- ✅ \*\*Approve:\*\* Zero Critical and zero High findings, \*\*and every Medium fixed\*\*$' \
+        || bad="${bad}canonical Approve bullet is not exactly 'Zero Critical and zero High findings, **and every Medium fixed**' with nothing after it; "
+    printf '%s\n' "$canon" | $GREP -qE '^- ⚠️ \*\*Request Changes:\*\* One or more Critical or High findings' \
+        || bad="${bad}canonical Request-Changes bullet does not key on Critical or High alone; "
+    n_slogan=$(printf '%s\n' "$canon" | $GREP -cF 'A Medium costs a fix, not a round.' || true)
+    [ "$n_slogan" -ge 1 ] || bad="${bad}Assessment Criteria drops the 'costs a fix, not a round' rule; "
+    # The slogan must not be followed by a withdrawal in the same paragraph.
+    printf '%s\n' "$canon" | $GREP -qiE 'costs a fix, not a round\.[^.]*(withdrawn|no longer|does not hold|exactly as a High)' \
+        && bad="${bad}the 'costs a fix, not a round' rule is contradicted in the sentence after it; "
+    printf '%s\n' "$canon" | $GREP -qiE 'zero Medium findings|High, or Medium findings|no Medium of any kind|never approvable' \
+        && bad="${bad}the old zero-Medium bar is reinstated somewhere in Assessment Criteria; "
+    printf '%s\n' "$canon" | $GREP -qE 'Three callers are out of scope' \
+        || bad="${bad}the out-of-scope enumeration does not read 'Three callers'; "
+    for oos in 'review-fix.md' 'review-iterate.md' 'review-mr.md'; do
+        printf '%s\n' "$canon" | $GREP -qF "$oos" \
+            || bad="${bad}out-of-scope list omits $oos; "
+    done
+fi
+
+# Each restating site: scoped to its own ## Assessment body, exactly one Approve bullet,
+# and its Request-Changes bullet pinned too — an unpinned one restored two round-1 defects.
+for rel in commands/review-code.md commands/review-design.md commands/review-spec.md commands/review-article.md; do
+    body=$(extract-section "$CLAUDE/$rel" '## Assessment' 2>/dev/null)
+    if [ -z "$body" ]; then
+        bad="${bad}$rel: extract-section found no '## Assessment' body; "
+        continue
+    fi
+    n_appr=$(printf '%s\n' "$body" | $GREP -c '✅ \*\*Approve:\*\*' || true)
+    [ "$n_appr" -eq 1 ] \
+        || bad="${bad}$rel: $n_appr Approve bullet(s) in ## Assessment, want exactly 1 — a second copy can state the opposite bar; "
+    # Whole-file count too: a compliant bullet in ## Assessment plus a contradicting one elsewhere passes a scoped check.
+    n_file=$($GREP -c '✅ \*\*Approve:\*\*' "$CLAUDE/$rel" || true)
+    [ "$n_file" -eq 1 ] \
+        || bad="${bad}$rel: $n_file Approve bullet(s) in the file, want exactly 1; "
+    printf '%s\n' "$body" | $GREP -qiE '✅ \*\*Approve:\*\*.*[Zz]ero Critical and zero High' \
+        || bad="${bad}$rel: Approve bullet does not carry 'zero Critical and zero High'; "
+    printf '%s\n' "$body" | $GREP -qF 'every Medium fixed' \
+        || bad="${bad}$rel: Approve bullet does not require every Medium fixed; "
+    printf '%s\n' "$body" | $GREP -qiE 'zero Medium findings|High, or Medium findings|never approvable|no Medium of any kind' \
+        && bad="${bad}$rel: the old zero-Medium bar is reinstated inside ## Assessment; "
+    printf '%s\n' "$body" | $GREP -qiE '⚠️ \*\*Request Changes:\*\*.*[Oo]ne or more Critical or High' \
+        || bad="${bad}$rel: Request-Changes bullet does not key on 'Critical or High'; "
+    # review-article and review-spec route the Medium case through this bullet and nothing else —
+    # their File Overwrite Conventions admit only two Status values, so without the clause a
+    # zero-Critical/zero-High review with open Mediums matches no bullet and reaches APPROVED.
+    # review-code and review-design carry the same case in their own prose paragraph instead.
+    case "$rel" in
+      commands/review-article.md|commands/review-spec.md)
+        printf '%s\n' "$body" | $GREP -qiE '⚠️ \*\*Request Changes:\*\*.*or open Mediums' \
+            || bad="${bad}$rel: Request-Changes bullet drops 'or open Mediums' — the Medium case then maps to no bullet; " ;;
+    esac
+done
+
+# The checklist carries both halves in table rows, which the change rewrote and nothing pinned.
+cl="$CLAUDE/skills/domains/quality-attributes/references/review-checklist.md"
+$GREP -qE '^\| ✅ \*\*Approve\*\* \| Zero Critical and zero High findings, and every Medium fixed' "$cl" \
+    || bad="${bad}review-checklist.md Approve row does not carry the new bar; "
+$GREP -qE '^\| ⚠️ \*\*Request Changes\*\* \| One or more Critical or High findings' "$cl" \
+    || bad="${bad}review-checklist.md Request-Changes row does not key on Critical or High; "
+$GREP -m1 -E '^\| \*\*Medium\*\*' "$cl" | $GREP -qF 'costs a fix, not another review round' \
+    || bad="${bad}review-checklist.md Medium severity row does not state 'costs a fix, not another review round'; "
+
+if [ -z "$bad" ]; then
+    pass "the approval bar reads 'zero Critical and zero High, every Medium fixed' at the canonical site and all four restating commands, each with exactly one Approve bullet, its Request-Changes bullet pinned, and no reinstatement of a zero-Medium bar"
+else
+    fail "the approval bar reads 'zero Critical and zero High, every Medium fixed' at the canonical site and all four restating commands, each with exactly one Approve bullet, its Request-Changes bullet pinned, and no reinstatement of a zero-Medium bar" "$bad"
+fi
+
+bad=""
+for rel in commands/review-code-fix-loop.md commands/review-design-fix-loop.md commands/review-article-fix-loop.md; do
+    f="$CLAUDE/$rel"
+    # Anchored to the numbered branch each belongs to: a whole-file grep for both literals
+    # is satisfied when they are swapped between branches, which inverts the routing entirely.
+    $GREP -qE '^2\. \*\*`CHANGES REQUESTED` with zero Critical and zero High\*\*.*`exit_to = Step 5`' "$f" \
+        || bad="${bad}$rel: branch 2 is absent or does not route Step 2 to Step 5; "
+    $GREP -qE '^3\. \*\*`CHANGES REQUESTED` with one or more Critical or High.*`exit_to = Step 3`' "$f" \
+        || bad="${bad}$rel: branch 3 is absent or does not route Step 2 to Step 3; "
+    # Step 2's own exit must defer to the parameter, never name a literal step.
+    exitline=$($GREP -m1 -nE '^[-[:space:]]*.*proceed to `exit_to`' "$f" | head -1)
+    [ -n "$exitline" ] \
+        || bad="${bad}$rel: Step 2 has no exit line deferring to \`exit_to\`; "
+    # A negated mention ("Do not proceed to Step 3.") is legitimate text, so the pin
+    # excludes any line whose 'proceed' is preceded by a negation on the same line.
+    $GREP -E 'proceed to Step 3\.$' "$f" | $GREP -qviE '(do not|don'"'"'t|never|must not) proceed' \
+        && bad="${bad}$rel: a literal 'proceed to Step 3.' exit survives and overrides branch 2; "
+    $GREP -qF '## Mediums Fixed Without Re-Review' "$f" \
+        || bad="${bad}$rel: does not name the '## Mediums Fixed Without Re-Review' heading; "
+    $GREP -qF 'Mediums fixed without re-review:' "$f" \
+        || bad="${bad}$rel: Step 5 Output block does not disclose the Mediums it closed; "
+    $GREP -qE '^Iterations: \[iteration\]  \(fix\+re-review cycles; 0 when no re-review ran\)$' "$f" \
+        || bad="${bad}$rel: Iterations gloss still claims 'approved on first pass'; "
+    # The three-field write and the marker branch are what keep an early or failed write loud.
+    $GREP -qE '\*\*Assessment:\*\*.*✅ Approve' "$f" \
+        || bad="${bad}$rel: branch 2 does not overwrite **Assessment:** alongside **Status:**; "
+    $GREP -qiE 'if the marker is not `APPROVED`, stop' "$f" \
+        || bad="${bad}$rel: Step 5 does not stop on a non-APPROVED marker; "
+    # The position must be stated, and it must name a gate this loop actually runs —
+    # an earlier draft said "the build and both test suites pass" in all three, which two
+    # of them execute nowhere, so the precondition read as satisfied by default.
+    $GREP -qF 'immediately before entering Step 5' "$f" \
+        || bad="${bad}$rel: branch 2's approval write has no stated position in the sequence; "
+    $GREP -qiE 'after Step 2 completes and its own gate passes' "$f" \
+        || bad="${bad}$rel: branch 2's precondition does not defer to this loop's own Step 2 gate; "
+    $GREP -qiE 'both test suites pass' "$f" \
+        && bad="${bad}$rel: branch 2's precondition claims a test-suite gate this loop does not run; "
+    # Branch 3's escape reads a per-finding report Step 2 must be told to produce.
+    $GREP -qF 'Report per finding, so the caller can choose its exit' "$f" \
+        || bad="${bad}$rel: Step 2's agent instruction omits the per-finding report branch 3 reads; "
+done
+# Clauses with no pin at all before this: the standalone writer paragraph that F6 added, and
+# the design Approve bullet's scope clause that the same bullet calls load-bearing.
+$GREP -qF 'Unless the resolved findings were Mediums only' "$CLAUDE/commands/review-code.md" \
+    || bad="${bad}review-code.md lost the standalone Mediums-only writer paragraph; "
+$GREP -qF 'Unless the resolved findings were Mediums only' "$CLAUDE/commands/review-design.md" \
+    || bad="${bad}review-design.md lost the standalone Mediums-only writer paragraph; "
+$GREP -qF 'After Resolving a Mediums-Only Review' "$CLAUDE/commands/review-spec.md" \
+    || bad="${bad}review-spec.md lost its Mediums-only writer section; "
+$GREP -qF 'Unless the resolved findings were Mediums only' "$CLAUDE/commands/review-article.md" \
+    || bad="${bad}review-article.md lost the standalone Mediums-only writer paragraph; "
+$GREP -m1 -F '✅ **Approve:**' "$CLAUDE/commands/review-design.md" \
+    | $GREP -qF 'across `## Findings` and `## Reverified Findings` combined' \
+    || bad="${bad}review-design.md's Approve bullet drops the Findings+Reverified scope clause; "
+# Branch 2's design.md header write must sit after Step 5's revision bump, not at Step 1.
+$GREP -qF 'write the `design.md` header now — after the bump, never before it' "$CLAUDE/commands/review-design-fix-loop.md" \
+    || bad="${bad}review-design-fix-loop.md: branch 2's design.md header write is not placed after the revision bump; "
+$GREP -qF 'The `design.md` half is **not** written here' "$CLAUDE/commands/review-design-fix-loop.md" \
+    || bad="${bad}review-design-fix-loop.md: Step 1 branch 2 does not defer the design.md write to Step 5; "
+
+# The fragment routes into Step 2 on every below-cap round and must supply the parameter.
+$GREP -qF 'exit_to' "$CLAUDE/skills/workflows/fix-loop-round/SKILL.md" \
+    || bad="${bad}fix-loop-round/SKILL.md does not set exit_to on its own route into Step 2; "
+
+if [ -z "$bad" ]; then
+    pass "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, and the Step 5 disclosure"
+else
+    fail "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, and the Step 5 disclosure" "$bad"
 fi
 
 echo
