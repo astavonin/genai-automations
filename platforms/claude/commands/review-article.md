@@ -298,6 +298,14 @@ Always include. Write "None." if empty.
 - ✅ **Approve:** Zero Critical and zero High findings, and every Medium fixed — the same Approve and Request-Changes bar every review type now uses (`review-output-format/SKILL.md` → Assessment Criteria); the ❌ Reject row does not apply here, since `## File Overwrite Convention` admits only two Status values. A Medium costs a fix, not a round.
 - ⚠️ **Request Changes:** One or more Critical or High findings, **or open Mediums**. Without the Medium clause, zero-Critical/zero-High with Mediums open matches neither bullet, and `## File Overwrite Convention` admits only two Status values — so the reachable value is `APPROVED`, the loop skips Step 2, and the Mediums this command's own frontmatter promises to fix are never fixed.
 
+**Report the outcome in the conversation.**
+
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
+State its line, unprompted: **`Another round: yes|no — <reason>`**. The fragment carries the signals the reason rests on; do not restate them here.
+
 Verify the status marker:
 
 ```

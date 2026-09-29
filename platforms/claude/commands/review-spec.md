@@ -160,6 +160,12 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 
 7. **Report the outcome in the conversation:** the status marker, finding counts by severity, and the single most severe finding as one line. Nothing else — the report file holds the detail.
 
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
+State its line, unprompted: **`Another round: yes|no — <reason>`**. The fragment carries the signals the reason rests on; do not restate them here.
+
 8. **Phase gate (MANDATORY):** do not auto-invoke `/write`, `/spec`, or any other command. Wait for the user. Reviewer `APPROVED` is NOT authorization — it is a precondition for asking. Conversational acknowledgements (see Definitions in CLAUDE.md) are NOT authorization.
 
 ## Appendix-Spec Criteria (MANDATORY — paste whole into every reviewer and every Step G verifier prompt)

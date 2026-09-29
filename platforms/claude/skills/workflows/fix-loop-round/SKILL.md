@@ -35,7 +35,7 @@ Two things about this table are load-bearing. Position 1 is `iteration`'s only i
 
 ## The Cap-Pause Block
 
-Every loop holds a `### Cap-pause` heading, the name this table's cap row routes to. Its shape is fixed here and restated in no loop: the loop's own cleanup and revision steps, in the order its other terminal stops already use, then `review-planning-update` with all five parameters (`issue_folder` included), then the message below with its four values filled in. What reaches it is whatever verdicts the calling loop's own review command admits beyond APPROVED — `CHANGES REQUESTED` and `REJECTED` for a three-state loop, `CHANGES REQUESTED` alone for a loop whose review command's File Overwrite Convention has no `REJECTED` state.
+Every loop holds a `### Cap-pause` heading, the name this table's cap row routes to. Its shape is fixed here and instantiated in each loop with that loop's four values: the loop's own cleanup and revision steps, in the order its other terminal stops already use, then `review-planning-update` with all five parameters (`issue_folder` included), then the message below with its four values filled in. What reaches it is whatever verdicts the calling loop's own review command admits beyond APPROVED — `CHANGES REQUESTED` and `REJECTED` for a three-state loop, `CHANGES REQUESTED` alone for a loop whose review command's File Overwrite Convention has no `REJECTED` state.
 
 One message form per verdict the loop can reach. Four values are filled in per loop, read off that loop's own other paused stops rather than invented fresh here: the **label** on the first line, the **report path**, the **command** name, and the **recovery** action.
 
@@ -45,6 +45,7 @@ One message form per verdict the loop can reach. Four values are filled in per l
 [label] paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in [report path].
+Another round: [yes|no] — [reason]
 [recovery]
 ```
 
@@ -54,10 +55,13 @@ N finding(s) open in [report path].
 [label] paused — iteration cap reached
 Iterations completed: [iteration]
 [report path] was rejected.
+Another round: [yes|no] — [reason]
 [recovery]
 ```
 
 A loop that never reaches `REJECTED` at the cap needs only the first form.
+
+The `Another round:` line is the verdict `~/.claude/skills/workflows/round-verdict/SKILL.md` defines. It belongs here and not only in the loop's Step 5 because the cap is an exit where a human decides whether to continue, and the loop's own report never runs on this path.
 
 ## Caller Must Specify (at the Read call site)
 
@@ -69,6 +73,6 @@ A loop that never reaches `REJECTED` at the cap needs only the first form.
 - **the message's four values** — `label`, `report path`, `command`, `recovery` — filled in per loop, per verdict, from that loop's own other paused stops.
 - **the `Read` call precedes the launch sentence** — the caller's Step 3 reads this fragment before running its own review pass; a launch sentence read first runs the pass twice, once on its own and once again as this fragment's position 2.
 
-**What this contract is checked by.** Four of the six obligations above are asserted by `tests/verify-workflow-safety.sh`: the two headings and the order their procedures run in, the `Step 2` / `Step 5` numbers the Next column names, and that the `Read` call precedes the launch sentence. A fifth — the `iteration` preamble initialisation — is asserted separately, by the same suite's check on each loop's preamble. The message's four values are not asserted as a group: a wrong fill is visible in the block that holds it, and this repo's test-authoring rule extracts no guard for a value that cannot drift silently — the one exception is the article loop's report path, which `tests/verify-config-consistency.sh` checks as a prohibited hardcoded form rather than a required one.
+**What this contract is checked by.** Five of the seven obligations above are asserted by `tests/verify-workflow-safety.sh` (`tests/verify-config-consistency.sh` pins that the `exit_to` bullet exists, not what it says): the two headings and the order their procedures run in, the `Step 2` / `Step 5` numbers the Next column names, and that the `Read` call precedes the launch sentence. A fifth — the `iteration` preamble initialisation — is asserted separately, by the same suite's check on each loop's preamble. The message's four values are not asserted as a group: a wrong fill is visible in the block that holds it, and this repo's test-authoring rule extracts no guard for a value that cannot drift silently — the one exception is the article loop's report path, which `tests/verify-config-consistency.sh` checks as a prohibited hardcoded form rather than a required one.
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts that position 1 of `## The Round` names `iteration` as its increment, that the branch table has exactly one APPROVED row and three `not APPROVED` rows in stall-then-below-cap-then-at-or-above-cap order with each `Next` cell anchored to its own column, that the cap row reads `at or above` rather than `equal to`, that the `Step 5` and `Step 2` names above resolve in every loop that reads this fragment, and that the `### Cap-pause` / `### Stall stop` names match the headings each loop provides. `tests/verify-config-consistency.sh` asserts the `## Caller Must Specify` heading above keeps its mandatory wording — an optional-parameter reword of that heading anywhere under `skills/` fails that suite. Editing the position table, the branch table, the cap value, or the heading wording without re-running both is how this drifts silently.

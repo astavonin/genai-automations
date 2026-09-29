@@ -20,6 +20,7 @@ Implementation exists on the branch. No existing review file required — this c
 
 When running any review pass in this command (Steps 1 and 3), deviate from the `/review-code` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
 
+- **Skip** the round-verdict step — `/review-code` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
@@ -51,7 +52,7 @@ Follow `/review-code` with the deviations listed above. Writes `code-review.md`.
 
 **On branch 2, the orchestrator writes the approval itself.** **Perform this write only after Step 2 completes and its own gate passes — the build check Step 2 runs, and `/verify-docs` where Step 2 invoked it — immediately before entering Step 5**; never before Step 2 runs. An early write publishes `APPROVED` planning state and satisfies `/implement`'s precondition 2 even when Step 2 then blocks, turning a loud stop into a silently approved issue. Overwrite three fields in `code-review.md` together — `**Status:**` to `APPROVED`, `**Assessment:**` to `✅ Approve`, and `## Recommendation` to name the closed findings — then add a `## Mediums Fixed Without Re-Review` heading listing every finding the pass closed. Writing `**Status:**` alone leaves a report whose header approves and whose body still demands the fixes that were just made.
 
-**What branch 2 gives up, stated so it is a choice and not an accident:** no review pass grades those fixes. It rests on Step 2's own gate — the build check — passing at the end of Step 2. Take branch 3 instead when Step 2's report says a fix **touched a symbol, heading, or config value read at more than one site**, or **added a branch, flag, or section rather than removing text** — Step 2's agent instructions require that report, so this is a decision on evidence, not a guess. A fix pass has been the dominant source of the next round's findings in four of the nine rounds this repo has logged.
+**What branch 2 gives up, stated so it is a choice and not an accident:** no review pass grades those fixes. It rests on Step 2's own gate — the build check — passing at the end of Step 2. Take branch 3 instead when Step 2's report says a fix **touched a symbol, heading, or config value read at more than one site**, or **added a branch, flag, or section rather than removing text** — Step 2's agent instructions require that report, so this is a decision on evidence, not a guess. A fix pass is the single most common source of the next round's findings on this repo's record — the running tally lives in `planning/genai-automations/stream-loop-control.md`, not here, because a count in a command file goes stale on the next round and this one already did.
 
 Step 2's "fix all Critical, High, and Medium" governs a pass that *runs*. On branch 2 the pass runs for the Mediums alone.
 
@@ -98,7 +99,10 @@ Pass the coder's fix response alongside the prior `code-review.md` — it record
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file. Editing the step numbering, the headings, the pointer, or the launch sentence's opening word without re-running both is how this drifts silently.
 
+
 ### Stall stop
+
+The blocker message this prints carries the verdict as its last line: `Another round: [yes|no] — [reason]`. A stall is an exit where a human decides whether to continue, and this block does not route through Step 5.
 
 If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
 
@@ -115,6 +119,7 @@ Report to the user and stop. If the re-review that reached the cap returned `CHA
 Code review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md.
+Another round: [yes|no] — [reason]
 Fix them manually, or re-invoke /review-code-fix-loop to continue.
 ```
 
@@ -123,10 +128,18 @@ If it returned `REJECTED`:
 Code review loop paused — iteration cap reached
 Iterations completed: [iteration]
 planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md was rejected.
+Another round: [yes|no] — [reason]
 Redesign is required — resolve via /design, then re-invoke /review-code-fix-loop.
 ```
 
 ### Step 5: Report and stop
+
+The verdict this step prints, and the signals its reason rests on:
+
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
 
 Verify the status marker — read it and **branch on the value**, do not print it unchecked:
 ```
@@ -152,6 +165,7 @@ Output:
 Code review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
+Another round: [yes|no] — [reason]
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md
 ```
 

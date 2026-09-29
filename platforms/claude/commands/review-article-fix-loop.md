@@ -29,6 +29,7 @@ Every `/review-article` pass below (Steps 1 and 3) receives the same issue-folde
 
 When running any review pass in this command (Steps 1 and 3), deviate from the `/review-article` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
 
+- **Skip** the round-verdict step — `/review-article` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
@@ -152,7 +153,10 @@ Follow `/review-article` with the deviations listed above. **Pass the current `a
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file, and that the `### Cap-pause` message below names its report under `<issue-folder>/article-review.md` rather than a hardcoded milestone-form path — any `milestone-XX` segment, not one fixed literal. Editing the step numbering, the headings, the pointer, the report path, or the launch sentence's opening word without re-running both is how this drifts silently.
 
+
 ### Stall stop
+
+The blocker message this prints carries the verdict as its last line: `Another round: [yes|no] — [reason]`. A stall is an exit where a human decides whether to continue, and this block does not route through Step 5.
 
 If the same root-cause area (same article section + same scope criterion — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, delete the snapshot, then run the review-planning-update fragment (which includes push):
 ```bash
@@ -188,10 +192,18 @@ Report to the user and stop:
 Article review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in <issue-folder>/article-review.md.
+Another round: [yes|no] — [reason]
 Fix them manually, or re-invoke /review-article-fix-loop to continue.
 ```
 
 ### Step 5: Report and stop
+
+The verdict this step prints, and the signals its reason rests on:
+
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
 
 Verify the status marker:
 ```bash
@@ -217,6 +229,7 @@ Output:
 Article review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
+Another round: [yes|no] — [reason]
 Final report: <issue-folder>/article-review.md
 ```
 

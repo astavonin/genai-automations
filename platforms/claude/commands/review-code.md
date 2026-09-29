@@ -90,6 +90,12 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
 
 5b. **Report the outcome in the conversation:** the status marker, finding counts by severity, and the single most severe finding as one line. Nothing else — the report file holds the detail. This is a ceiling, not a template: a review aggregates 3–5 parallel agents plus Codex, and without it the aggregate lands in the conversation instead of the file.
 
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
+State its line, unprompted: **`Another round: yes|no — <reason>`**. The fragment carries the signals the reason rests on; do not restate them here.
+
 6. **Update planning state** (`approved_phase = code review ✅`, `review_label = code review`, `approved_next = ready for MR`, `escalation = elevated`):
    ```
    Read ~/.claude/skills/workflows/review-planning-update/SKILL.md

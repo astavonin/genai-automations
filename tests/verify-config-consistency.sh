@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=91
+EXPECTED_TESTS=93
 
 PASS=0
 FAIL=0
@@ -3265,14 +3265,81 @@ $GREP -qF 'write the `design.md` header now — after the bump, never before it'
 $GREP -qF 'The `design.md` half is **not** written here' "$CLAUDE/commands/review-design-fix-loop.md" \
     || bad="${bad}review-design-fix-loop.md: Step 1 branch 2 does not defer the design.md write to Step 5; "
 
-# The fragment routes into Step 2 on every below-cap round and must supply the parameter.
-$GREP -qF 'exit_to' "$CLAUDE/skills/workflows/fix-loop-round/SKILL.md" \
-    || bad="${bad}fix-loop-round/SKILL.md does not set exit_to on its own route into Step 2; "
+if [ -z "$bad" ]; then
+    pass "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, the Step 5 disclosure, and the four standalone Mediums-only writer paragraphs"
+else
+    fail "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, the Step 5 disclosure, and the four standalone Mediums-only writer paragraphs" "$bad"
+fi
+
+# ---------------------------------------------------------------------------
+# Two single-fact checks, and deliberately no more.
+#
+# Three review rounds tried to pin this fragment's internal semantics with
+# greps. Each round found the previous round's pins evadable, and the attempt
+# produced worse defects than the one it guarded against: a 46-pin blackout, an
+# extraction the fragment's own rule redirects, and an unbound variable that
+# aborts the whole suite. What being wrong costs here is that the verdict does
+# not appear and the operator asks for it — which is what happened before the
+# feature existed. Mechanism stays proportional to that.
+#
+# So: the fragment exists, and every declared caller reads it. Both are facts a
+# grep can establish. Whether the fragment still says the right thing is read by
+# a person opening one file, which is what making it one file was for.
+# ---------------------------------------------------------------------------
+echo "== The next-round verdict: the fragment, and its callers =="
+
+VERDICT_FRAG="$CLAUDE/skills/workflows/round-verdict/SKILL.md"
+VERDICT_SITES="commands/review-code.md commands/review-design.md commands/review-spec.md commands/review-article.md commands/review-code-fix-loop.md commands/review-design-fix-loop.md commands/review-article-fix-loop.md"
+
+bad=""
+[ -f "$VERDICT_FRAG" ] \
+    || bad="round-verdict/SKILL.md does not exist — seven callers point at nothing; "
+for rel in $VERDICT_SITES; do
+    $GREP -qF 'Read ~/.claude/skills/workflows/round-verdict/SKILL.md' "$CLAUDE/$rel" \
+        || bad="${bad}$rel: does not read round-verdict/SKILL.md; "
+done
+if [ -z "$bad" ]; then
+    pass "round-verdict/SKILL.md exists and all seven declared callers read it"
+else
+    fail "round-verdict/SKILL.md exists and all seven declared callers read it" "$bad"
+fi
+
+# ---------------------------------------------------------------------------
+# The fragment's caller contract summarises its own bullet count. Both halves of
+# that sentence went stale within a day of a seventh bullet being added, so the
+# count is derived and compared rather than trusted.
+# ---------------------------------------------------------------------------
+bad=""
+frag="$CLAUDE/skills/workflows/fix-loop-round/SKILL.md"
+# Sibling counters here all widened to this shape after the same evasion three times.
+n_oblig=$(awk '/^## Caller Must Specify/{f=1;next} f&&/^## /{exit} f' "$frag" \
+    | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +' || true)
+[ "$n_oblig" -gt 0 ] \
+    || bad="${bad}## Caller Must Specify lists no obligations — the heading anchor may have been renamed; "
+
+count_sentence=$($GREP -oE '(One|Two|Three|Four|Five|Six|Seven|Eight|Nine) of the (one|two|three|four|five|six|seven|eight|nine) obligations above' "$frag")
+n_sentences=$(printf '%s\n' "$count_sentence" | $GREP -c . || true)
+if [ "$n_sentences" -eq 0 ]; then
+    bad="${bad}no 'N of the M obligations above' sentence found in fix-loop-round/SKILL.md — the wording may have drifted; "
+elif [ "$n_sentences" -gt 1 ]; then
+    bad="${bad}found $n_sentences count sentences in fix-loop-round/SKILL.md, want exactly 1 — an earlier one would shadow the real one; "
+else
+    word2num() { case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        one) echo 1;; two) echo 2;; three) echo 3;; four) echo 4;; five) echo 5;;
+        six) echo 6;; seven) echo 7;; eight) echo 8;; nine) echo 9;; *) echo 0;; esac; }
+    denom=$(word2num "$(printf '%s' "$count_sentence" | awk '{print $4}')")
+    [ "$denom" -eq "$n_oblig" ] \
+        || bad="${bad}fix-loop-round/SKILL.md declares $denom obligations but ## Caller Must Specify lists $n_oblig; "
+fi
+# Bound to the obligation bullet, not to any mention: the disclosing sentence names it too.
+awk '/^## Caller Must Specify/{f=1;next} f&&/^## /{exit} f' "$frag" \
+    | $GREP -qE '^[ ]*([0-9]+\.|[-*+]) +\*\*`exit_to`\*\*' \
+    || bad="${bad}fix-loop-round/SKILL.md has no exit_to obligation bullet; "
 
 if [ -z "$bad" ]; then
-    pass "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, and the Step 5 disclosure"
+    pass "fix-loop-round/SKILL.md's declared obligation count matches the list it summarises, and its exit_to obligation is a bullet rather than a mention"
 else
-    fail "all three fix loops carry the Medium-only branch anchored to its own numbered line, a parameterised Step 2 exit with no literal survivor, the three-field approval write with a stated position, the marker stop, and the Step 5 disclosure" "$bad"
+    fail "fix-loop-round/SKILL.md's declared obligation count matches the list it summarises, and its exit_to obligation is a bullet rather than a mention" "$bad"
 fi
 
 echo

@@ -38,6 +38,7 @@ Resolve `<issue-folder>` once and echo it. Step 2's `/verify-docs` call and the 
 
 When running any review pass in this command (Steps 1 and 3), deviate from the `/review-design` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
 
+- **Skip** the round-verdict step — `/review-design` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
@@ -140,7 +141,10 @@ On the fragment's `APPROVED` row, before that row's route is taken, use the Edit
 
 **This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that its `**Status:** Draft → Approved` edit sits here rather than on the review's removed final-clean-review step, that its Protocol Deviations status-header bullet and `## Agents` note the same two-step set with no third restatement, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file. Editing the step numbering, the status-header bullet, the pointer, or the launch sentence's opening word without re-running both is how this drifts silently.
 
+
 ### Stall stop
+
+The blocker message this prints carries the verdict as its last line: `Another round: [yes|no] — [reason]`. A stall is an exit where a human decides whether to continue, and this block does not route through Step 5.
 
 If the same root-cause area (same section + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes (3 provides enough signal that the finding requires design-level intervention, not iterative fixes), run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the stall and output:
 ```
@@ -168,6 +172,7 @@ Report to the user and stop. If the re-review that reached the cap returned `CHA
 Design review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md.
+Another round: [yes|no] — [reason]
 Resolve via /design, then re-invoke /review-design-fix-loop to continue.
 ```
 
@@ -176,6 +181,7 @@ If it returned `REJECTED`:
 Design review loop paused — iteration cap reached
 Iterations completed: [iteration]
 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md was rejected.
+Another round: [yes|no] — [reason]
 Redesign is required — resolve via /design, then re-invoke /review-design-fix-loop.
 ```
 
@@ -201,6 +207,13 @@ This is one increment per fix loop run regardless of how many iterations Step 2 
 
 **On branch 2 only, write the `design.md` header now — after the bump, never before it.** Set `**Status:** Draft` to `**Status:** Approved` and add `**Approved:** <YYYY-MM-DD>, at Revision <N+1>, by design review (Mediums fixed without re-review)`, reading `**Revision:**` after the bump above so the recorded number is the one the doc carries. Branch 1 wrote its header at Step 1 with no bump and reaches this step with nothing to do; branch 3 reaches it through the fragment's `APPROVED` row, which writes its own.
 
+The verdict this step prints, and the signals its reason rests on:
+
+```
+Read ~/.claude/skills/workflows/round-verdict/SKILL.md
+```
+
+
 Verify the status marker:
 ```bash
 head -20 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md | grep -m 1 '^\*\*Status:\*\*'
@@ -219,6 +232,7 @@ Output:
 Design review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
+Another round: [yes|no] — [reason]
 Design doc: [before] → [after] prose words ([+/-N]), register [before] → [after]
 Design doc: not modified   (print this line instead when Step 1 returned APPROVED)
 Final report: planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md
