@@ -46,7 +46,7 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
   ```bash
   codex-flow review <review-request-path>
   ```
-  **Invoke it bare — do not append anything.** A trailing `; echo "exit=$?"`, `&& echo done`, or any other command makes the shell's exit status that of the *appended* command, so a failed `codex-flow` reports success in the completion notification. The notification is faithful; wrapping it is what lies. If you want the exit code, read it from the notification rather than instrumenting for it.
+  **Invoke it bare — do not append anything, and never pipe it into another command.** A trailing `; echo "exit=$?"`, `&& echo done`, or any other command makes the shell's exit status that of the *appended* command, so a failed `codex-flow` reports success in the completion notification. Piping into `head` or `tail` has the same effect: the exit status reported becomes the pipe's, not `codex-flow`'s, so a request rejected before Codex ever launches (e.g. `Request file not found`) still exits at 0. The notification is faithful; wrapping or piping it is what lies. If you want the exit code, read it from the notification rather than instrumenting for it — the launch runs in the background, so there is no inline exit status to capture and no `pipefail` setting that would reach it, since nothing pipes `codex-flow` to begin with. To inspect the output, tail the log path in a separate call after the completion notification arrives, not inline with the launch. (`tests/verify-config-consistency.sh` reads this paragraph.)
 
 - For **code, fix, and MR reviews only:** one test-coverage Agent call (Step F)
 
@@ -146,7 +146,7 @@ Output: a deduplicated list of findings, each with:
 **Codex-skip handler:** If `codex-flow` was not launched in Step A for any reason:
 - Do NOT proceed to Steps F–H or write the review file.
 - Surface: `⚠️ Codex cross-check was not run. Review is incomplete. Launching Codex now.`
-- Run `codex-flow review <review-request-path>` with `run_in_background: true`.
+- Run `codex-flow review <review-request-path>` with `run_in_background: true`, invoked the same way Step A invokes it — bare, never piped into another command (see Step A's invocation rule above).
 - Wait for completion, then continue with Step E aggregation below.
 
 **Codex-failure handler:** Launching `codex-flow` is not the same as Codex running. It is launched with `run_in_background: true`, so the Bash tool reports success for the *launch*. **The completion notification's exit code is the authority** — a non-zero exit means no Codex review happened this round, whatever is on disk.

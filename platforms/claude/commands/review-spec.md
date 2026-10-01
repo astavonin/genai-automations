@@ -241,8 +241,8 @@ Everything else is inherited from the protocol: default REFUTED, 2-of-2 to inclu
 **Spec type:** appendix | main
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>
 **spec-verify:** <PASS/FAIL/SKIP counts, or "not applicable — main spec">
-**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable
 
 ## Findings (<N total — consensus of 3 reviewers>)
 
@@ -272,6 +272,8 @@ Single-agent Claude findings and Codex-only findings that survived Step G advers
 ```
 
 IDs are prefixed by severity in `## Findings` (B = Blocker, C = Critical, H = High, M = Medium, L = Low) and by `V` in `## Reverified Findings`. Number sequentially within each section. IDs are stable within a review session.
+
+**The Step G report line above has its alternation pinned byte-for-byte against the other two sites** — see `~/.claude/skills/workflows/review-output-format/SKILL.md`'s shared-alternation paragraph for the rule and the fourth-site guard it describes. (`tests/verify-config-consistency.sh` reads this line.)
 
 **A confirmed SP-9 blocker is filed under `## Findings` → `### Blocker` whatever its provenance** — consensus, single-agent direct inclusion, or a Codex-only finding that survived Step G. Never as a `V` entry in `## Reverified Findings`: a blocker carries no severity in the ladder, so a bar reading Critical, High and Medium counts it as zero of each and returns `APPROVED` for the spec it was raised against.
 

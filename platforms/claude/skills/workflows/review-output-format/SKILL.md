@@ -34,6 +34,7 @@ Markdown report template for **code reviews** and **fix reviews**. Design and sp
 <!-- End fix review only -->
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>
 **Class:** <value> (declared | defaulted)
 
 ## Findings (<N total — consensus of 3 reviewers>)
@@ -118,6 +119,8 @@ Findings from the Step H manual passes (Cross-Site Consistency Pass and Test Qua
 
 <rationale and required actions if not approved; reference findings by ID e.g. "Fix C1, H2 before proceeding">
 ```
+
+**The Step G report line's alternation is shared verbatim across three sites** — this template, `review-design.md`, and `review-spec.md` — and pinned byte-for-byte. A file introducing that line must carry the full `<N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>` alternation and be added to `stepg_sites` in `tests/verify-config-consistency.sh`; a copy carrying only one half of the alternation is treated as an uncontrolled fourth site by that scan. A bare field with no alternation text at all, reading only `✓ ran` with no eligible/confirmed/refuted/unparseable counts, resolves to neither half and is invisible to it — catching that is a review responsibility, not this guard's.
 
 ## ID Conventions
 

@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=93
+EXPECTED_TESTS=95
 
 PASS=0
 FAIL=0
@@ -1157,6 +1157,13 @@ VERIFY_DOC="$CLAUDE/commands/verify.md"
 # wrong under the old form, and every consumer below already needs `"${T1_ROOTS[@]}"` quoting.
 T1_ROOTS=("$ROOT/platforms" "$ROOT/tools/codex-flow/codex_flow/resources")
 
+# Declared here, not inside T7's guarded branch below: the Premise Question and Step G blocks
+# (near the end of this file) dereference this unconditionally under `set -u`, so a scalar
+# assigned only inside a conditional is the wrong shape for something read unconditionally —
+# unlike T1_ROOTS (an array), a never-set `$REVIEW_DESIGN_DOC` has no nounset exemption and
+# aborts the whole suite with no summary the moment it is first read.
+REVIEW_DESIGN_DOC="$CLAUDE/commands/review-design.md"
+
 echo "== T1: the eight struck trigger-6 literals occur nowhere under the config roots, over a non-empty, existing corpus =="
 
 # T1: deleting trigger 6 must not leave any of its own wording, or the two literals it carried,
@@ -1611,10 +1618,10 @@ if [ "${T1_ROOTS+set}" = set ]; then
     # sites instead of trusting the endpoints alone.
     T7_DOMAIN_START="It covers Functional Requirement"
     T7_DOMAIN_END="limitation of the environment"
-    REVIEW_DESIGN_DOC="$CLAUDE/commands/review-design.md"
 
     # Reuses ARCH_CLASS and DESIGN_TEMPLATE, already declared above for the class-label and
-    # doc-metrics checks, rather than redeclaring the same two paths under new names.
+    # doc-metrics checks, and REVIEW_DESIGN_DOC declared at top level beside T1_ROOTS, rather
+    # than redeclaring any of the three under new names.
     t7_files=("$ARCH_CLASS" "$DESIGN_TEMPLATE" "$REVIEW_DESIGN_DOC")
     t7_starts=(
         "### What each class demands"
@@ -3340,6 +3347,389 @@ if [ -z "$bad" ]; then
     pass "fix-loop-round/SKILL.md's declared obligation count matches the list it summarises, and its exit_to obligation is a bullet rather than a mention"
 else
     fail "fix-loop-round/SKILL.md's declared obligation count matches the list it summarises, and its exit_to obligation is a bullet rather than a mention" "$bad"
+fi
+
+echo "== Premise Question: section, paste instruction, report template, assessment exclusion, and single-copy scope (design.md, planning/genai-automations/premise-findings) =="
+
+# design.md §5.1-§5.4, §6. One accumulating block, one pass/fail call, existence-and-pointer
+# pins only — analysis.md's Clarifications record three prior defects from pinning a prose
+# rule's MEANING with greps, each worse than the rule it guarded, so this block pins only that
+# text exists and that a pointer resolves.
+premise_bad=""
+
+PREMISE_HEADING="## Premise Question (MANDATORY — pass to the three primary reviewer prompts)"
+PREMISE_QUESTION_TEXT="Should this design exist in this shape?"
+
+# Pin 1 (FR-1): the section exists with a non-empty body, extracted on the full heading —
+# extract-section matches a heading exactly or on a Label: prefix, so no shortened form resolves.
+premise_section=$(extract-section "$REVIEW_DESIGN_DOC" "$PREMISE_HEADING" 2>&1)
+premise_rc=$?
+if [ "$premise_rc" -ne 0 ] || [ -z "$premise_section" ]; then
+    premise_bad="${premise_bad}extract-section on the full Premise Question heading failed or returned an empty body (rc=$premise_rc): $premise_section; "
+fi
+
+# Pin 2 (FR-1, FR-2): the section body carries the question and the PREMISE: answer label.
+printf '%s' "$premise_section" | $GREP -qF "$PREMISE_QUESTION_TEXT" \
+    || premise_bad="${premise_bad}Premise Question section does not carry the question text; "
+printf '%s' "$premise_section" | $GREP -qF 'PREMISE:' \
+    || premise_bad="${premise_bad}Premise Question section does not carry the PREMISE: answer label; "
+
+# Pin 3 (FR-1, FR-5): Step 2's paste instruction carries the scope and the exclusion as one
+# contiguous literal — the same way STEPG_ALTERNATION below is pinned byte-for-byte — rather
+# than as three independent token checks. Three independent checks pass on a bullet inverted
+# to say no prompt carries the section (all three words still present), on a pointer stub, and
+# on the bullet relocated elsewhere in ## Actions: none of those keep the feature working, and
+# a single contiguous needle is what makes the pass message's scope claim ("Step 2 pastes it to
+# the three reviewers only") the thing actually being tested. Scoped to Step 2's own numbered
+# item, not the whole ## Actions body — which spans all ten steps with no per-step boundary —
+# extracted here (not at Pin 8 below) so both pins share one extraction.
+premise_actions_body=$(extract-section "$REVIEW_DESIGN_DOC" "## Actions" 2>/dev/null)
+if [ -z "$premise_actions_body" ]; then
+    premise_bad="${premise_bad}extract-section found no '## Actions' body in review-design.md — extraction broken; "
+else
+    # Step 2's numbered item runs from its own "2. " line to the next top-level numbered
+    # line; nested sub-bullets and fenced blocks are indented, so this never matches them.
+    premise_step2_body=$(printf '%s\n' "$premise_actions_body" | awk '
+        /^2\. / { f = 1 }
+        f && /^[0-9]+\. / && !/^2\. / { exit }
+        f { print }
+    ')
+    if [ -z "$premise_step2_body" ]; then
+        premise_bad="${premise_bad}extraction found no Step 2 body inside '## Actions' — the numbered-item boundary may have moved; "
+    else
+        PREMISE_PASTE_NEEDLE='must also carry the full "Premise Question" section below**, pasted verbatim — the three primary reviewer prompts, not the Step G verifier prompts'
+        printf '%s\n' "$premise_step2_body" | $GREP -qF "$PREMISE_PASTE_NEEDLE" \
+            || premise_bad="${premise_bad}Step 2's own body does not carry the paste-scope-and-exclusion literal verbatim; "
+    fi
+fi
+
+# Pin 4 (FR-3): the report template carries the answers section, inside ## Output Format,
+# with its no-answer-returned contract — without it, FR-3's always-three-rows rule is
+# deletable while the bare heading still satisfies this pin.
+outfmt_body=$(extract-section "$REVIEW_DESIGN_DOC" "## Output Format" 2>/dev/null)
+if [ -z "$outfmt_body" ]; then
+    premise_bad="${premise_bad}extract-section found no '## Output Format' body in review-design.md — extraction broken; "
+else
+    printf '%s\n' "$outfmt_body" | $GREP -qF '## Premise Answers' \
+        || premise_bad="${premise_bad}## Output Format does not carry a ## Premise Answers section; "
+    printf '%s\n' "$outfmt_body" | $GREP -qF 'no answer returned' \
+        || premise_bad="${premise_bad}## Premise Answers does not carry the 'no answer returned' contract for an omitted PREMISE: block; "
+fi
+
+# Pin 5 (FR-4): ## Assessment carries the exclusion paragraph.
+premise_assessment_body=$(extract-section "$REVIEW_DESIGN_DOC" "## Assessment" 2>/dev/null)
+if [ -z "$premise_assessment_body" ]; then
+    premise_bad="${premise_bad}extract-section found no '## Assessment' body in review-design.md — extraction broken; "
+else
+    printf '%s\n' "$premise_assessment_body" | $GREP -qF 'sits outside this bar' \
+        || premise_bad="${premise_bad}## Assessment does not carry the Premise Answers exclusion paragraph; "
+fi
+
+# Pins 6-7 (FR-5, FR-6): the question resolves to exactly one file across both config roots,
+# and to exactly one occurrence inside review-design.md itself — so neither a copy in another
+# command nor a second copy under ## Review Scope in the same file passes. F5-style positive
+# control (see T1/T7 above): confirm the scan walked a non-zero file count before trusting the
+# absence half. Reuses T1_ROOTS — the only remaining cross-block dependency in this block,
+# since REVIEW_DESIGN_DOC above is now a top-level constant rather than something T7 has to
+# have set first.
+if [ "${T1_ROOTS+set}" = set ]; then
+    n_premise_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$n_premise_scanned" -eq 0 ]; then
+        premise_bad="${premise_bad}0 Markdown files found under the config roots — the absence-half scan ran over nothing; "
+    else
+        premise_files=$($GREP -rliF "$PREMISE_QUESTION_TEXT" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        premise_n_files=$(printf '%s\n' "$premise_files" | $GREP -c . || true)
+        if [ "$premise_n_files" -ne 1 ] || [ "$premise_files" != "$REVIEW_DESIGN_DOC" ]; then
+            premise_bad="${premise_bad}the question resolves to $premise_n_files file(s) across both config roots (want exactly 1: ${REVIEW_DESIGN_DOC#"$ROOT"/}) — found: $(printf '%s' "$premise_files" | tr '\n' ' '); "
+        fi
+        premise_whole_count=$($GREP -oiF "$PREMISE_QUESTION_TEXT" "$REVIEW_DESIGN_DOC" | wc -l | tr -d ' ')
+        [ "$premise_whole_count" -eq 1 ] \
+            || premise_bad="${premise_bad}the question occurs $premise_whole_count time(s) inside review-design.md, want exactly 1 (a second copy under ## Review Scope, or elsewhere, would also redden this); "
+    fi
+else
+    premise_bad="${premise_bad}T1_ROOTS is unset — this block must run after the T1 block, which declares it; "
+fi
+
+# Pin 8 (FR-2): Step 3 of the action sequence carries the lift clause — reuses premise_actions_body
+# extracted for Pin 3 above.
+# Scoped to Step 3's own numbered item, not the whole ## Actions body — the same carve-out
+# pin 3 needed, because the clause relocated to any other step passes a body-wide grep.
+premise_step3=$(printf '%s\n' "$premise_actions_body" | awk '/^3\. /{f=1} f&&/^[0-9]+\. /&&!/^3\. /{exit} f')
+printf '%s\n' "$premise_step3" | $GREP -qF 'lift each PREMISE: block' \
+    || premise_bad="${premise_bad}Step 3 does not carry the 'lift each PREMISE: block' clause; "
+
+if [ -z "$premise_bad" ]; then
+    pass "the Premise Question section exists with the question and PREMISE: label, Step 2 pastes it to the three reviewers only, the report template and Assessment carry the answers section and its exclusion, the question resolves to exactly one file and one occurrence, and Step 3 carries the lift clause"
+else
+    fail "the Premise Question section exists with the question and PREMISE: label, Step 2 pastes it to the three reviewers only, the report template and Assessment carry the answers section and its exclusion, the question resolves to exactly one file and one occurrence, and Step 3 carries the lift clause" "$premise_bad"
+fi
+
+echo "== Step G's not-run alternation, the codex-flow no-pipe clause, and the within-command-turn sentence =="
+
+# Three failures that actually happened (see planning/genai-automations/premise-findings/
+# observed-failures.md): Step G had no honest "did not run" form at any site, `codex-flow
+# review` piped into `tail` masked a rejected request as exit 0, and a step inside a command
+# was announced in prose without launching. Existence-and-pointer pins only, same convention
+# as the Premise Question block above.
+delivb_bad=""
+
+# B1: **Step G:** gains the same alternation **Codex:** already carries, at the three sites
+# that report a Step G counter line — review-design.md, review-spec.md, and the shared
+# review-output-format/SKILL.md fragment (serves /review-code and /review-fix, which both run
+# Step G through the shared protocol). /review-mr posts a YAML instead of this Markdown
+# template, so it is checked separately below (M9), against its own step_g: field.
+stepg_sites=(
+    "$REVIEW_DESIGN_DOC"
+    "$CLAUDE/commands/review-spec.md"
+    "$CLAUDE/skills/workflows/review-output-format/SKILL.md"
+)
+# The full alternation, pinned as one contiguous literal rather than three independent tokens —
+# a line keeping '<N> eligible', '✗ not run' and '<reason if skipped>' but rearranging or
+# negating the text between them (e.g. "...unparseable — never ✗ not run...") would satisfy
+# three separate token checks while reversing what the line says.
+STEPG_ALTERNATION='<N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>'
+CODEX_ALTERNATION='✓ ran | ✗ not run — <reason if skipped>'
+n_stepg_ok=0
+stepg_lines=()
+for i in "${!stepg_sites[@]}"; do
+    f="${stepg_sites[$i]}"
+    name="${f#"$ROOT"/}"
+    if [ ! -s "$f" ]; then
+        delivb_bad="${delivb_bad}$name: file missing or empty; "
+        continue
+    fi
+    # A stale copy must redden this wherever it sits — count occurrences rather than using
+    # `-m1` first-match (hides behind whichever copy sorts first) or `grep -c` (counts matching
+    # lines, so a duplicate appended to the same line as the real one stays invisible).
+    stepg_count=$($GREP -oF '**Step G:**' "$f" | wc -l | tr -d ' ')
+    if [ "$stepg_count" -ne 1 ]; then
+        delivb_bad="${delivb_bad}$name: '**Step G:**' occurs $stepg_count time(s), want exactly 1; "
+        continue
+    fi
+    # Anchored on the counter-form's own 'eligible' token, not a bare '**Step G:**' match, so a
+    # prose bullet using the same bolded field name (consensus-review-protocol.md's How It Works
+    # entry, for one) can never be mistaken for this report-line form.
+    stepg_line=$($GREP -E '\*\*Step G:\*\*.*eligible' "$f")
+    if [ -z "$stepg_line" ]; then
+        delivb_bad="${delivb_bad}$name: the sole '**Step G:**' line is not the eligible/confirmed/refuted/unparseable counter form; "
+        continue
+    fi
+    # Anchored on the field's exact value, not a substring match — a substring check still
+    # passes when a negation is prefixed to the alternation ("never ✗ not run" inverts the
+    # line's meaning while still containing every token the substring check looks for).
+    [ "$stepg_line" = "**Step G:** $STEPG_ALTERNATION" ] \
+        || delivb_bad="${delivb_bad}$name: '**Step G:**' line does not equal the alternation verbatim; "
+    stepg_lines[$i]="$stepg_line"
+
+    # L1: the '**Codex:**' line carries the same not-run shape — nothing previously checked
+    # that the parity this row claims with **Codex:** actually holds.
+    # Occurrences, not lines — same reason the Step G count above uses grep -oF: a second
+    # '**Codex:**' appended to the real line keeps a line count at 1 and stays invisible.
+    codex_count=$($GREP -oF '**Codex:**' "$f" | wc -l | tr -d ' ')
+    if [ "$codex_count" -ne 1 ]; then
+        delivb_bad="${delivb_bad}$name: '**Codex:**' occurs $codex_count time(s), want exactly 1; "
+    else
+        codex_line=$($GREP -F '**Codex:**' "$f")
+        printf '%s' "$codex_line" | $GREP -qF "$CODEX_ALTERNATION" \
+            || delivb_bad="${delivb_bad}$name: '**Codex:**' line does not carry its not-run alternation verbatim; "
+    fi
+
+    n_stepg_ok=$((n_stepg_ok + 1))
+done
+[ "$n_stepg_ok" -eq 3 ] \
+    || delivb_bad="${delivb_bad}only $n_stepg_ok of 3 Step G sites resolved at all — the site list or an anchor may be broken; "
+
+# M5: the three sites' Step G lines must be byte-identical, the way T7 already compares its
+# shared domain clause — three independent per-site checks cannot catch one copy drifting from
+# the other two while each still passes on its own.
+for i in "${!stepg_sites[@]}"; do
+    if [ -n "${stepg_lines[0]:-}" ] && [ -n "${stepg_lines[$i]:-}" ] \
+        && [ "${stepg_lines[$i]}" != "${stepg_lines[0]}" ]; then
+        delivb_bad="${delivb_bad}${stepg_sites[$i]#"$ROOT"/}: '**Step G:**' line differs from ${stepg_sites[0]#"$ROOT"/} — not byte-identical; "
+    fi
+done
+
+# L2: the three sites order their header fields the same way — Step G immediately follows
+# Codex, with no other **Field:** line between them, in all three templates.
+for f in "${stepg_sites[@]}"; do
+    name="${f#"$ROOT"/}"
+    order_pair=$($GREP -A1 -E '^\*\*Codex:\*\*' "$f" | $GREP -oE '^\*\*[A-Za-z -]+:\*\*' | tr '\n' '>')
+    [ "$order_pair" = "**Codex:**>**Step G:**>" ] \
+        || delivb_bad="${delivb_bad}$name: header field order is not Codex immediately followed by Step G (found: $order_pair); "
+done
+
+# Cross-root absence half: the Step G counter-form line must resolve to exactly these three
+# files under both config roots. Matched on the '**Step G:**' prefix plus either half of the
+# alternation — 'eligible' for a live copy, the not-run phrase for a copy edited down to only
+# that half — rather than requiring 'eligible' alone, so a fourth site carrying only the
+# not-run half is no longer invisible to this scan (L4). Excludes a bare descriptive mention of
+# '**Step G:**' with neither half, such as consensus-review-protocol.md's How It Works entry,
+# which names the step without quoting its report-line form — a plain '\*\*Step G:\*\*' regex
+# would match that prose line too and false-red every clean run. Same guard and positive control
+# as T1/T7/the Premise Question block, since this suite runs `set -uo pipefail` and an unbound
+# T1_ROOTS aborts the whole run with no summary.
+if [ "${T1_ROOTS+set}" = set ]; then
+    n_stepg_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$n_stepg_scanned" -eq 0 ]; then
+        delivb_bad="${delivb_bad}0 Markdown files found under the config roots — the Step G absence-half scan ran over nothing; "
+    else
+        stepg_counter_files=$($GREP -rlE '\*\*Step G:\*\*.*(eligible|not run)' "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        expected_stepg_files=$(printf '%s\n' "${stepg_sites[@]}" | sort -u)
+        [ "$stepg_counter_files" = "$expected_stepg_files" ] \
+            || delivb_bad="${delivb_bad}the Step G counter-form line resolves outside the three named sites — carry the full eligible/not-run alternation there, or add the file to stepg_sites above if it is a genuine fourth site — found: $(printf '%s' "$stepg_counter_files" | tr '\n' ' '); "
+    fi
+else
+    delivb_bad="${delivb_bad}T1_ROOTS is unset — this block must run after the T1 block, which declares it; "
+fi
+
+# B2: consensus-review-protocol.md's Step A bare-invocation paragraph — the primary launch
+# site, not Step E's recovery re-launch — carries the no-pipe rule; Step E now points back at
+# it instead of restating it.
+PROTOCOL_DOC="$CLAUDE/skills/domains/quality-attributes/references/consensus-review-protocol.md"
+if [ ! -s "$PROTOCOL_DOC" ]; then
+    delivb_bad="${delivb_bad}consensus-review-protocol.md missing or empty; "
+else
+    step_a_body=$(extract-section "$PROTOCOL_DOC" "### Step A: Launch 3 Independent Reviewers, Codex, and test-coverage agent simultaneously" 2>/dev/null)
+    if [ -z "$step_a_body" ]; then
+        delivb_bad="${delivb_bad}extract-section found no Step A body in consensus-review-protocol.md — extraction broken; "
+    else
+        nopipe_line=$(printf '%s\n' "$step_a_body" | $GREP -m1 -iE 'never pipe|do not pipe')
+        if [ -z "$nopipe_line" ]; then
+            delivb_bad="${delivb_bad}Step A's bare-invocation paragraph has no clause against piping codex-flow into another command; "
+        else
+            printf '%s' "$nopipe_line" | $GREP -qiF 'codex-flow' || delivb_bad="${delivb_bad}the no-pipe clause is not attached to codex-flow; "
+            printf '%s' "$nopipe_line" | $GREP -qiF 'head' || delivb_bad="${delivb_bad}the no-pipe clause does not name 'head'; "
+            printf '%s' "$nopipe_line" | $GREP -qiF 'tail' || delivb_bad="${delivb_bad}the no-pipe clause does not name 'tail'; "
+            printf '%s' "$nopipe_line" | $GREP -qiF 'pipefail' || delivb_bad="${delivb_bad}the no-pipe clause does not mention pipefail as the alternative; "
+        fi
+    fi
+fi
+
+# B3: CLAUDE.md's phase-gate bullet states the converse — a step inside a command's own
+# procedure is not a phase boundary and must execute in the turn that reaches it rather than
+# being announced in prose and left for a later turn, unless the step's own text requires the
+# user to approve, confirm, choose, decide, or supply something. Scoped to the extracted
+# ## Critical Rules body, not the whole file, so trimming the sentence or relocating the
+# converse clause elsewhere in the file (e.g. into ## Definitions) cannot satisfy this on the
+# bullet's behalf.
+critical_rules_body=$(extract-section "$CLAUDE/CLAUDE.md" "## Critical Rules" 2>/dev/null)
+if [ -z "$critical_rules_body" ]; then
+    delivb_bad="${delivb_bad}extract-section found no '## Critical Rules' body in CLAUDE.md — extraction broken; "
+else
+    printf '%s\n' "$critical_rules_body" | $GREP -qF 'is not a phase boundary' \
+        || delivb_bad="${delivb_bad}CLAUDE.md's Critical Rules does not state the within-command converse ('is not a phase boundary'); "
+    # "within the same turn the command was invoked in" cannot hold for Step G, which runs
+    # after a background codex-flow completion notification — a later turn by construction.
+    printf '%s\n' "$critical_rules_body" | $GREP -qF 'execute in the turn that reaches it' \
+        || delivb_bad="${delivb_bad}CLAUDE.md's Critical Rules does not require the step to execute in the turn that reaches it ('execute in the turn that reaches it'); "
+    printf '%s\n' "$critical_rules_body" | $GREP -qF 'announced in prose' \
+        || delivb_bad="${delivb_bad}CLAUDE.md's Critical Rules does not forbid leaving the step announced in prose ('announced in prose'); "
+    # The unqualified universal form (no carve-out at all) overrides every in-command user
+    # gate it reaches — commit approval among them — and nothing previously asserted that the
+    # qualifier survives. Require the full verb set, not just "approve or confirm": a narrower
+    # carve-out still overrides a gate that asks the user to decide or supply something rather
+    # than approve or confirm it — /verify Step 7a's own-message question is exactly that case.
+    printf '%s\n' "$critical_rules_body" | $GREP -qF 'requires the user to approve, confirm, choose, decide, or supply' \
+        || delivb_bad="${delivb_bad}CLAUDE.md's Critical Rules carve-out does not cover the full approve/confirm/choose/decide/supply verb set — a narrower carve-out re-licenses overriding in-command gates such as /verify Step 7a's own-message prompt; "
+fi
+
+# B4: round-verdict/SKILL.md's caller-count sentence names no numeral, and every review-*.md
+# command file on disk is actually named somewhere in the fragment — as a caller or as out of
+# scope — so a real eleventh command left unmentioned reds this, not just a stale numeral.
+RV_FRAG="$CLAUDE/skills/workflows/round-verdict/SKILL.md"
+if [ ! -s "$RV_FRAG" ]; then
+    delivb_bad="${delivb_bad}round-verdict/SKILL.md missing or empty; "
+else
+    # Count occurrences and require exactly 1 before trusting which line is "the" sentence —
+    # `grep -m1` returns the first match even when a stale second copy sits below it, so a
+    # lingering count-bearing duplicate would stay invisible as long as the live sentence
+    # sorts first.
+    # Occurrences, not lines. This repo bans manual line wrapping, so one paragraph is one
+    # line and a contradicting clause appended to the live sentence's own line is the realistic
+    # edit shape — a line count reads 1 for it and stays green.
+    count_text_n=$($GREP -oF 'this section classifies' "$RV_FRAG" | wc -l | tr -d ' ')
+    if [ "$count_text_n" -ne 1 ]; then
+        delivb_bad="${delivb_bad}round-verdict/SKILL.md's 'this section classifies' sentence occurs $count_text_n time(s), want exactly 1; "
+    else
+        count_line=$($GREP -F 'this section classifies' "$RV_FRAG")
+        # A closed word-numeral blocklist stops being exhaustive the moment a number past its
+        # highest entry is written out ("fourteen" slipped a twelve-entry list, measured). So
+        # match the *shape* a written number takes instead: any digit run, the -teen/-ty
+        # suffixes that spell every value above twelve, the small-number words below it, and
+        # the collective nouns. The legitimate sentence says "not its position in any count"
+        # and names no number, so none of these fire on it.
+        printf '%s' "$count_line" \
+            | $GREP -qiE '\b[0-9]|\b[a-z]+(teen|ty)\b|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b|\b(dozen|score|hundred)\b' \
+            && delivb_bad="${delivb_bad}round-verdict/SKILL.md's classification sentence still names a count, which goes stale as commands are added; "
+        printf '%s' "$count_line" | $GREP -qF 'every `review-*.md` command' \
+            || delivb_bad="${delivb_bad}round-verdict/SKILL.md's classification sentence does not say 'every review-*.md command'; "
+    fi
+
+    unmentioned=""
+    n_review_cmds=0
+    while IFS= read -r cmd; do
+        [ -n "$cmd" ] || continue
+        n_review_cmds=$((n_review_cmds + 1))
+        base=$(basename "$cmd" .md)
+        # Anchored on the backticked form the fragment actually writes (`` `/review-code` ``),
+        # not a bare substring — "/review-code" is also a substring of "/review-code-fix-loop",
+        # so an unanchored match lets that sibling's own mention satisfy review-code's row.
+        $GREP -qF '`/'"$base"'`' "$RV_FRAG" || unmentioned="$unmentioned/$base "
+    done < <(find "$CLAUDE/commands" -maxdepth 1 -name 'review-*.md' -type f | sort)
+    if [ "$n_review_cmds" -eq 0 ]; then
+        delivb_bad="${delivb_bad}found 0 review-*.md command files under commands/ — extraction broken; "
+    elif [ -n "$unmentioned" ]; then
+        delivb_bad="${delivb_bad}round-verdict/SKILL.md does not name: $unmentioned; "
+    fi
+fi
+
+# M9: /review-mr posts a YAML report, not a Markdown **Step G:** template, so its Step G
+# reachability is reported through its own field spec rather than joining stepg_sites above.
+# Matched directly on the field's own "step_g:" key rather than through an extract-section
+# heading scope — the YAML Schema fence is the first block in the file to declare this key, so
+# the plain first-match is unambiguous without needing a section boundary.
+REVIEW_MR="$CLAUDE/commands/review-mr.md"
+if [ ! -s "$REVIEW_MR" ]; then
+    delivb_bad="${delivb_bad}review-mr.md missing or empty; "
+else
+    # Three occurrences: the field spec plus both example report blocks. FR-14 requires all
+    # three, and a reviewer copying an example block is how a REQUIRED field goes missing.
+    stepg_n=$($GREP -cE '^step_g:' "$REVIEW_MR" || true)
+    [ "$stepg_n" -eq 3 ] \
+        || delivb_bad="${delivb_bad}review-mr.md carries ${stepg_n} '^step_g:' line(s), want 3 (field spec + both example blocks); "
+    stepg_field_line=$($GREP -m1 -E '^step_g:' "$REVIEW_MR")
+    if [ -z "$stepg_field_line" ]; then
+        delivb_bad="${delivb_bad}review-mr.md has no step_g: field — a skipped Step G on an MR review stays unreportable; "
+    else
+        printf '%s' "$stepg_field_line" | $GREP -qF 'REQUIRED' \
+            || delivb_bad="${delivb_bad}review-mr.md's step_g: field is not marked REQUIRED, unlike the codex: field it mirrors; "
+        printf '%s' "$stepg_field_line" | $GREP -qiF 'eligible' \
+            || delivb_bad="${delivb_bad}review-mr.md's step_g: field has no eligible/confirmed/refuted/unparseable counter form; "
+        printf '%s' "$stepg_field_line" | $GREP -qF 'not run:' \
+            || delivb_bad="${delivb_bad}review-mr.md's step_g: field has no not-run fallback, unlike the codex: field it mirrors; "
+    fi
+fi
+
+# M10: 'via design review' keeps design.md's **Approved:** line out of doc-metrics' "by
+# design" register-hit pattern, which /verify-docs lists as a hard blocker — reverting either
+# site back to "by design review" re-opens that blocker on every approved design doc.
+VIA_DESIGN_SITES=("$REVIEW_DESIGN_DOC" "$CLAUDE/commands/review-design-fix-loop.md")
+for f in "${VIA_DESIGN_SITES[@]}"; do
+    name="${f#"$ROOT"/}"
+    if [ ! -s "$f" ]; then
+        delivb_bad="${delivb_bad}$name missing or empty; "
+        continue
+    fi
+    $GREP -qF 'via design review' "$f" \
+        || delivb_bad="${delivb_bad}$name: no 'via design review' occurrence found; "
+    $GREP -qF 'by design review' "$f" \
+        && delivb_bad="${delivb_bad}$name: the superseded 'by design review' form has reappeared — doc-metrics counts 'by design' as a register hit, which /verify-docs blocks on; "
+done
+
+if [ -z "$delivb_bad" ]; then
+    pass "Step G's not-run alternation is present at all 3 sites and the counter form resolves nowhere else, review-mr.md's step_g: field mirrors codex:, 'via design review' holds at both sites, the no-pipe clause is in consensus-review-protocol.md, and CLAUDE.md states the within-command-turn converse"
+else
+    fail "Step G's not-run alternation is present at all 3 sites and the counter form resolves nowhere else, review-mr.md's step_g: field mirrors codex:, 'via design review' holds at both sites, the no-pipe clause is in consensus-review-protocol.md, and CLAUDE.md states the within-command-turn converse" "$delivb_bad"
 fi
 
 echo

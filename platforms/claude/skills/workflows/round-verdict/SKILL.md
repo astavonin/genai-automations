@@ -52,4 +52,4 @@ A fix loop states it at **three** exits, each of which carries the line in its o
 - `/review-fix` — reviews one fix, not a cycle, and has no between-rounds step to attach to.
 - `/review-iterate` — runs one unconditional final sweep by design. Its divergence is recorded in `~/.claude/skills/workflows/review-output-format/SKILL.md` → Assessment Criteria as known and not licensed; giving it a verdict would imply a choice it does not offer.
 
-Whoever adds a fifth review command adds it here and to the caller list in `tests/verify-config-consistency.sh`, which enumerates both the sites and these exclusions.
+Whoever adds a review command classifies it here — as a caller above or as out of scope with its reason — and in the caller list in `tests/verify-config-consistency.sh`. The condition is that a command ends a review cycle, not its position in any count: this section classifies every `review-*.md` command. (`tests/verify-config-consistency.sh` reads this sentence.)

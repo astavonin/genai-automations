@@ -244,6 +244,7 @@ mr_number: 134                          # integer, REQUIRED
 title: "Brief MR title"                 # string, REQUIRED (match MR title)
 review_date: "2026-02-11"               # YYYY-MM-DD, REQUIRED
 codex: ran                              # REQUIRED: "ran" | "not run: <reason>"
+step_g: 3 eligible, 2 confirmed, 1 refuted, 0 unparseable  # REQUIRED: "<N> eligible, <C> confirmed, <R> refuted, <U> unparseable" | "not run: <reason>"
 approval: approved                      # "approved" | "changes_requested" | "none" — default: "approved"
                                         # projctl comment applies this automatically after posting findings
 
@@ -290,6 +291,7 @@ mr_number: 134
 title: "Brief MR title"
 review_date: "2026-02-11"
 codex: ran
+step_g: 0 eligible, 0 confirmed, 0 refuted, 0 unparseable
 findings: []
 ```
 
@@ -302,6 +304,7 @@ mr_number: 156
 title: "Add adaptive cache invalidation"
 review_date: "2026-02-11"
 codex: ran
+step_g: 2 eligible, 1 confirmed, 1 refuted, 0 unparseable
 
 findings:
   - severity: Critical

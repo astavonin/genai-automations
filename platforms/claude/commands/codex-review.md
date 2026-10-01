@@ -55,6 +55,8 @@ Launch codex-flow as a background task:
 codex-flow review <review-request-path>
 ```
 
+Invoke it bare, never piped into another command — see `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` → Step A for why. This command does not run the protocol, so it inherits that rule from nowhere else.
+
 Run with `run_in_background: true`. Then immediately start a Monitor to show live progress:
 
 ```bash

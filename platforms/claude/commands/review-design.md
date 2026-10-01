@@ -46,8 +46,9 @@ Only proceed when the gate passes.
    - Do not wait for Claude agents to finish before starting Codex — they are independent
    - Aggregate: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → **Step G** (adversarial reverification, design criteria). Single-agent Claude findings and Codex-only findings are reverified 2-of-2; survivors land in `## Reverified Findings`, and nothing unreverified reaches the report. Skip Steps F and H.
    - **Each agent prompt must include the full "Design-Level Constraint" section below** — paste it verbatim before the review checklist so agents know what to flag and what to skip. **This applies to the Step G verifiers too**, not only the three primary reviewers: a verifier without the flag list and the Ticket Constraint Guardrail applies different scope rules than the reviewer whose finding it is adjudicating.
+   - **Each of the three primary reviewer prompts must also carry the full "Premise Question" section below**, pasted verbatim — the three primary reviewer prompts, not the Step G verifier prompts: a verifier's output contract is a `VERDICT:` line per finding, with no slot for a non-finding answer, so pasting the question there produces an instruction a verifier can satisfy only by ignoring it. (`tests/verify-config-consistency.sh` reads this bullet.)
    - **Before launching Step G verifiers**, resolve absolute paths for `design.md`, its sibling `analysis.md` (pass `none` only if the file genuinely does not exist), and the repository root via the Step 0 review-request `Repository:` value or `pwd`. Relative paths do not resolve in a verifier agent, and the failure is silent — both verifiers fail their reads, both return REFUTED, and rule 3 discards every finding with no warning. If any path cannot be resolved, do not launch: surface the Step G warning and treat all eligible findings as discarded-with-warning.
-3. Format consolidated findings as a markdown review report (see Output Format below)
+3. Format consolidated findings as a markdown review report (see Output Format below); lift each PREMISE: block into ## Premise Answers verbatim, writing `no answer returned` where a reviewer omitted its block. (`tests/verify-config-consistency.sh` reads this line.)
 4. **Write the report to `planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`**
 
 5. **Verify the status marker** (`review_file = planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md`):
@@ -59,7 +60,7 @@ Only proceed when the gate passes.
    ```bash
    # In planning/<goal>/milestone-XX/issues/<NNN-name>/design.md:
    # **Status:** Draft  →  **Status:** Approved
-   # and add below **Revision:**  —  **Approved:** <YYYY-MM-DD>, at Revision <N>, by design review
+   # and add below **Revision:**  —  **Approved:** <YYYY-MM-DD>, at Revision <N>, via design review
    ```
    Use the Edit tool for both. Read the doc's current `**Revision:**` value rather than assuming it — the number recorded is the revision this review actually read, and it moves on every fix pass. `DESIGN-TEMPLATE.md` omits the field by design: a Draft has nothing to record, so this step is what creates it. Skip both edits if status is `CHANGES REQUESTED` or `REJECTED`.
 
@@ -114,6 +115,16 @@ Before flagging a design for violating a ticket restriction, consult `analysis.m
 
 **Finding descriptions must name the architectural concern, not the fix.** The fix direction must also stay at concept level — "define an error propagation contract for write failures" not "change return type to `[[nodiscard]] bool`."
 
+## Premise Question (MANDATORY — pass to the three primary reviewer prompts)
+
+**Should this design exist in this shape?** Answer this before you list findings, in one paragraph.
+
+A finding says *the mechanism does not work as specified*. This question asks the other thing: whether a requirement or the whole approach should exist at all. Answer against the artifacts this prompt supplies — the design document and its sibling `analysis.md` — and do not go looking for others. Grounds that qualify — `analysis.md` records a Decision or a Ticket Constraint that the design's shape contradicts; the design contradicts its own frame, so a requirement the rest of the document makes unnecessary is still in §3; the requirement is the defect, so the fix is to delete it rather than implement it.
+
+Where your answer challenges the frame, name the §3 requirement or the `analysis.md` entry it rests on. An answer resting on an artifact you were not given is out of reach — say that instead of asserting it.
+
+Return the answer as a block headed `PREMISE:`, before your findings list. "The frame is sound" is a complete answer. This answer is not a finding: it carries no severity, it is not graded, and it cannot change the approval bar. (`tests/verify-config-consistency.sh` reads this section.)
+
 ## Review Scope
 
 Each of the 3 agents evaluates these design-level attributes, every one of them graded against the declared change class per the Design-Level Constraint above:
@@ -140,8 +151,8 @@ Produce a markdown report:
 **Subject:** <feature name>
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
+**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>
 **Class:** <value> (declared | defaulted)
-**Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable
 
 ## Findings (<N total — consensus of 3 reviewers>)
 
@@ -163,11 +174,21 @@ Single-agent Claude findings and Codex-only findings that survived Step G advers
 
 - **V1** [severity] [Reverified] Description...
 
+## Premise Answers (advisory — not graded)
+
+Each reviewer's answer to the Premise Question, verbatim and unmerged. These are not findings: no severity, no IDs, no consensus, and outside the approval bar. One row per reviewer, always — write `no answer returned` where a reviewer omitted its `PREMISE:` block.
+
+- **Reviewer 1** — <answer verbatim>
+- **Reviewer 2** — <answer verbatim>
+- **Reviewer 3** — <answer verbatim>
+
 ## Recommendation
 <rationale and required actions — concept level only; no implementation specifics>
 ```
 
 IDs are prefixed by severity for the main Findings section (C = Critical, H = High, M = Medium, L = Low) and by `V` for Reverified Findings. Number sequentially within each section (e.g., `V1`, `V2`). IDs are stable within a review session.
+
+**The Step G report line above has its alternation pinned byte-for-byte against the other two sites** — see `~/.claude/skills/workflows/review-output-format/SKILL.md`'s shared-alternation paragraph for the rule and the fourth-site guard it describes. (`tests/verify-config-consistency.sh` reads this line.)
 
 ## Assessment
 
@@ -176,6 +197,8 @@ IDs are prefixed by severity for the main Findings section (C = Critical, H = Hi
 - ❌ **Reject:** One or more Critical findings → return to Phase 2
 
 **A Medium costs a fix, not a round.** Zero Critical and zero High with Mediums open takes `CHANGES REQUESTED` here, since this command only reports; the Mediums are then fixed and the approval follows without a second review. `/review-design-fix-loop` does both in one run.
+
+**`## Premise Answers` sits outside this bar.** The three bullets above read `## Findings` and `## Reverified Findings` and nothing else. A premise answer carries no severity and no ID, so it cannot move the assessment — the operator reads the section and decides what to do with it. (`tests/verify-config-consistency.sh` reads this paragraph.)
 
 ## After Resolving CHANGES REQUESTED Findings
 
