@@ -130,7 +130,7 @@ Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
 
 ### Step 2: Write and gate the report
 
-1. Format the consolidated findings per Output Format below and write them to `<issue-folder>/spec-review.md`. One final published output, overwritten in place on every re-run — no `-r<N>` or `-final` suffix; git history is the retry log.
+1. Format the consolidated findings per Output Format below and write them to `<issue-folder>/spec-review.md`. One final published output, overwritten in place on every re-run — no `-r<N>` or `-final` suffix.
 
 2. **Verify the status marker** (`review_file = <issue-folder>/spec-review.md`):
    ```

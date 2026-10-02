@@ -27,7 +27,7 @@ Every `/review-article` pass below (Steps 1 and 3) receives the same issue-folde
 
 ## Protocol Deviations
 
-When running any review pass in this command (Steps 1 and 3), deviate from the `/review-article` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+When running any review pass in this command (Steps 1 and 3), deviate from the `/review-article` protocol as follows — the **Skip** bullets below are suppressed because the fix-loop manages them centrally; the **Add** bullet is not suppressed, it adds a step the base protocol does not have:
 
 - **Skip** the round-verdict step — `/review-article` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
@@ -35,6 +35,7 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Block until the user explicitly approves" step (the loop continues without user input — authorized by the Exception clause in CLAUDE.md Critical Rules)
 - **Skip** the "After Final Approval: Update todos.md" step — Step 5 of this command handles todos.md updates once at the end
+- **Add** an entry to `<issue-folder>/dropped-findings.md` for every finding this review pass dropped, naming the pass, what dropped it, and why — or one dated `No findings dropped` entry naming the pass when it dropped none. Paste that file whole into each Claude reviewer's prompt inside a `~~~markdown` fence, stating its absence explicitly when there is none. A finding already recorded there is not raised again unless this pass holds new evidence the entry does not answer.
 
 ## Actions
 

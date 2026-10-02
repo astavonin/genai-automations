@@ -279,16 +279,17 @@ planning/
 │               ├── design-review.md # Design review (Phase 3) — single file, always overwritten
 │               ├── code-review.md   # Code review (Phase 5) — single file, always overwritten
 │               ├── codex-review.md  # Codex review of our issue — single file, always overwritten
-│               └── observed-failures.md  # Append-only ledger of failures that actually occurred + how each is covered
+│               ├── observed-failures.md  # Append-only ledger of failures that actually occurred + how each is covered
+│               └── dropped-findings.md  # Append-only ledger of findings a fix loop dropped, never overwritten
 ```
 
-`observed-failures.md` also appears at `planning/reviews-orphan/<slug>/` for unlinked hotfixes. It is **exempt from the one-final-output convention** — it is an append-only ledger, never overwritten or consolidated, so each failure keeps its own entry and resolution.
+Any member of the **ledger class** — `observed-failures.md`, and `dropped-findings.md` alongside it — is **exempt from the one-final-output convention**: each is append-only, never overwritten or consolidated, so each entry keeps its own record and resolution. `observed-failures.md` also appears at `planning/reviews-orphan/<slug>/` for unlinked hotfixes.
 
 The `<epic-slug>/` folder is instantiated automatically by `/review-mr` on first use. Once created, `/research` and `/design` write into it. You do not need to create it by hand. See `OVERVIEW-TEMPLATE.md` "When to instantiate" for the exact rules.
 
 **Layer count follows the tracker.** The 3-layer form above (`<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/`) is for GitLab work tracked under epics and milestones. Two 2-layer shapes are equally sanctioned, not drift — GitHub repos use them by default (GH has no epic/milestone nesting to mirror), and GitLab work without a milestone structure may too:
 
-- `planning/<goal>/<work-slug>/<step-or-issue-name>/` — multi-step work under one named effort (e.g. a rollout with `step-N-<name>` folders). The step folder plays the `issues/<NNN-name>/` role: same files inside (`analysis.md`, `design.md`, `design-review.md`, `code-review.md`, `codex-review.md`, `observed-failures.md`), and `status.md` lives at the work-slug level.
+- `planning/<goal>/<work-slug>/<step-or-issue-name>/` — multi-step work under one named effort (e.g. a rollout with `step-N-<name>` folders). The step folder plays the `issues/<NNN-name>/` role: same files inside (`analysis.md`, `design.md`, `design-review.md`, `code-review.md`, `codex-review.md`, `observed-failures.md`, `dropped-findings.md`), and `status.md` lives at the work-slug level.
 - `planning/<goal>/<issue-slug>/` — single-issue work; the slug folder plays the issue-folder role directly.
 
 Commands that print the 3-layer placeholder resolve against whichever shape is on disk (`issue-folder-resolve/SKILL.md` corroborates flat shapes explicitly); do not "correct" a 2-layer tree to 3 layers.
@@ -299,7 +300,7 @@ Commands that print the 3-layer placeholder resolve against whichever shape is o
 - `issues/<NNN-name>/` = everything for one issue in one place, including all our own reviews (design/code/codex); filenames inside are generic (`design.md`, not `verifier-design.md`)
 - `<epic-slug>/reviews/` = external MR reviews (MRs we're reviewing but don't own the underlying issue for); one epic subfolder per set of MRs. Never a top-level `planning/reviews/` (exception: `planning/reviews-orphan/` is permitted — see below).
 - `reviews-orphan/` = fix reviews for work with no linked issue (hotfixes, sandbox experiments); hand-managed, not tracked in `progress.md`. No migration needed; `/start` leaves it in place.
-- **One final published output per review.** No `-r<N>`, `-final`, or `-v2` filename suffixes anywhere in the tree. Every review-writing command overwrites its canonical file in place; git history is the retry log. Intermediate working files (review-requests, Codex raw output) are deleted immediately after the final artifact is published. **Exception:** when `/codex-review` is invoked standalone by the user (not from a higher-level command), the codex-review output is the terminal artifact — no intermediate to delete. The review-request is left in place for re-invocation.
+- **One final published output per review.** No `-r<N>`, `-final`, or `-v2` filename suffixes anywhere in the tree. Every review-writing command overwrites its canonical file in place. Intermediate working files (review-requests, Codex raw output) are deleted immediately after the final artifact is published. **Exception:** when `/codex-review` is invoked standalone by the user (not from a higher-level command), the codex-review output is the terminal artifact — no intermediate to delete. The review-request is left in place for re-invocation.
 - **`overview.md` doubles as a local epic cache.** For epics we don't actively work on but touch via external MR review, `overview.md` carries an "About" summary, "Scope" bullets, and "Owner" line sourced from `projctl load epic &N` so future readers have context without re-hitting GitLab. See `~/.claude/skills/workflows/planning/OVERVIEW-TEMPLATE.md` for the structure.
 
 **Old format migration:** If a milestone folder contains a flat `design/` or `reviews/` subdirectory, or if a top-level `planning/reviews/` exists, it uses the pre-migration layout. `/start` detects this automatically and proposes a migration to `issues/<NNN-name>/` (for issue-scoped reviews) or `<epic-slug>/reviews/` (for external MR reviews) before loading context. Never read from old paths — migrate first. `planning/reviews-orphan/` is exempt from migration — preserve it as-is. **The 2-layer shapes above are not old format** — a `design/` subdirectory inside a 2-layer issue folder is legacy content to leave in place, not a migration trigger; the migration rule fires on the milestone form only.

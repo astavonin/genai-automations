@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=95
+EXPECTED_TESTS=96
 
 PASS=0
 FAIL=0
@@ -3730,6 +3730,185 @@ if [ -z "$delivb_bad" ]; then
     pass "Step G's not-run alternation is present at all 3 sites and the counter form resolves nowhere else, review-mr.md's step_g: field mirrors codex:, 'via design review' holds at both sites, the no-pipe clause is in consensus-review-protocol.md, and CLAUDE.md states the within-command-turn converse"
 else
     fail "Step G's not-run alternation is present at all 3 sites and the counter form resolves nowhere else, review-mr.md's step_g: field mirrors codex:, 'via design review' holds at both sites, the no-pipe clause is in consensus-review-protocol.md, and CLAUDE.md states the within-command-turn converse" "$delivb_bad"
+fi
+
+echo "== FR-8: the ledger-class exemption, the entry-format block, and all three loops' drop clause — each inside its own span (mechanism-proportionality step 5) =="
+
+# FR-8 (step-5-loop-memory design.md §5.5): one presence assertion covers two claims.
+# Claim 1 - the exemption sentence names the ledger CLASS, not an enumeration of filenames,
+# at both full-statement sites, and the entry-format block ships at its one site
+# (planning/SKILL.md), carrying all three drop-specific field/heading names -
+# `**Dropped by:**`, `**Round:**` and `No findings dropped`. The second and third of those
+# are also what §6 → P7 and §5.1 require: P7 pins `**Dropped by:**` alone, so deleting the
+# no-drop shape of the same format block would leave that row's cell green while the shipped
+# block no longer matches what §5.1 specifies.
+# Claim 2 - all three fix-loop commands carry FR-4/FR-12's clause, each scoped to its own
+# `## Protocol Deviations` span (P4) - an unscoped grep would pass a clause relocated
+# anywhere else in the file, which is the mutation this scoping exists to catch - and the
+# clause's own line is byte-identical across the three loops (§6 → P2's clause-integrity
+# requirement), since six independently-matched substrings cannot establish that the prose
+# between them is intact.
+#
+# Span idiom matches T7 above: paired start-and-terminator awk range, terminator-order
+# guarded before extraction, per-item messages accumulated into one fail() call.
+PLANNING_SKILL="$CLAUDE/skills/workflows/planning/SKILL.md"
+fr8_bad=""
+
+# Declared up front so the exemption check below (§6 → P1) and the entry-format block further
+# down can both scope to this span without a second declaration.
+fr8_start='### issues/<NNN-name>/'
+fr8_end='## Workflow Integration'
+
+# Claim 1, exemption class subject (§6 → P1): scoped to each site's own span, matching T7's
+# paired start-and-terminator idiom — the prior shape used `$GREP -m1` over the WHOLE file,
+# which stayed green when the exemption sentence was relocated to any other section, since
+# `-m1` takes the first matching line regardless of span. CLAUDE.md's span is its own
+# "Planning Structure" section; planning/SKILL.md reuses the issues/<NNN-name>/ span above,
+# since the exemption bullet and the entry-format block live in the same subsection there.
+fr8_excl_files=("$CLAUDE_MD" "$PLANNING_SKILL")
+fr8_excl_starts=("# Planning Structure" "$fr8_start")
+fr8_excl_ends=("# Post-Write Actions" "$fr8_end")
+for i in "${!fr8_excl_files[@]}"; do
+    f="${fr8_excl_files[$i]}"
+    start="${fr8_excl_starts[$i]}"
+    end="${fr8_excl_ends[$i]}"
+    name="${f#"$ROOT"/}"
+    if [ ! -s "$f" ]; then
+        fr8_bad="${fr8_bad}$name: file missing or empty; "
+        continue
+    fi
+    $GREP -qF "$start" "$f" || { fr8_bad="${fr8_bad}$name: exemption span start '$start' not found; "; continue; }
+    awk -v s="$start" -v e="$end" 'index($0,s){f=1; next} f && index($0,e){found=1; exit} END{exit !found}' "$f" \
+        || { fr8_bad="${fr8_bad}$name: exemption span terminator '$end' not found after '$start' — span would silently widen to EOF; "; continue; }
+    excl_span=$(awk -v s="$start" -v e="$end" 'index($0,s){f=1} f && index($0,e){exit} f' "$f")
+    # exemption class subject: pinned on the class marker itself ('ledger class'), not on a
+    # filename, so a future rewrite toward the pure class form (no second filename restated
+    # on this line at all) still passes. Absent from both sites' pre-change text (confirmed
+    # via `git show HEAD`), so narrowing either site back to naming only
+    # `observed-failures.md` — the single-filename form each site held before this change —
+    # reddens this: that narrowing drops the class framing along with the second name.
+    #
+    # Case-insensitive and occurrence-counted, not `-m1` (T7's whole_count/span_count
+    # discipline): `-m1` takes the first matching line in the whole span, so a second, narrowed
+    # exemption statement placed below a correct one inside the same span stays invisible, and
+    # the pre-change text at one site capitalizes the phrase as `Exempt` — a case-sensitive grep
+    # finds no match at all for a correctly-reworded sentence in that shape and reports absence,
+    # pointing the operator at the wrong defect.
+    excl_count=$(printf '%s\n' "$excl_span" | $GREP -oiF 'exempt from the one-final-output convention' | wc -l | tr -d ' ')
+    if [ "$excl_count" -ne 1 ]; then
+        fr8_bad="${fr8_bad}$name: 'exempt from the one-final-output convention' occurs $excl_count time(s) inside the span, want exactly 1 — deleted, or a second statement coexists with the correct one; "
+    else
+        excl_line=$(printf '%s\n' "$excl_span" | $GREP -iF 'exempt from the one-final-output convention')
+        printf '%s' "$excl_line" | $GREP -qF 'ledger class' \
+            || fr8_bad="${fr8_bad}$name: exemption line does not name the 'ledger class' — narrowed back to a single-filename statement; "
+    fi
+done
+
+# T2 (one arm taken; see design.md Sec6 -> Tests Not Written for the declared remainder):
+# per-corpus occurrence count for the exemption line itself, mirroring T7's own absence-half
+# below with the same T1_ROOTS pair. Catches a second full exemption statement appearing at
+# a third site — invisible to the two per-site span checks above, which only ever look at
+# the two named files. Does not cover a duplicate drop clause in a fourth file or inside a
+# loop's Step 3; that half exceeds the existence-and-pointer ceiling analysis.md funded and
+# is declared rather than built.
+if [ "${T1_ROOTS+set}" = set ]; then
+    excl_files=$($GREP -rliF 'exempt from the one-final-output convention' "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+    expected_excl_files=$(printf '%s\n' "$CLAUDE_MD" "$PLANNING_SKILL" | sort -u)
+    [ "$excl_files" = "$expected_excl_files" ] \
+        || fr8_bad="${fr8_bad}exemption sentence resolves outside the two named sites — found: $(printf '%s' "$excl_files" | tr '\n' ' '); "
+else
+    fr8_bad="${fr8_bad}T1_ROOTS is unset — this block must run after the T1 block, which declares it; "
+fi
+
+# Claim 1, the entry-format block (§6 → P7): scoped to planning/SKILL.md's own
+# "### issues/<NNN-name>/" span, matching T7's start-and-terminator idiom. Guarded with an
+# elif chain rather than `continue` since this check sits outside a loop — same effect as
+# the loop block below and T7 itself: once the span cannot be built, the literal checks are
+# skipped instead of running against an empty or wrongly-widened extraction.
+if [ ! -s "$PLANNING_SKILL" ]; then
+    fr8_bad="${fr8_bad}planning/SKILL.md missing or empty — cannot scope the issues/<NNN-name>/ span; "
+elif ! $GREP -qF "$fr8_start" "$PLANNING_SKILL"; then
+    fr8_bad="${fr8_bad}planning/SKILL.md: span start '$fr8_start' not found; "
+elif ! awk -v s="$fr8_start" -v e="$fr8_end" 'index($0,s){f=1; next} f && index($0,e){found=1; exit} END{exit !found}' "$PLANNING_SKILL"; then
+    fr8_bad="${fr8_bad}planning/SKILL.md: span terminator '$fr8_end' not found after '$fr8_start' — span would silently widen to EOF; "
+else
+    skill_span=$(awk -v s="$fr8_start" -v e="$fr8_end" 'index($0,s){f=1} f && index($0,e){exit} f' "$PLANNING_SKILL")
+    printf '%s' "$skill_span" | $GREP -qF '**Dropped by:**' \
+        || fr8_bad="${fr8_bad}planning/SKILL.md issues/<NNN-name>/ span: missing '**Dropped by:**' field name; "
+    # §6 → P7 / §5.1: `**Round:**` is the field the design calls load-bearing by name and is
+    # the entire content of the no-drop entry below the heading pinned next — it was deletable
+    # with both suites green before this literal was added.
+    printf '%s' "$skill_span" | $GREP -qF '**Round:**' \
+        || fr8_bad="${fr8_bad}planning/SKILL.md issues/<NNN-name>/ span: missing '**Round:**' field name; "
+    # Pinned to the heading's own shape, not the bare phrase 'No findings dropped' — that
+    # phrase also occurs in the bullet's prose description above the fenced block, so a bare
+    # phrase match stays green even after the no-drop heading itself is deleted from the block.
+    printf '%s' "$skill_span" | $GREP -qF '## <YYYY-MM-DD> No findings dropped' \
+        || fr8_bad="${fr8_bad}planning/SKILL.md issues/<NNN-name>/ span: missing the format block's '## <YYYY-MM-DD> No findings dropped' no-drop heading; "
+fi
+
+# Claim 2, span scoping (P4): six named phrases inside each loop's own "## Protocol
+# Deviations" span. Scoped so a clause relocated out of the span (while staying in the
+# file) reddens — the mutation an unscoped grep passes.
+FR8_LOOP_FILES=("$CLAUDE/commands/review-code-fix-loop.md" "$CLAUDE/commands/review-design-fix-loop.md" "$CLAUDE/commands/review-article-fix-loop.md")
+fr8_phrases=(
+    'dropped-findings.md' 'No findings dropped' "each Claude reviewer's prompt" '~~~markdown' 'absence explicitly' 'new evidence'
+)
+fr8_add_lines=()
+for i in "${!FR8_LOOP_FILES[@]}"; do
+    f="${FR8_LOOP_FILES[$i]}"
+    name="${f#"$ROOT"/}"
+    if [ ! -s "$f" ]; then
+        fr8_bad="${fr8_bad}$name: file missing or empty; "
+        continue
+    fi
+    pd_start='## Protocol Deviations'
+    pd_end='## Actions'
+    $GREP -qF "$pd_start" "$f" || { fr8_bad="${fr8_bad}$name: span start '$pd_start' not found; "; continue; }
+    awk -v s="$pd_start" -v e="$pd_end" 'index($0,s){f=1; next} f && index($0,e){found=1; exit} END{exit !found}' "$f" \
+        || { fr8_bad="${fr8_bad}$name: span terminator '$pd_end' not found after '$pd_start' — span would silently widen to EOF; "; continue; }
+    pd_span=$(awk -v s="$pd_start" -v e="$pd_end" 'index($0,s){f=1} f && index($0,e){exit} f' "$f")
+
+    # §6 → P2's clause-integrity requirement (§5.3's wording contract): the clause's own line,
+    # not just its six independently-matched substrings, must agree across the three loops —
+    # inverting the re-raise bar, or negating the paste obligation, leaves all six phrases
+    # present while changing the clause's meaning. Extracted and bounds-checked BEFORE the
+    # phrase loop below, not after — the loop then matches each phrase against this one line
+    # instead of the whole span, so a deleted or duplicated bullet reports once here instead of
+    # fanning out into six more messages, and a phrase can no longer be satisfied by unrelated
+    # prose elsewhere in the span. Occurrence-counted, not line-counted (T7's
+    # whole_count/span_count discipline — `-cF` counts matching LINES, and this corpus bans
+    # manual line wrapping, so a same-line decoy would otherwise read as one match), anchored on
+    # '**Add** an entry' rather than the bare '**Add**' token, since the span's own intro
+    # sentence ("the **Add** bullet is not suppressed") also carries the bare token and would
+    # otherwise double-count a bullet that was never duplicated.
+    add_count=$(printf '%s\n' "$pd_span" | $GREP -oF '**Add** an entry' | wc -l | tr -d ' ')
+    if [ "$add_count" -ne 1 ]; then
+        fr8_bad="${fr8_bad}$name: '**Add**' bullet occurs $add_count time(s) inside Protocol Deviations, want exactly 1 — deleted, duplicated, or unparseable as one line; "
+        continue
+    fi
+    fr8_add_lines[$i]=$(printf '%s\n' "$pd_span" | $GREP -F '**Add** an entry')
+
+    for lit in "${fr8_phrases[@]}"; do
+        printf '%s' "${fr8_add_lines[$i]}" | $GREP -qF "$lit" \
+            || fr8_bad="${fr8_bad}$name: Protocol Deviations span missing '$lit'; "
+    done
+done
+
+# Pairwise byte-identity against the first extracted line, T7-style (CM1) — catches a
+# meaning-inverting or scope-narrowing edit to the prose between the six pinned phrases,
+# which the literal loop above cannot see: all six substrings survive such an edit unchanged.
+for i in "${!FR8_LOOP_FILES[@]}"; do
+    if [ -n "${fr8_add_lines[0]:-}" ] && [ -n "${fr8_add_lines[$i]:-}" ] \
+        && [ "${fr8_add_lines[$i]}" != "${fr8_add_lines[0]}" ]; then
+        fr8_bad="${fr8_bad}${FR8_LOOP_FILES[$i]#"$ROOT"/}: '**Add**' bullet differs from ${FR8_LOOP_FILES[0]#"$ROOT"/} — not byte-identical; "
+    fi
+done
+
+if [ -z "$fr8_bad" ]; then
+    pass "the ledger-class exemption is stated at both full-statement sites and resolves nowhere else, the entry-format block ships its three field/heading names, and all three fix loops carry the six-obligation drop clause byte-identically inside their own Protocol Deviations span"
+else
+    fail "the ledger-class exemption is stated at both full-statement sites and resolves nowhere else, the entry-format block ships its three field/heading names, and all three fix loops carry the six-obligation drop clause byte-identically inside their own Protocol Deviations span" "$fr8_bad"
 fi
 
 echo

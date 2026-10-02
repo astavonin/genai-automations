@@ -36,7 +36,7 @@ Resolve `<issue-folder>` once and echo it. Step 2's `/verify-docs` call and the 
 
 ## Protocol Deviations
 
-When running any review pass in this command (Steps 1 and 3), deviate from the `/review-design` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+When running any review pass in this command (Steps 1 and 3), deviate from the `/review-design` protocol as follows — the **Skip** bullets below are suppressed because the fix-loop manages them centrally; the **Add** bullet is not suppressed, it adds a step the base protocol does not have:
 
 - **Skip** the round-verdict step — `/review-design` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
@@ -44,6 +44,7 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is the step in `/review-design` that blocks until the user invokes `/implement`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
 - **Skip** the design doc status header update step (naming `**Status:**` and `**Approved:**`) — the fix-loop manages the header itself; it sets it in three places: when the initial review (Step 1) returns APPROVED on branch 1; on branch 2, at Step 5 after the revision bump; and on the fragment's APPROVED row in Step 3. (Note: `/review-iterate` uses the opposite convention — it retains the invoked command's header update rather than managing it centrally. The two commands diverge here intentionally.)
+- **Add** an entry to `<issue-folder>/dropped-findings.md` for every finding this review pass dropped, naming the pass, what dropped it, and why — or one dated `No findings dropped` entry naming the pass when it dropped none. Paste that file whole into each Claude reviewer's prompt inside a `~~~markdown` fence, stating its absence explicitly when there is none. A finding already recorded there is not raised again unless this pass holds new evidence the entry does not answer.
 
 **Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1 and 3). This is a separate invocation from the pre-Step-1 gate in the Prerequisite section — the gate re-evaluates on each pass because Step 2 may introduce new open questions despite the prohibition. If Step 2 introduces new open questions in `## 8. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Step 3 — not Step 1, which cannot re-fire since the pre-Step-1 gate just passed), use this specific message instead of the gate's default:
 

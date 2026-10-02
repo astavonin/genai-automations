@@ -18,13 +18,14 @@ Implementation exists on the branch. No existing review file required — this c
 
 ## Protocol Deviations
 
-When running any review pass in this command (Steps 1 and 3), deviate from the `/review-code` protocol as follows — these steps are suppressed because the fix-loop manages them centrally:
+When running any review pass in this command (Steps 1 and 3), deviate from the `/review-code` protocol as follows — the **Skip** bullets below are suppressed because the fix-loop manages them centrally; the **Add** bullet is not suppressed, it adds a step the base protocol does not have:
 
 - **Skip** the round-verdict step — `/review-code` states one per pass, and this loop states it once at whichever exit it reaches. Without this a three-round run emits four verdicts that may disagree, against a fragment specifying one line at the end of the run.
 - **Skip** the planning-update step (Step 5 of this command handles it once at the end)
 - **Skip** the push-planning step (Step 5 handles it)
 - **Skip** the "ask user to open file" step (this command runs autonomously)
 - **Skip** the "Phase gate (MANDATORY)" step (the loop continues without user input — this is Step 7 in `/review-code` that blocks until the user invokes `/verify`; the fix-loop's autonomy is authorized by the Exception clause in CLAUDE.md Critical Rules)
+- **Add** an entry to `<issue-folder>/dropped-findings.md` for every finding this review pass dropped, naming the pass, what dropped it, and why — or one dated `No findings dropped` entry naming the pass when it dropped none. Paste that file whole into each Claude reviewer's prompt inside a `~~~markdown` fence, stating its absence explicitly when there is none. A finding already recorded there is not raised again unless this pass holds new evidence the entry does not answer.
 
 ## Actions
 

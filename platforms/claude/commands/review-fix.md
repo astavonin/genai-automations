@@ -118,7 +118,7 @@ Aggregate per protocol Steps B–H. Step F (test-coverage agent) is **mandatory*
 
 ### Step 4: Output
 
-**Write the report to `<issue-folder>/fix-review.md`** — single canonical file per issue folder, overwritten on every re-run. No `<fix-description>-` prefix in the filename; git history preserves prior fix reviews for the same issue.
+**Write the report to `<issue-folder>/fix-review.md`** — single canonical file per issue folder, overwritten on every re-run. No `<fix-description>-` prefix in the filename.
 After writing, ask the user if they want to `open <path>` the review file.
 
 ### Step 4b: Delete intermediates
@@ -133,7 +133,7 @@ else
 fi
 ```
 
-Do NOT keep them "just in case" — the aggregated content lives in `fix-review.md`, and git history preserves prior Codex output if a future re-run needs a compare point.
+Do NOT keep them "just in case" — the aggregated content lives in `fix-review.md`, and a re-run regenerates the intermediate if a future compare point is needed.
 
 Output format (`review_type = Fix Review`, `fix_review_extras = yes`):
 ```

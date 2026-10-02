@@ -21,7 +21,7 @@ If no path is provided, generate a new review request document from the template
 - **Issue-scoped review:** input at `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/codex-review-request.md`; output at `planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/codex-review.md`. Single canonical file, always overwritten — no `-r<N>`, `-final`, or `-v2` filename suffixes.
 - **Never** write to a top-level `planning/reviews/` directory. That layout is retired — see CLAUDE.md "Planning Structure".
 
-Every iteration overwrites in place. If the reviewer or the user needs to compare against a prior round, they use `git log` on the file, not filename versioning.
+Every iteration overwrites in place.
 
 ## Actions
 

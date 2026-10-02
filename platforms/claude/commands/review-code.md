@@ -58,7 +58,7 @@ Read ~/.claude/skills/workflows/status-marker-verify/SKILL.md
 
 ## File Overwrite Convention (§7.4)
 
-This skill always writes a **single** file `code-review.md` inside the issue folder, **overwriting** any prior content. No versioning suffixes (`-v1`, `-v2`). No appending. Each run replaces. Git history in `planning/` preserves prior reviews if needed. The gate always reads the single latest file.
+This skill always writes a **single** file `code-review.md` inside the issue folder, **overwriting** any prior content. No versioning suffixes (`-v1`, `-v2`). No appending. Each run replaces. The gate always reads the single latest file.
 
 ## Actions
 

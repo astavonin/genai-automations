@@ -183,7 +183,7 @@ else
 fi
 ```
 
-Do NOT keep them around "just in case" — git history in `planning/` preserves prior review-request content if the workflow is re-run, and Codex raw output was consumed by aggregation in Step 4. Only the final YAML persists.
+Do NOT keep them around "just in case" — the final YAML carries the aggregated content, and a re-run regenerates the intermediate if the workflow needs it again; Codex raw output was consumed by aggregation in Step 4. Only the final YAML persists.
 
 ### Step 6: Display Summary and Post Instructions
 

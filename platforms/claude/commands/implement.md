@@ -21,7 +21,7 @@ Implement the approved design following the chosen agent's expertise.
 
 ## File Overwrite Convention
 
-`/review-code` always writes a **single** file `code-review.md` inside the issue folder, overwriting any prior content. No versioning suffixes. The gate below reads from this single file. Git history preserves prior versions.
+`/review-code` always writes a **single** file `code-review.md` inside the issue folder, overwriting any prior content. No versioning suffixes. The gate below reads from this single file.
 
 ## Actions
 

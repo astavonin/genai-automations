@@ -33,7 +33,8 @@ planning/
 │               ├── design-review.md     # Design review (Phase 3)
 │               ├── code-review.md       # Code review (Phase 5)
 │               ├── codex-review.md      # Codex review of our issue
-│               └── observed-failures.md # Append-only ledger of failures that actually occurred
+│               ├── observed-failures.md # Append-only ledger of failures that actually occurred
+│               └── dropped-findings.md  # Append-only ledger of findings a fix loop dropped
 ```
 
 ## File Purposes
@@ -103,7 +104,23 @@ Do not invent new phase labels. If a transition is not listed here, leave the Ph
 - `design-review.md` — design review (Phase 3)
 - `code-review.md` — code review (Phase 5)
 - `codex-*.md` — codex review outputs (optional)
-- `observed-failures.md` — append-only ledger of failures that actually occurred and how each is covered (written by `/diagnose`, `/ci-debug`, `/review-code-fix-loop`, `/review-iterate`, and `/fix-mr`'s Fix Chain, resolved by `/implement`, read by `/verify` and the review commands). Also valid at `planning/reviews-orphan/<slug>/` for unlinked hotfixes. Exempt from the one-final-output convention — never overwrite or consolidate it.
+- Any member of the **ledger class** — `observed-failures.md`, and `dropped-findings.md` alongside it — is **exempt from the one-final-output convention**: each is an append-only ledger, never overwritten or consolidated, so each entry keeps its own record.
+  - `observed-failures.md` — ledger of failures that actually occurred and how each is covered (written by `/diagnose`, `/ci-debug`, `/review-code-fix-loop`, `/review-iterate`, and `/fix-mr`'s Fix Chain, resolved by `/implement`, read by `/verify` and the review commands). Also valid at `planning/reviews-orphan/<slug>/` for unlinked hotfixes.
+  - `dropped-findings.md` — ledger of findings a fix loop dropped, written by the first `/review-code-fix-loop`, `/review-design-fix-loop`, or `/review-article-fix-loop` pass against the folder. One entry per drop, or one dated `No findings dropped` entry per pass that drops none. Read by the orchestrator and pasted whole into each Claude reviewer's prompt — never Read by an agent itself. Entry format:
+
+    ```markdown
+    # Dropped Findings — <issue or fix name>
+
+    ## <YYYY-MM-DD> <the dropped finding, restated in one line>
+    **Round:** <review command, round N>
+    **Dropped by:** <Step G, 2-of-2 refuted | Step G, 1-1 split | orchestrator | Codex>
+    **Why:** <free text — the refuting ground, or why this is recorded though still believed live>
+
+    ## <YYYY-MM-DD> No findings dropped
+    **Round:** <review command, round N>
+    ```
+
+    An entry carries no `**Status:**` field, no finding ID, and no severity. An entry body quotes code or config in a backtick fence and never uses `~~~` — the outer paste fence into a reviewer prompt is `~~~markdown`, and an entry's own `~~~` would end that section early.
 
 **Style:** Detailed technical content; filenames inside the folder are generic (no issue-number prefix)
 
