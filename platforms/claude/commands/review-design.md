@@ -105,6 +105,13 @@ This is a **design review**, not a code review. Reviewers must stay at the archi
 **Ticket Constraint Guardrail (applies to all flag rules above):**
 Before flagging a design for violating a ticket restriction, consult `analysis.md` `## Ticket Constraints`. Only ACCEPTED and REVISED entries are enforceable — DROPPED entries and restrictions not listed must not be flagged. If the section is absent (research predates this convention, no ticket text was available in-session, or no ticket-originated restrictions were found), no ticket-originated restrictions are enforceable in this review — flag only design-quality issues.
 
+**Acceptance Criteria Guardrail (same shape, different section):**
+`analysis.md` → `## Acceptance Criteria Assessment` is the authoritative AC set, not the ticket's original list. An AC recorded `→ DROPPED` left scope at research time with the user's decision — **do not flag a design for failing to cover it**, and do not reinstate it as a gap. An AC recorded `ALREADY MET → KEEP` is a behaviour the design must preserve rather than build, so a design that rebuilds it is over-scope, not thorough. Where the section is absent, the ticket's AC list is context only and no AC-coverage finding is enforceable. `## Project Fit` is read by its **decision marker**, never by the bare verdict. Three branches:
+
+- `→ PROCEED` — a decision the user made. Not a design defect, and not re-raised here.
+- `→ REDIRECTED` — the issue's scope or home changed on record. **Grade the design against the redirected scope**, and flag a design that still implements the pre-redirect one: that design solves a problem the user moved away from, and it is the failure the redirect exists to prevent.
+- **no marker** — never put to the user, so a design that proceeds as though it were settled is flagged: the concern is open, and the design should have surfaced it. That distinction is the whole point of the marker — without it an agent-authored misfit and a user-approved one are byte-identical, and this guardrail would suppress the first along with the second.
+
 **Do NOT flag (implementation-level — out of scope for design review):**
 - Specific language constructs (`[[nodiscard]]`, `mutable`, `noexcept`, `static_assert`, etc.)
 - Exact method signatures, return types, or parameter names

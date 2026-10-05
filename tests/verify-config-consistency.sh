@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=100
+EXPECTED_TESTS=101
 
 PASS=0
 FAIL=0
@@ -4152,6 +4152,174 @@ if [ -z "$dd_bad" ]; then
     pass "all $dd_seen example description(s) under ## Examples stay inside the three-sentence ceiling Step 5 claims for them"
 else
     fail "all example descriptions under ## Examples stay inside the three-sentence ceiling Step 5 claims for them" "$dd_bad"
+fi
+
+echo "== D-e: /research grades acceptance criteria and project fit, and both downstream phases read it =="
+
+de_bad=""
+RESEARCH_DOC="$CLAUDE/commands/research.md"
+DESIGN_DOC="$CLAUDE/commands/design.md"
+RD_DOC="$CLAUDE/commands/review-design.md"
+
+# Extracted by heading rather than by span anchors: the section's own title occurs six times
+# in the file (the heading, two forward pointers, the Phase 2/3 mandate, and the example
+# block), so `d_at`'s uniqueness requirement cannot bind here. A missing anchor is a content
+# regression — the section renamed or deleted — and becomes this assertion's failure.
+de_raw=$(extract-section "$RESEARCH_DOC" "## Acceptance Criteria Assessment" 2>&1)
+de_status=$?
+if [ "$de_status" -ne 0 ]; then
+    de_bad="${de_bad}extract-section could not read '## Acceptance Criteria Assessment' from commands/research.md: ${de_raw}; "
+else
+    # The four verdicts and the three decision markers are the vocabulary every downstream
+    # reader keys on. The two rules after them are the ones whose loss changes behaviour
+    # rather than wording: an uncited ALREADY MET removes work on a guess, and an AI-side drop
+    # narrows scope that belongs to the user.
+    # The first two are anchored to their table cell (`| … |`), not to the bare term: both occur
+    # again in the section's prose — `FEASIBLE` in the user-decision rule, `ALREADY MET` three
+    # more times — so a rename confined to the verdict table would otherwise leave the pin green
+    # and the section's vocabulary disagreeing with itself. The other two carry a `<placeholder>`,
+    # which is itself the table-row anchor, so they need no bars.
+    for lit in \
+        '| `FEASIBLE` |' '| `ALREADY MET` |' '`INFEASIBLE: <what blocks it>`' '`DROP CANDIDATE: <why>`' \
+        '`→ KEEP`' '`→ REVISED: <new wording>`' '`→ DROPPED: <reason>`' \
+        'No citation, no verdict' \
+        'The graded list covers every acceptance criterion the ticket text states' \
+        'a prior decision corroborates it and never replaces it' \
+        'Present every AC that is **not** `FEASIBLE`' \
+        'on your own authority' 'never treat silence as a decision' \
+        '`FITS`' '`TENSION: <what>`' '`MISFIT: <what>`' \
+        'It never silently redirects the issue' \
+        'MUST treat `## Acceptance Criteria Assessment` as the authoritative AC set'
+    do
+        printf '%s\n' "$de_raw" | $GREP -qF "$lit" \
+            || de_bad="${de_bad}research.md's AC section no longer carries '${lit:0:44}…'; "
+    done
+
+    # The precondition is the guard against the worst failure this step can have: an AC the
+    # agent invented, graded, and recorded in a form a later reader cannot tell from the
+    # ticket's own.
+    printf '%s\n' "$de_raw" | $GREP -qF 'Never reconstruct an AC from the codebase' \
+        || de_bad="${de_bad}research.md's AC section no longer bars reconstructing an AC; "
+
+    # Both graded subsections must send the reader to the `search docs` run already on the page
+    # before re-reading anything. Without this the step re-derives from code what the planning
+    # index already answers, and a TENSION against planned-but-unwritten work is invisible to a
+    # code read — which is how the first version of this section shipped.
+    printf '%s\n' "$de_raw" | $GREP -qF 'Read `## Prior Context` before re-reading anything' \
+        || de_bad="${de_bad}research.md's AC section no longer points at the Action 1 search-docs run as first evidence; "
+    printf '%s\n' "$de_raw" | $GREP -qF 'Start from `## Prior Context`, not from a fresh read' \
+        || de_bad="${de_bad}research.md's Project Fit subsection no longer starts from the search-docs run; "
+
+    # The three rules a review found missing on the first draft, each a silent scope change if
+    # it goes: an unmarked FEASIBLE AC read as excluded rather than active (which would drop
+    # the majority of every ticket's ACs), an unanswered recommendation written up as dropped,
+    # and the fit verdict skipped on a pass that has no ACs to grade.
+    printf '%s\n' "$de_raw" | $GREP -qF 'it is in scope exactly as the ticket states it' \
+        || de_bad="${de_bad}research.md no longer states that an unmarked FEASIBLE AC is in scope as written; "
+    printf '%s\n' "$de_raw" | $GREP -qF 'unresolved, not dropped' \
+        || de_bad="${de_bad}research.md no longer distinguishes an unanswered recommendation from a dropped one; "
+    printf '%s\n' "$de_raw" | $GREP -qF '**`## Project Fit` is unconditional.**' \
+        || de_bad="${de_bad}research.md no longer runs Project Fit unconditionally — a no-ticket or no-AC pass would skip the fit judgement; "
+
+    # The fit half needs its own decision markers for the same reason the AC half does: without
+    # them a TENSION the agent raised is byte-identical to one the user approved, and both
+    # consumers are told to treat an approved one as settled — so the guardrail against
+    # redirecting an issue becomes a way of suppressing a real misfit. Pinned at all three
+    # sites below, because a marker vocabulary that disagrees across files is this corpus's
+    # dominant failure class.
+    for lit in '`→ PROCEED: <reason>`' '`→ REDIRECTED: <what changes>`' \
+               '**An unmarked `TENSION` or `MISFIT` is an open question, not an approved trade-off.**'
+    do
+        printf '%s\n' "$de_raw" | $GREP -qF "$lit" \
+            || de_bad="${de_bad}research.md's Project Fit subsection no longer carries '${lit:0:40}…'; "
+    done
+fi
+
+$GREP -qF 'key on its decision marker, not on the bare verdict' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer keys Project Fit on its decision marker — an unasked concern would read as an approved trade-off; "
+$GREP -qF 'never put to the user' "$RD_DOC" \
+    || de_bad="${de_bad}commands/review-design.md no longer flags a design built on an unmarked fit concern; "
+$GREP -qF 'Grade the design against the redirected scope' "$RD_DOC" \
+    || de_bad="${de_bad}commands/review-design.md has no → REDIRECTED branch — a design following the pre-redirect scope would pass; "
+
+# Design-side routing, pinned at its own site: the section is only authoritative if an entry
+# with no marker is read as active. The first draft said "design the entries recorded KEEP and
+# REVISED", which excluded every plain FEASIBLE AC — the majority — with nothing recording it.
+#
+# Four pins, not two heading names. A review showed that pinning only the headings let the
+# bullet be stripped to "read it first" with every operative clause gone and this assertion
+# still green — while its pass message claimed /design consumed the section.
+$GREP -qF '**Every entry is in scope unless it is recorded `→ DROPPED`.**' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer treats an unmarked AC entry as in scope; "
+$GREP -qF 'is unresolved, not inactive' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer routes an undecided non-FEASIBLE verdict into Q&A; "
+$GREP -qF 'design nothing for a `→ DROPPED` one' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer excludes a DROPPED AC from the design; "
+$GREP -qF '§6 covers it with a regression test' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer turns an ALREADY MET → KEEP into a regression test — the only downstream check on a wrong citation; "
+
+# The step's invocation, pinned upstream for the same reason the consumers are pinned
+# downstream: delete Action 6 and the Output bullet and the section survives intact with every
+# literal matching, while no agent is ever told to run it. The feature becomes documentation.
+#
+# Section-scoped, not whole-file. The first version of these three used `$GREP … "$RESEARCH_DOC"`
+# while the comment above claimed they proved the sites — the same defect a review had just
+# corrected two blocks up, repeated one round later. A relocated literal satisfied a whole-file
+# grep with the operative instruction gone.
+# Both sections are extracted once, here, before any use. The first version of this put the
+# `## Actions` extraction *after* the block that reads it and guarded that read with
+# `${de_act_status:-1}` — so on an unset variable the two invocation pins silently skipped
+# while the pass banner still claimed them. That is the self-skipping guard this suite exists
+# to catch, introduced in the fix for a finding about weak pinning.
+de_act_raw=$(extract-section "$RESEARCH_DOC" "## Actions" 2>&1)
+de_act_status=$?
+de_out_raw=$(extract-section "$RESEARCH_DOC" "## Output" 2>&1)
+de_out_status=$?
+[ "$de_act_status" -eq 0 ] \
+    || de_bad="${de_bad}extract-section could not read '## Actions' from commands/research.md: ${de_act_raw}; "
+[ "$de_out_status" -eq 0 ] \
+    || de_bad="${de_bad}extract-section could not read '## Output' from commands/research.md: ${de_out_raw}; "
+
+if [ "$de_out_status" -eq 0 ]; then
+    printf '%s\n' "$de_out_raw" | $GREP -qF 'section **when the ticket text states acceptance criteria**' \
+        || de_bad="${de_bad}research.md's ## Output no longer lists the AC section conditionally; "
+fi
+
+if [ "$de_act_status" -eq 0 ]; then
+    # The invocation and the agent brief, scoped to `## Actions` — the site, not the file.
+    printf '%s\n' "$de_act_raw" | $GREP -qF 'Grade each acceptance criterion and the issue' \
+        || de_bad="${de_bad}research.md's ## Actions no longer carries the Action that invokes the AC grading; "
+    printf '%s\n' "$de_act_raw" | $GREP -qF '**Brief the agent on the AC grading before spawning it.**' \
+        || de_bad="${de_bad}research.md's ## Actions no longer briefs the agent on the grading before launch — the verdicts would need a second investigation; "
+
+    # The second query's licence and the ban on pasting it into `## Prior Context`. Split into
+    # two shorter literals rather than one sentence: the original carried the ordinal "during
+    # Action 6", so inserting any Action into the list reddened a pin for a renumbering that
+    # changes no rule, and the scoping the ordinal appeared to supply is already supplied by
+    # the extraction above.
+    printf '%s\n' "$de_act_raw" | $GREP -qF 'One query is mandatory here' \
+        || de_bad="${de_bad}research.md Action 1 no longer states that one query is mandatory; "
+    printf '%s\n' "$de_act_raw" | $GREP -qF 'a second, narrower one is permitted' \
+        || de_bad="${de_bad}research.md Action 1 no longer licenses the one permitted second query; "
+    printf '%s\n' "$de_act_raw" | $GREP -qF 'never paste it into `## Prior Context`' \
+        || de_bad="${de_bad}research.md Action 1 no longer bars pasting a second run into ## Prior Context; "
+fi
+
+# A section nobody reads is dead weight, so the two phases that consume it are pinned too —
+# this is the wiring that makes a DROPPED entry actually stop reaching a design and a review.
+$GREP -qF '## Acceptance Criteria Assessment' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer reads '## Acceptance Criteria Assessment'; "
+$GREP -qF '## Project Fit' "$DESIGN_DOC" \
+    || de_bad="${de_bad}commands/design.md no longer reads '## Project Fit'; "
+$GREP -qF '**Acceptance Criteria Guardrail' "$RD_DOC" \
+    || de_bad="${de_bad}commands/review-design.md no longer carries the Acceptance Criteria Guardrail; "
+$GREP -qF 'do not flag a design for failing to cover it' "$RD_DOC" \
+    || de_bad="${de_bad}review-design.md no longer bars flagging a design for a DROPPED AC; "
+
+if [ -z "$de_bad" ]; then
+    pass "/research's AC-assessment section carries its four verdicts, three decision markers, citation and no-self-drop rules and three fit verdicts, and /design and /review-design both consume it"
+else
+    fail "/research's AC-assessment section carries its four verdicts, three decision markers, citation and no-self-drop rules and three fit verdicts, and /design and /review-design both consume it" "$de_bad"
 fi
 
 echo "== D-c: CLAUDE.md carries the planning-first read path with its carve-outs =="
