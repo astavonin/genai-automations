@@ -178,7 +178,7 @@ issues:
     weight: 8               # REQUIRED — replace 8 with the value from your step 3 estimate; keep the comment above
     description: |
       # Description
-      <what is broken/missing and why it matters now — state the observable gap, not the approach>
+      <at most three sentences: the observable gap and what it blocks — not the approach>
 
       # Acceptance Criteria
       - <observable outcome — verifiable as done/not done>
@@ -203,7 +203,7 @@ issues:
 ```markdown
 # Description
 
-State the **problem or need** and **why it matters now**. Focus on the observable gap — what is broken, missing, or inadequate, and what impact that has. Do not specify approach, technology choices, or design decisions; those belong in the design doc.
+**At most three sentences. Hard limit.** State the observable gap and what it costs — what is broken or missing, and what that blocks. Nothing else: no approach, no technology choice, no design decision, no restatement of the title. A reader scans this in one pass and decides whether to pick the ticket up; anything they would skip does not belong here.
 
 ---
 
@@ -224,7 +224,7 @@ Add any references, related Epics, Issues, links, or notes for reviewers.
 ```markdown
 # Description
 
-State the **problem area or capability gap** and **why it matters**. Describe the outcome the epic delivers, not the approach.
+**At most three sentences. Hard limit**, the same bound the issue description carries and for the same reason. State the capability gap and the outcome the epic delivers, not the approach.
 
 ---
 
@@ -242,6 +242,7 @@ Add any references, related issues, or notes.
   - Technology choices: specific libraries, languages, file names, class names
   - Design decisions: "use X pattern", "call Y API", "store in Z"
 - Acceptance criteria state observable outcomes, not implementation steps ("configuration survives reboot" not "write config to /etc/…")
+- **Descriptions are at most three sentences, issues and epics alike** — the bound stated in both templates above, repeated here because this is the list an author checks their draft against. A fourth sentence is the signal that the description is carrying design, history, or a restated title. Three is a ceiling and not a quota: one sentence that states the gap is finished, and padding it to reach three is the defect this bound exists to remove. No example under `## Examples` runs past three sentences; match them.
 - Titles are concise, under 70 characters. Titles may describe the user-visible outcome with action verbs (e.g., "Persist preferences across sessions", "Support concurrent writes") but must not name a specific technology or implementation target (e.g., "Add Redis cache", "Migrate to Postgres", "Refactor auth middleware").
 
 ### 6. Review the Draft
@@ -264,7 +265,7 @@ It improves the draft and surfaces one class of question. It is not a gate: Step
 |---|---|---|---|
 | **T1** | **Faithful** — the ticket asks for what the user asked for, and no more. | description, acceptance criteria, and the issue set | Scope the draft added on its own: an issue the user never mentioned, an acceptance criterion covering a case they did not raise, a split into three issues where they described one. |
 | **T2** | **Not over-constrained** — no acceptance criterion is narrower than the need. | acceptance criteria | "config written to `/etc/x.conf` with mode 0644" where "configuration survives reboot" is the actual requirement. A criterion that forecloses an implementation choice the design phase should make. |
-| **T3** | **Nothing unnecessary** — every sentence earns its place. | description and acceptance criteria | Restating the title in the first line of the description; a third acceptance criterion that is the second one reworded. |
+| **T3** | **Nothing unnecessary** — every sentence earns its place, and a description is at most three. | description and acceptance criteria | A description over three sentences, which is the common case and is counted rather than judged: report it with the surviving sentences as the replacement text, three at most and fewer where fewer suffice. Also: restating the title in the first line of the description; a third acceptance criterion that is the second one reworded. |
 | **T4** | **No HOW** — Step 5's rule, finally checked. | description | Implementation verbs, named technologies, file or class names, "use X pattern". Step 5's rewrite-trigger list is the detector and is description-scoped; the rule outranks the list. |
 | **T5** | **Each criterion observable** — verifiable done or not-done. | acceptance criteria | An activity rather than an outcome ("investigate whether…", "consider adding…"), or a criterion whose truth nobody can check. |
 
@@ -276,7 +277,9 @@ Each finding names its criterion, the issue and field it sits in, and the concre
 
 **T4 and T5 findings are included directly, without verification.** Both are decidable by reading: an implementation verb or a named file is present or it is not, and a criterion either names an outcome or names an activity. This is the protocol's own direct-inclusion rule for enumerable facts, applied the way `~/.claude/commands/review-spec.md` applies it to its decidable criteria — a default-to-refute filter would discard mechanical facts, and T4 is the rule whose absence motivated this step.
 
-**T1, T2 and T3 findings go to a quorum**, where the judgment is genuine. Run Step G of `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` — two **reviewer (opus)** verifiers per finding, its strict first-line output contract, its aggregation rules 1 to 5 including the `Unparseable` retry and discard-with-warning, and its concurrency cap of 20. Each verifier gets the same YAML, scope statement and criteria set. Include only where both return `VERDICT: CONFIRMED`.
+**T3's sentence-count half is included directly too**, on the same rule: three sentences or fewer is settled by counting, not by judging, so a default-to-refute filter would discard it the way it would discard T4. Its redundancy half — a restated title, a reworded criterion — is judgment and goes to the quorum with the rest.
+
+**T1, T2 and T3's redundancy half go to a quorum**, where the judgment is genuine. Run Step G of `~/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md` — two **reviewer (opus)** verifiers per finding, its strict first-line output contract, its aggregation rules 1 to 5 including the `Unparseable` retry and discard-with-warning, and its concurrency cap of 20. Each verifier gets the same YAML, scope statement and criteria set. Include only where both return `VERDICT: CONFIRMED`.
 
 **6c — Apply, or ask.** Confirmed findings split two ways, and the split is the point:
 
@@ -346,7 +349,7 @@ Show the created issue/epic/milestone URLs. Ask if the user wants to `open <url>
 9. **Dry run before create** — always run `--dry-run` and show output; wait for confirmation
 10. **Label allowlist** — before writing any `labels:` field (issue-level or epic-level), run the `label-allowlist` shared fragment (`~/.claude/skills/workflows/label-allowlist/SKILL.md`), and re-invoke it at Step 7 before displaying the YAML. Every entry must match byte-for-byte (case, spaces, punctuation) a label name in `planning/.label-allowlist.txt`. If no listed label fits, omit the `labels:` key entirely — do not write `labels: []`. Never fabricate, extrapolate from prior tickets, or copy from a stale draft. Whether `projctl create` rejects unknown labels at submit or not, this pre-flight is the primary gate — do not rely on the tool as a backstop. Note: this pre-flight verifies only what the workflow writes into `labels:`; labels merged in by projctl from `labels.default` in config are NOT verified here (see the fragment's Residual failure paths).
 11. **User confirmation required** — do NOT run `projctl create` without explicit approval after dry-run review
-12. **Review the draft before showing it** — Step 6 runs on every ticket: one reviewer against the five named criteria. T4 and T5 are decidable by reading and are included directly; T1, T2 and T3 go to Step G's 2-of-2 quorum. T2–T5 findings are applied to the YAML file itself; **a T1 finding is never applied** — scope is the user's, so it is surfaced as a question at Step 7d. That sub-step also reports a run where the reviewer found nothing, or where T1 had no scope statement to grade against; silence and a skipped review are indistinguishable otherwise
+12. **Review the draft before showing it** — Step 6 runs on every ticket: one reviewer against the five named criteria. T4, T5 and T3's sentence count are decidable by reading and are included directly; T1, T2 and T3's redundancy half go to Step G's 2-of-2 quorum. T2–T5 findings are applied to the YAML file itself; **a T1 finding is never applied** — scope is the user's, so it is surfaced as a question at Step 7d. That sub-step also reports a run where the reviewer found nothing, or where T1 had no scope statement to grade against; silence and a skipped review are indistinguishable otherwise
 
 ## Examples
 

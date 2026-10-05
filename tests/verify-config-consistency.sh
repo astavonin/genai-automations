@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=96
+EXPECTED_TESTS=100
 
 PASS=0
 FAIL=0
@@ -3909,6 +3909,315 @@ if [ -z "$fr8_bad" ]; then
     pass "the ledger-class exemption is stated at both full-statement sites and resolves nowhere else, the entry-format block ships its three field/heading names, and all three fix loops carry the six-obligation drop clause byte-identically inside their own Protocol Deviations span"
 else
     fail "the ledger-class exemption is stated at both full-statement sites and resolves nowhere else, the entry-format block ships its three field/heading names, and all three fix loops carry the six-obligation drop clause byte-identically inside their own Protocol Deviations span" "$fr8_bad"
+fi
+
+# === The /ticket description bound and the planning-first read path ========================
+#
+# Two user-reported failures, recorded in planning/reviews-orphan/main-2b1a277/
+# observed-failures.md: `/ticket` generated descriptions too long to scan, and the agent's
+# default for a ticket question was a tracker round-trip over a local cache that already held
+# the answer. Both fixes are rule text, so the test form is this repo's mandated one — a
+# presence assertion pinning the shipped wording, which fails the day that wording moves.
+# Waiver category 6 names that form explicitly as not-a-restatement.
+#
+# D-a and D-b are split rather than merged because they fail for different reasons and a
+# merged assertion would report the wrong one: D-a is about a bound stated five times, D-b
+# about two sites agreeing on one routing rule. D-b is the regression guard for the defect
+# the round-1 review found — Step 6b was changed to split T3 and Critical Rule 12 was not.
+#
+# Both check position, not just presence. The first version of this block counted each
+# literal across the whole file, and a round-2 reviewer showed what that misses: deleting
+# the bound from the issue template and leaving a verbatim copy at the end of the file kept
+# every count at exactly 1 and the suite green at 100/0. A rule in the wrong section is not
+# the rule — the ledger entries claim these sentences sit where an author and a reviewer
+# read them, so that is what gets asserted.
+
+TICKET_DOC="$CLAUDE/commands/ticket.md"
+
+# file, section-start anchor, section-end anchor, literal → prints a reason when the literal
+# is missing, duplicated, or present but outside its section; prints nothing when it is where
+# it belongs. Compares line numbers rather than extracting a span: every anchor below is
+# checked unique first, so the arithmetic is exact and costs three greps instead of an awk
+# range. The bounds-inverted branch is T7's CM2 guard — an end anchor renamed or hoisted
+# above the start would otherwise make every containment test vacuously true.
+d_at() {
+    local f=$1 s=$2 e=$3 lit=$4 ns ne nl ls le ll
+    ns=$($GREP -oF "$s" "$f" | wc -l | tr -d ' ')
+    ne=$($GREP -oF "$e" "$f" | wc -l | tr -d ' ')
+    nl=$($GREP -oF "$lit" "$f" | wc -l | tr -d ' ')
+    [ "$ns" -eq 1 ] || { printf "section start '%.38s…' occurs %s time(s), want 1; " "$s" "$ns"; return; }
+    [ "$ne" -eq 1 ] || { printf "section end '%.38s…' occurs %s time(s), want 1; " "$e" "$ne"; return; }
+    [ "$nl" -eq 1 ] || { printf "'%.44s…' occurs %s time(s), want exactly 1; " "$lit" "$nl"; return; }
+    ls=$($GREP -nF "$s" "$f" | head -1 | cut -d: -f1)
+    le=$($GREP -nF "$e" "$f" | head -1 | cut -d: -f1)
+    ll=$($GREP -nF "$lit" "$f" | head -1 | cut -d: -f1)
+    [ "$le" -gt "$ls" ] \
+        || { printf "section bounds inverted: end '%.28s…' at line %s is not after start '%.28s…' at line %s; " "$e" "$le" "$s" "$ls"; return; }
+    # `-ge` on the start, not `-gt`: this corpus bans manual line wrapping, so a one-line rule
+    # carries its own section anchor — Critical Rule 12's two literals sit on the very line that
+    # opens its section. The end stays exclusive, since that line opens the next section.
+    [ "$ll" -ge "$ls" ] && [ "$ll" -lt "$le" ] \
+        || printf "'%.44s…' sits at line %s, outside its own section (lines %s..%s) — present but relocated; " "$lit" "$ll" "$ls" "$le"
+}
+
+echo "== D-a: /ticket states the description bound as a ceiling at all five sites, each inside its own section =="
+
+da_bad=""
+if [ ! -f "$TICKET_DOC" ]; then
+    da_bad="commands/ticket.md does not resolve; "
+else
+    # The five sites the bound is stated at, each with the section that must carry it:
+    # the issue template, the epic template, the Step 5 quality-rules list an author checks a
+    # draft against, criterion T3 (the only one anything ever checks), and the Step 4 YAML
+    # skeleton — the text present at the moment a description is actually written, which is
+    # the site round 1 found still carrying the superseded instruction.
+    # Fields are `start|end|literal`; no anchor or literal contains a pipe.
+    da_sites=(
+        '**Issue description (required sections):**|**Epic description — OMIT|**At most three sentences. Hard limit.** State the observable gap'
+        '**Epic description — OMIT|**Quality rules:**|**At most three sentences. Hard limit**, the same bound the issue description carries'
+        '**Quality rules:**|### 6. Review the Draft|**Descriptions are at most three sentences, issues and epics alike**'
+        '**The criteria (paste verbatim):**|The Field column is Step 5|**Nothing unnecessary** — every sentence earns its place, and a description is at most three.'
+        '# ── ISSUES (required unless creating milestone/epic only)|### 5. Description Templates|<at most three sentences: the observable gap and what it blocks'
+    )
+    for row in "${da_sites[@]}"; do
+        IFS='|' read -r da_s da_e da_lit <<< "$row"
+        da_bad="${da_bad}$(d_at "$TICKET_DOC" "$da_s" "$da_e" "$da_lit")"
+    done
+
+    # The ceiling is only unambiguous while no range form survives to contradict it. Three
+    # range spellings were live before the fix and each would reinstate a floor of two, which
+    # is what made an author pad a finished one-sentence description to reach it.
+    for range in 'two or three sentences' 'Two or three sentences' '2–3 sentences' '2-3 sentences'; do
+        ! $GREP -qF "$range" "$TICKET_DOC" \
+            || da_bad="${da_bad}range form '$range' survives — a floor of two reinstates the padding the ceiling removes; "
+    done
+
+    # Whole-file absence, deliberately unlike the presence checks above: the superseded
+    # instruction is wrong wherever it appears, so a copy anywhere is the defect. `-F` is
+    # case-sensitive and the surviving "WHY it matters" in the Quality rules is uppercase,
+    # so this does not match the correct text.
+    ! $GREP -qF 'why it matters now' "$TICKET_DOC" \
+        || da_bad="${da_bad}the superseded description instruction ('why it matters now') is back in the file; "
+fi
+
+if [ -z "$da_bad" ]; then
+    pass "/ticket states the description bound as a ceiling at all five sites, each inside its own section, and no range form or superseded instruction survives"
+else
+    fail "/ticket states the description bound as a ceiling at all five sites, each inside its own section, and no range form or superseded instruction survives" "$da_bad"
+fi
+
+echo "== D-b: /ticket Step 6b and Critical Rule 12 agree on T3's split routing =="
+
+db_bad=""
+if [ ! -f "$TICKET_DOC" ]; then
+    db_bad="commands/ticket.md does not resolve; "
+else
+    # Both halves of the split, at both sites. The failure this guards is one-sided drift:
+    # Step 6b was changed to route T3's sentence count directly and Critical Rule 12 kept
+    # sending all of T3 to the quorum, so an agent following the rule labelled *Critical*
+    # restored the default-to-refute filter the split exists to bypass — silently, since
+    # both sentences read as correct in isolation.
+    # Site-scoped for the same reason D-a is: relocating Rule 12's two sentences into Step 6b's
+    # prose would satisfy a whole-file count while the Critical Rules list — the summary a
+    # reader trusts — loses the rule entirely. `start|end|literal`, no pipes in any field.
+    db_rows=(
+        "**6b — Confirm what it found.**|**6c — Apply, or ask.**|T3's sentence-count half is included directly too"
+        "**6b — Confirm what it found.**|**6c — Apply, or ask.**|T1, T2 and T3's redundancy half go to a quorum"
+        "12. **Review the draft before showing it**|Each example shows the required output|T4, T5 and T3's sentence count are decidable by reading and are included directly"
+        "12. **Review the draft before showing it**|Each example shows the required output|T1, T2 and T3's redundancy half go to Step G's 2-of-2 quorum"
+    )
+    for row in "${db_rows[@]}"; do
+        IFS='|' read -r db_s db_e db_lit <<< "$row"
+        db_bad="${db_bad}$(d_at "$TICKET_DOC" "$db_s" "$db_e" "$db_lit")"
+    done
+
+    # The pre-fix wording, which is what one-sided drift looks like on re-introduction: an
+    # unsplit "T1, T2 and T3" with no "redundancy half" qualifier. Matching the bare phrase
+    # would hit both corrected lines, so the absence check carries the clause that follows it.
+    ! $GREP -qF 'T1, T2 and T3 go to Step G' "$TICKET_DOC" \
+        || db_bad="${db_bad}an unsplit 'T1, T2 and T3 go to Step G' statement is back — T3's count would face the quorum again; "
+fi
+
+if [ -z "$db_bad" ]; then
+    pass "/ticket Step 6b and Critical Rule 12 state T3's split routing on both halves, with no unsplit statement surviving"
+else
+    fail "/ticket Step 6b and Critical Rule 12 state T3's split routing on both halves, with no unsplit statement surviving" "$db_bad"
+fi
+
+echo "== D-d: every example description under ## Examples stays inside the three-sentence ceiling =="
+
+dd_bad=""
+if [ ! -f "$TICKET_DOC" ]; then
+    dd_bad="commands/ticket.md does not resolve; "
+else
+    # Step 5 asserts "No example under `## Examples` runs past three sentences; match them",
+    # and the examples are the few-shot a generator actually imitates — so an example that
+    # outgrows the bound reinstates the verbose form while every wording assertion above stays
+    # green. That was the one fail-open arm rounds 1 and 2 left open: the wording is pinned,
+    # the thing the wording describes was not.
+    #
+    # Counting rule, deliberately simple and stated so a reader can predict it: a sentence ends
+    # at `.`, `!` or `?` followed by a space or end of line, after closing brackets and quotes
+    # are stripped. A version number ("v2.0") does not end one, because a digit follows.
+    #
+    # Three constructs overcount, each by one per occurrence: an abbreviation ("e.g. "), an
+    # ellipsis ("… "), and an inline enumeration ("1. in-process, 2. shared"). All three fail
+    # in the loud direction — a false red on a file whose author is already editing it — and
+    # all three are register this bound exists to keep out of a ticket description anyway.
+    # Stated here because a reader who trusts the rule as written would not predict them.
+    #
+    # Only the region after the `## Examples` heading is scanned. Step 5's own templates state
+    # the bound in prose that is itself four sentences long, so a whole-file scan would fail on
+    # the rule that defines the ceiling.
+    dd_out=$(awk '
+        /^## Examples$/ { in_ex = 1; next }
+        !in_ex { next }
+        # Every description key is counted here, independently of whether the body parser below
+        # recognises its form. The two counts are compared in the shell: a description written
+        # in a shape this scanner does not handle — a single-quoted scalar, a folded `>` block —
+        # then shows up as a key with no checked body instead of vanishing from both tallies.
+        /^[[:space:]]*description:/ { keys++ }
+        /^[[:space:]]*description:[[:space:]]*\|/ { want = 1; next }
+        /^[[:space:]]*description:[[:space:]]*"/ {
+            body = $0; sub(/^[^"]*"/, "", body); sub(/"[^"]*$/, "", body); check(body, FNR); next
+        }
+        # Collection starts on the line after `description: |` whether or not a `# Description`
+        # heading follows. Requiring the heading made the arm skip any block scalar without one,
+        # and the file already carries three descriptions in exactly that shape (the inline
+        # epic and milestone ones) — so converting one to a block scalar and adding a sentence
+        # landed in a blind spot. No `next` here: the current line falls through to the rules
+        # below so it is either a terminator or body text.
+        want { coll = 1; buf = ""; start = FNR; want = 0 }
+        coll && index($0, "# Description") { next }
+        coll && (index($0, "# Acceptance Criteria") || index($0, "# Additional Notes")) { check(buf, start); coll = 0; next }
+        coll && /^[[:space:]]*(labels|assignee|dependencies|milestone|id|title|weight):/ { check(buf, start); coll = 0; next }
+        coll && /^```/ { check(buf, start); coll = 0; next }
+        coll { buf = buf " " $0; next }
+        END { if (coll) check(buf, start); printf "KEYS=%d SCANNED=%d\n", keys, seen }
+        function check(text, ln,   n, t) {
+            t = text " "
+            gsub(/^[[:space:]]+/, "", t)
+            if (t ~ /^[[:space:]]*$/) return
+            seen++
+            # Closing punctuation is stripped before counting, so a sentence ending inside a
+            # parenthetical or a quote still terminates. Without this the rule read only a
+            # terminator directly followed by whitespace, and `One. Two (with a note.) Three.
+            # Four.` counted 3 of 4 — an undercount, which is the fail-open direction.
+            # No apostrophe in this class, and none anywhere inside this awk program: it is a
+            # single-quoted shell string, so one literal apostrophe — in the regex or in a
+            # comment like this one — ends the string and the file stops parsing. Both
+            # mistakes were made while writing this block and both were caught by bash -n.
+            # A closing single quote after a sentence terminator does not occur in these
+            # examples, whose inline scalars are double-quoted.
+            gsub(/[)"\]]+/, "", t)
+            n = gsub(/[.!?][[:space:]]/, "", t)
+            if (n > 3) printf "line %d: example description runs %d sentences, ceiling is 3; ", ln, n
+        }
+    ' "$TICKET_DOC")
+
+    dd_seen=${dd_out##*SCANNED=}
+    dd_keys=${dd_out##*KEYS=}; dd_keys=${dd_keys%% SCANNED=*}
+    dd_bad="${dd_bad}${dd_out%KEYS=*}"
+
+    # Every description key must have produced a checked body. This is the arm that survives a
+    # new example arriving in a form the body parser does not recognise: the key is counted
+    # either way, so the two tallies diverge instead of both quietly reading 8.
+    case "$dd_keys" in
+        ''|*[!0-9]*) dd_bad="${dd_bad}the scan reported no description-key count — the extraction itself failed; " ;;
+        *) [ "$dd_keys" = "$dd_seen" ] || dd_bad="${dd_bad}$dd_keys 'description:' key(s) under ## Examples but only $dd_seen body/ies were scanned — one is written in a form this scanner does not read (single-quoted scalar, folded '>' block), so its sentence count is unchecked; " ;;
+    esac
+
+    # Positive control, F5-style: an extraction that silently matches nothing would report a
+    # clean ceiling over zero descriptions. The floor is the number actually present — eight:
+    # five block-scalar issue descriptions plus three inline epic/milestone ones.
+    #
+    # It was 5 for one round, chosen as "the block-scalar examples that matter", and that was
+    # fail-open in a way a reviewer found and a mutation confirmed: converting the three inline
+    # `description: "…"` scalars to single quotes stopped the scanner seeing them, the count
+    # fell to exactly 5, the control passed, and the pass line read "all 5 example
+    # description(s)" — claiming full coverage of a set it had silently shrunk. A floor equal
+    # to what is there cannot do that.
+    #
+    # Exact, not a floor, matching this suite's own `EXPECTED_TESTS` discipline: an item added
+    # to a counted set bumps the count, and the bump is where the author confirms the scan
+    # still sees everything. A floor cannot catch an addition that arrives unscanned — nine
+    # examples with one invisible to the parser still clears any floor of eight.
+    case "$dd_seen" in
+        ''|*[!0-9]*) dd_bad="${dd_bad}the scan reported no description count — the extraction itself failed; " ;;
+        *) [ "$dd_seen" -eq 8 ] || dd_bad="${dd_bad}$dd_seen example description(s) were scanned, expected exactly 8 (5 block-scalar + 3 inline) — an example was added or removed (bump this number), or the extraction stopped matching one of the two forms (a 'description: |' block, or an inline double-quoted 'description:'); " ;;
+    esac
+fi
+
+if [ -z "$dd_bad" ]; then
+    pass "all $dd_seen example description(s) under ## Examples stay inside the three-sentence ceiling Step 5 claims for them"
+else
+    fail "all example descriptions under ## Examples stay inside the three-sentence ceiling Step 5 claims for them" "$dd_bad"
+fi
+
+echo "== D-c: CLAUDE.md carries the planning-first read path with its carve-outs =="
+
+dc_bad=""
+if [ ! -f "$CLAUDE_MD" ]; then
+    dc_bad="CLAUDE.md does not resolve; "
+else
+    DC_START='## Read `planning/` first, call the tracker second'
+    DC_END='**Usage Instructions:**'
+
+    # Order probe before extraction, with the extraction's own index()-after-index()
+    # semantics — T7's CM2 guard, which this block shipped without and a round-2 reviewer
+    # reproduced: renaming the terminator left the range running to EOF and D-c still passed,
+    # so every clause check below was satisfied from a span that was no longer the section.
+    if ! awk -v s="$DC_START" -v e="$DC_END" \
+        'index($0,s){f=1; next} f && index($0,e){found=1; exit} END{exit !found}' "$CLAUDE_MD"; then
+        dc_bad="${dc_bad}section terminator '$DC_END' does not occur after the heading — the span would silently widen to EOF; "
+    else
+        dc_span=$(awk -v s="$DC_START" -v e="$DC_END" 'index($0,s){f=1} f && index($0,e){exit} f' "$CLAUDE_MD")
+    fi
+
+    if [ -n "$dc_bad" ]; then
+        : # the span is untrustworthy — the clause checks below would grade the wrong text
+    elif [ -z "$dc_span" ]; then
+        dc_bad="the planning-first section does not resolve between its heading and '$DC_END'; "
+    else
+        # Five load-bearing clauses. The first three are the rule; the last two are the
+        # carve-outs without which it misfires — one on live state the cache cannot know,
+        # one on calls that must not be offered back to the user who just asked for them.
+        dc_clauses=(
+            '`planning/` is the first stop and `projctl` is the fallback'
+            '`projctl search docs` is local; `projctl load` and `projctl search issues` are not'
+            'Offer the tracker call; do not make it silently, and do not silently skip it'
+            '**Go to the tracker without checking the cache when the question is about live state**'
+            '**Two calls are outside this rule entirely — make them, do not offer them.**'
+        )
+        for lit in "${dc_clauses[@]}"; do
+            printf '%s\n' "$dc_span" | $GREP -qF "$lit" \
+                || dc_bad="${dc_bad}section missing '${lit:0:50}…'; "
+        done
+
+        # The carve-out is only operative while it names where the mandated calls live. A
+        # carve-out that states the principle without its sites leaves a reader to decide
+        # which calls qualify, which is the judgement it exists to remove.
+        for site in 'issue-folder-resolve/SKILL.md` Step 2' '/ticket` Step 2' 'Critical Rule 3'; do
+            printf '%s\n' "$dc_span" | $GREP -qF "$site" \
+                || dc_bad="${dc_bad}the explicit-invocation carve-out no longer names '$site'; "
+        done
+
+        # The read-path change must not have widened into a write-path change. Both Critical
+        # Rules it promises to leave intact are asserted at their own sites, not inside the
+        # span — the span only restates them.
+        $GREP -qF 'Never bypass projctl' "$CLAUDE_MD" \
+            || dc_bad="${dc_bad}the 'Never bypass projctl' rule is gone from CLAUDE.md; "
+        $GREP -qF 'Always use `/ticket` for any issue creation or weight mutation' "$CLAUDE_MD" \
+            || dc_bad="${dc_bad}the '/ticket' issue-creation rule is gone from CLAUDE.md; "
+        printf '%s\n' "$dc_span" | $GREP -qF 'Every write still goes through `projctl`' \
+            || dc_bad="${dc_bad}the section no longer restates that writes are unaffected; "
+    fi
+fi
+
+if [ -z "$dc_bad" ]; then
+    pass "CLAUDE.md's planning-first section carries all five clauses, the explicit-invocation carve-out names its three mandated-call sites, and both write-path Critical Rules are intact"
+else
+    fail "CLAUDE.md's planning-first section carries all five clauses, the explicit-invocation carve-out names its three mandated-call sites, and both write-path Critical Rules are intact" "$dc_bad"
 fi
 
 echo

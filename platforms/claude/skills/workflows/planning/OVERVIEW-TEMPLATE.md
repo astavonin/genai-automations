@@ -14,7 +14,7 @@ Every `planning/<epic-slug>/overview.md` file MUST follow this structure. The he
 
 ## About
 
-<3–5 sentence summary of what the epic delivers and why it exists. Sourced from the epic Description on GitLab, condensed. Explain the user-visible outcome, not the implementation.>
+<At most five sentences on what the epic delivers and why it exists — fewer where the source is shorter. Sourced from the epic Description on GitLab, condensed. Explain the user-visible outcome, not the implementation.>
 
 ## Scope
 
@@ -46,7 +46,7 @@ Example:>
 ## Rules
 
 - **Header block is machine-generated.** `Source`, `Owner`, `State`, `Last synced` are refreshed from `projctl load epic &<N>`. Do not hand-edit these — they'll be overwritten on next refresh.
-- **`## About` is machine-generated on first creation, hand-edited thereafter.** The initial fill uses the epic Description from GitLab (condensed to 3–5 sentences). Once you've refined it locally, refresh commands leave `## About` alone unless the epic description on GitLab has changed materially — in which case they append a note under the section, they don't rewrite it.
+- **`## About` is machine-generated on first creation, hand-edited thereafter.** The initial fill uses the epic Description from GitLab (condensed to five sentences at most, and fewer when the source is shorter — `/ticket` caps an epic description at three, so a condensation of one it wrote cannot reach a floor of three; never pad to a count). Once you've refined it locally, refresh commands leave `## About` alone unless the epic description on GitLab has changed materially — in which case they append a note under the section, they don't rewrite it.
 - **`## Scope` is required.** If the epic description doesn't have an explicit scope split, populate both blocks with `- <TBD — extract from epic description>` so the gap is visible. Never delete `## Scope` even if empty.
 - **`## Milestones` is locally maintained.** Neither `projctl` nor any refresh path modifies this section.
 - **Refresh cadence:** `/review-mr` checks `**Last synced:**` when it resolves an epic. If older than 30 days, re-fetch and update the header block + note any material change to `## About`. Otherwise skip. As other commands migrate to the epic-slug convention, they may pick up the refresh behavior.

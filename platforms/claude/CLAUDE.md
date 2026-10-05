@@ -333,6 +333,39 @@ For ALL managerial tasks related to GitLab/GitHub, use `projctl`:
 - Synchronizing planning folders with Google Drive
 - Multi-platform workflow automation
 
+## Read `planning/` first, call the tracker second
+
+**Every list above is a *write* path except two — loading and searching. For those two, `planning/` is the first stop and `projctl` is the fallback.** A tracker round-trip is slow and sometimes unavailable, and most ticket questions are already answered on disk. Reaching for the network first is the default to unlearn.
+
+What the local tree already holds, and what each answers:
+
+| Question | Read this |
+|---|---|
+| What am I working on, what merged recently | `planning/progress.md` |
+| What phase is issue N in, what is the issue set and its order | `planning/<epic-slug>/milestone-XX-<name>/status.md` |
+| What is epic &N about, who owns it, what is in scope | `planning/<epic-slug>/overview.md` — stated there as "doubles as a local epic cache" |
+| What was decided for issue N and why | that issue's folder: `analysis.md`, `design.md`, the review reports, the ledgers |
+| What a ticket was created from | `planning/<epic-slug>/milestone-XX-<name>/tickets/` |
+| Anything matching a phrase, across all of it | `projctl search docs "<query>"` — a local index, no network |
+
+`projctl search docs` is local; `projctl load` and `projctl search issues` are not. Prefer the first. Paths above are written in 3-layer form and resolve against whichever shape is on disk, per `# Planning Structure` — read the shape rather than the placeholder.
+
+**Go to the tracker without checking the cache when the question is about live state** — is the MR merged, did CI pass, has anyone commented, what changed since I last looked, what is the current assignee or label set. The cache answers what we decided and recorded; it cannot answer what someone else did.
+
+**Say which one you used.** When an answer comes from `planning/`, name the file, because the cache can be stale and the reader needs to know whether to re-check. When the local tree disagrees with the tracker, the tracker wins for live fields and the disagreement is itself worth reporting.
+
+**Offer the tracker call; do not make it silently, and do not silently skip it.** After a local read:
+
+- **The cache answered it** — give the answer, name the file, stop. Asking "shall I also check the tracker?" on a complete answer is friction.
+- **The cache answered part of it, or a live field could change it** — give what the cache holds, name precisely what is missing or could be stale, and ask whether to query the tracker. One line: `Local only — <what is missing>. Query the tracker?`
+- **Nothing local matches** — say so and ask before the call, rather than reaching for the network on the assumption it is free.
+
+The user knows whether the network is reachable and whether freshness matters for this question; that is their call, not an inference from the question's wording. What this rule forbids is the silent version of either choice — a tracker call nobody asked for, and a cached answer presented as complete when it is not.
+
+**Two calls are outside this rule entirely — make them, do not offer them.** A command the user invoked by name (`/load 44`, `/mr`) *is* the tracker call being asked for; offering it back asks permission for the thing just requested. And a command step that mandates a tracker call to confirm a ticket exists — `~/.claude/skills/workflows/issue-folder-resolve/SKILL.md` Step 2, `/ticket` Step 2's `projctl load epic`, Critical Rule 3's "always verify referenced epics/milestones exist" — has nothing local to try first, because the cache cannot establish that a ticket exists on the tracker. Several of those steps also run inside autonomous fix loops, where a question stops the loop.
+
+This changes the read path only. **Every write still goes through `projctl`, and issue creation and weight mutation still go through `/ticket`** — see Critical Rules.
+
 **Usage Instructions:**
 - Run `projctl --help` to see usage examples and find the full path to CLAUDE.md documentation
 - The `--help` output includes a "Documentation:" section with the absolute path to comprehensive usage instructions
