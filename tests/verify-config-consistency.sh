@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=101
+EXPECTED_TESTS=102
 
 PASS=0
 FAIL=0
@@ -1706,7 +1706,7 @@ if [ "${T1_ROOTS+set}" = set ]; then
                 print substr(rest, 1, ei + length(e) - 1)
             }')
         if [ -n "$domain_clause" ]; then
-            t7_domain_clauses[$i]="$domain_clause"
+            t7_domain_clauses[i]="$domain_clause"
         else
             t7_bad="${t7_bad}$name: domain clause anchors ('$T7_DOMAIN_START' .. '$T7_DOMAIN_END') not found on the rule line — cannot compare for byte-identity; "
         fi
@@ -3519,7 +3519,7 @@ for i in "${!stepg_sites[@]}"; do
     # line's meaning while still containing every token the substring check looks for).
     [ "$stepg_line" = "**Step G:** $STEPG_ALTERNATION" ] \
         || delivb_bad="${delivb_bad}$name: '**Step G:**' line does not equal the alternation verbatim; "
-    stepg_lines[$i]="$stepg_line"
+    stepg_lines[i]="$stepg_line"
 
     # L1: the '**Codex:**' line carries the same not-run shape — nothing previously checked
     # that the parity this row claims with **Codex:** actually holds.
@@ -3887,7 +3887,7 @@ for i in "${!FR8_LOOP_FILES[@]}"; do
         fr8_bad="${fr8_bad}$name: '**Add**' bullet occurs $add_count time(s) inside Protocol Deviations, want exactly 1 — deleted, duplicated, or unparseable as one line; "
         continue
     fi
-    fr8_add_lines[$i]=$(printf '%s\n' "$pd_span" | $GREP -F '**Add** an entry')
+    fr8_add_lines[i]=$(printf '%s\n' "$pd_span" | $GREP -F '**Add** an entry')
 
     for lit in "${fr8_phrases[@]}"; do
         printf '%s' "${fr8_add_lines[$i]}" | $GREP -qF "$lit" \
@@ -4386,6 +4386,90 @@ if [ -z "$dc_bad" ]; then
     pass "CLAUDE.md's planning-first section carries all five clauses, the explicit-invocation carve-out names its three mandated-call sites, and both write-path Critical Rules are intact"
 else
     fail "CLAUDE.md's planning-first section carries all five clauses, the explicit-invocation carve-out names its three mandated-call sites, and both write-path Critical Rules are intact" "$dc_bad"
+fi
+
+# === The self-authored requirement and the §3-is-not-a-clearance clause (mechanism-
+# proportionality step 8) =====================================================================
+#
+# Both Minimality criteria resolved against §3 alone, and §3 and §5 share one author — a
+# requirement written to fit the mechanism clears both tests by construction. Two new clauses
+# close the hole: a design-side flag item asking whether a §3 item exists only to justify the
+# mechanism, and a code-side clause asking whether an indirection earns itself in the code
+# regardless of what §3 names. D-f is one block, one pass/fail pair, covering both sites and
+# the contract that keeps their wordings apart.
+#
+# No positive control counts either list: a presence-inside-span check cannot pass on an empty
+# extraction, and an exact list size would redden on the next ordinary flag-rule addition,
+# which is maintenance, not a defect.
+
+echo "== D-f: the self-authored-requirement flag item and the §3-is-not-a-clearance clause =="
+
+df_bad=""
+DF_DESIGN_DOC="$CLAUDE/commands/review-design.md"
+DF_CODE_DOC="$CLAUDE/commands/review-code.md"
+DF_DESIGN_PHRASE='exists to justify the chosen mechanism rather than to constrain it'
+DF_CODE_PHRASE='A §3 requirement is not a clearance'
+
+if [ ! -f "$DF_DESIGN_DOC" ]; then
+    df_bad="${df_bad}commands/review-design.md does not resolve; "
+fi
+if [ ! -f "$DF_CODE_DOC" ]; then
+    df_bad="${df_bad}commands/review-code.md does not resolve; "
+fi
+
+if [ -n "$df_bad" ]; then
+    : # a renamed or moved command file — every check below would grade the wrong (or no) text
+else
+    # Flag-list membership: the design-side item must sit inside the Flag list, not the
+    # Do NOT flag list below it. d_at compares line positions against both unique anchors, so
+    # a move into the wrong list — present, but outside its span — fails here rather than
+    # passing a whole-file count that cannot tell the two lists apart.
+    df_bad="${df_bad}$(d_at "$DF_DESIGN_DOC" '**Flag (design-level concerns):**' '**Ticket Constraint Guardrail (applies to all flag rules above):**' "$DF_DESIGN_PHRASE")"
+
+    # Severity and firing condition, extracted as a single line rather than a span: `d_at`
+    # needs a file-wide-unique anchor and `— flag as Medium` already occurs once on the
+    # sibling §3-admission item, so the design-side phrase itself is the anchor instead.
+    df_sev_line=$($GREP -m1 -F "$DF_DESIGN_PHRASE" "$DF_DESIGN_DOC")
+    if [ -z "$df_sev_line" ] \
+       || ! printf '%s' "$df_sev_line" | $GREP -qF '— flag as Medium' \
+       || ! printf '%s' "$df_sev_line" | $GREP -qF 'rests on the item alone'; then
+        df_bad="${df_bad}the design-side item ('$df_sev_line') must end '— flag as Medium' and carry 'rests on the item alone' — added ungraded, regraded away from Medium, or reworded back to a shape-only or tag-only test; "
+    fi
+
+    # Code-side presence: the clause must sit inside the Minimality bullet's own section,
+    # between `## Review Scope` and `## Behavioral Bug Test Requirement` — both unique in
+    # this file.
+    df_bad="${df_bad}$(d_at "$DF_CODE_DOC" '## Review Scope' '## Behavioral Bug Test Requirement' "$DF_CODE_PHRASE")"
+
+    # Cross-absence, both directions: neither wording may survive in the other file. A fix
+    # pass that unifies the two near-duplicate rules — the realistic edit, since the two
+    # read as redundant to anyone scanning for it — moves one phrase into the other file and
+    # reddens here.
+    ! $GREP -qF "$DF_DESIGN_PHRASE" "$DF_CODE_DOC" \
+        || df_bad="${df_bad}the design-side phrase has leaked into commands/review-code.md — the two clauses were unified on the design-side wording; "
+    ! $GREP -qF "$DF_CODE_PHRASE" "$DF_DESIGN_DOC" \
+        || df_bad="${df_bad}the code-side phrase has leaked into commands/review-design.md — the two clauses were unified on the code-side wording; "
+
+    # Pre-fix adjacency absent: the step-1 bullet ran the §3/§5 sentence straight into the
+    # public-API sentence. That sentence survives verbatim (NFR-2), so an absence check on it
+    # alone would fail on the shipped text — what must die is the adjacency itself, which this
+    # checks by matching across the join.
+    ! $GREP -qF 'no §5 contract. This covers public API surface too' "$DF_CODE_DOC" \
+        || df_bad="${df_bad}commands/review-code.md's Minimality bullet reverted to its step-1 form — the new clause is no longer between the §3/§5 sentence and the public-API sentence; "
+
+    # Delivery mandate: FR-7 names the Review Scope section on Actions item 1's must-include
+    # enumeration, by prose rather than the heading literal, so the `## Review Scope` anchor
+    # the code-side presence check above relies on stays the file's only occurrence.
+    df_mandate_line=$($GREP -m1 -F 'Every Claude agent prompt must include' "$DF_CODE_DOC")
+    if [ -z "$df_mandate_line" ] || ! printf '%s' "$df_mandate_line" | $GREP -qF 'Review Scope'; then
+        df_bad="${df_bad}commands/review-code.md's must-include enumeration ('$df_mandate_line') no longer names the Review Scope section — FR-7's delivery mandate is trimmed, reopening the code-side delivery gap; "
+    fi
+fi
+
+if [ -z "$df_bad" ]; then
+    pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it"
+else
+    fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
 fi
 
 echo
