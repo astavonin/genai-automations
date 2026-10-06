@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=102
+EXPECTED_TESTS=103
 
 PASS=0
 FAIL=0
@@ -4470,6 +4470,85 @@ if [ -z "$df_bad" ]; then
     pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it"
 else
     fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
+fi
+
+# D-g: /mr asks whether the work was code-reviewed and verified before it opens an MR. The step
+# reads what /review-code and /verify already wrote rather than tracking anything of its own, so
+# every property below is text in one step — there is no state for a test to inspect instead.
+#
+# Position is half the contract: the step has to run before Step 3 writes the YAML, because a
+# gate that fires after the MR exists is not a gate. d_at pins it between Steps 1 and 2.
+
+echo "== D-g: /mr gates on code review and verification before opening an MR =="
+
+dg_bad=""
+DG_DOC="$CLAUDE/commands/mr.md"
+DG_STEP='### 1a. Confirm the work was code-reviewed and verified'
+
+if [ ! -f "$DG_DOC" ]; then
+    dg_bad="${dg_bad}commands/mr.md does not resolve; "
+else
+    # Presence and position in one predicate: the step must sit between Step 1 and Step 2,
+    # both unique headings. A step moved after Step 3 would still be present file-wide.
+    dg_bad="${dg_bad}$(d_at "$DG_DOC" '### 1. Analyze Current Branch' '### 2. Verify Issue Acceptance Criteria' "$DG_STEP")"
+
+    # Extract the step's own span, so the tokens below cannot be satisfied by matching text
+    # elsewhere in a 300-line command file.
+    dg_span=$(awk '/^### 1a\./{f=1} /^### 2\./{f=0} f' "$DG_DOC")
+
+    # Both commands, named. The code-review half was added after the verify half and is the
+    # one a later trim would drop, leaving a step whose heading still promises both.
+    for dg_cmd in '/review-code' '/verify'; do
+        printf '%s' "$dg_span" | $GREP -qF "$dg_cmd" \
+            || dg_bad="${dg_bad}the step no longer names ${dg_cmd} — half the gate is gone while the heading still promises both; "
+    done
+
+    # The three-state distinction. Without it the step collapses into did-it-run, and a review
+    # that ran and returned CHANGES REQUESTED reads as the gate being satisfied — the inversion
+    # that makes this step worse than nothing, since open findings would be on disk unmentioned.
+    printf '%s' "$dg_span" | $GREP -qF 'The review having *run* is not the gate being met' \
+        || dg_bad="${dg_bad}the step no longer distinguishes a review that returned CHANGES REQUESTED or REJECTED from one that never ran; "
+
+    # Active-section scoping — this is the recorded observed failure. progress.md holds
+    # closed-out entries and a Discovered-work list, so a whole-file grep answers with a
+    # neighbouring entry and reports another issue's verification as this branch's.
+    #
+    # Pin the COMMAND, not the comment explaining it. An earlier version of this check greped
+    # the rationale prose, which left the whole-file grep free to return with this block green:
+    # reverting the command while keeping the comment passed all four checks. A regression test
+    # that survives its own failure mode manufactures the confidence the ledger then records.
+    printf '%s' "$dg_span" | $GREP -qF '/^## Active/{f=1;next}' \
+        || dg_bad="${dg_bad}the step no longer scopes its progress.md read to the Active section — a whole-file grep answers with another issue's verification; "
+
+    # The /verify marker set, derived cross-site rather than hardcoded. /verify Step 7 writes
+    # one on-device: line on every run and all of its values mean it ran — including
+    # 'not asked (no interactive user)', which means ran-but-incomplete. A step naming only
+    # some of them reads a real run as absent and proposes a run that already happened.
+    # Deriving the set from verify.md means a fourth value added there reddens here until this
+    # step names it, which a hardcoded list could not do.
+    DG_VERIFY_DOC="$CLAUDE/commands/verify.md"
+    if [ ! -f "$DG_VERIFY_DOC" ]; then
+        dg_bad="${dg_bad}commands/verify.md does not resolve, so the on-device marker set cannot be derived; "
+    else
+        # Process substitution, not a pipe: a `while read` on the right of a pipe runs in a
+        # subshell and every dg_bad append inside it would be discarded, passing silently.
+        while IFS= read -r dg_marker; do
+            printf '%s' "$dg_span" | $GREP -qF "$dg_marker" \
+                || dg_bad="${dg_bad}Step 1a does not name the /verify marker '$dg_marker' — a run that wrote it would read as never run; "
+        done < <($GREP -oE 'on-device: [a-z ()-]+' "$DG_VERIFY_DOC" | sort -u)
+    fi
+
+    # Propose-and-wait: the action the request actually asked for. Detect-and-say-nothing
+    # satisfies every other predicate in this block, so without this the step can lose its
+    # whole purpose with the suite green.
+    printf '%s' "$dg_span" | $GREP -qF 'Open the MR without it' \
+        || dg_bad="${dg_bad}Step 1a no longer offers the propose-and-wait choice — it would detect without proposing, which is the behaviour the step exists to provide; "
+fi
+
+if [ -z "$dg_bad" ]; then
+    pass "/mr Step 1a sits between Steps 1 and 2, names both /review-code and /verify, separates a non-approving review from an absent one, scopes its progress.md read to the Active section, names every on-device marker /verify writes, and still offers the propose-and-wait choice"
+else
+    fail "/mr Step 1a sits between Steps 1 and 2, names both /review-code and /verify, separates a non-approving review from an absent one, scopes its progress.md read to the Active section, names every on-device marker /verify writes, and still offers the propose-and-wait choice" "$dg_bad"
 fi
 
 echo

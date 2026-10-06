@@ -85,6 +85,43 @@ git log "origin/${DEFAULT}..HEAD" --oneline
 git diff "origin/${DEFAULT}...HEAD" --stat
 ```
 
+### 1a. Confirm the work was code-reviewed and verified
+
+An MR publishes the change. `/review-code` establishes that the implementation was graded; `/verify` establishes that linters, tests and the observed-failure gate passed over it. **This step re-runs nothing and records nothing new** — it reads what already exists and asks only where the answer is absent.
+
+Two sources, in order. Stop at the first that answers:
+
+1. **This conversation.** Where either command ran here for this work, that settles its half — name what it reported and move on.
+2. **What those commands already wrote.** Both update planning state, so their own output is the artifact:
+
+```bash
+# The Active section alone, then find this work's entry inside it. Never grep the whole
+# file: progress.md also holds closed-out entries and a Discovered-work list, and a
+# verification line belonging to a neighbouring entry answers nothing about this branch.
+awk '/^## Active/{f=1;next} /^## /{f=0} f' planning/progress.md
+```
+
+- `/verify` Step 7 writes an `on-device:` line into the Active entry on **every** run, so that line is the specific proof it executed — a bare `verified ✅` is weaker evidence. It has **three** values, and all three mean `/verify` ran: `on-device: run`, `on-device: declined by user`, and `on-device: not asked (no interactive user)`. Treat the third as *ran, outcome incomplete* — `/verify` Step 7e leaves the on-device requirement unmet, so say that rather than proposing a run that already happened.
+- `/review-code` writes `code review ✅ APPROVED`, `code review ⚠️ CHANGES REQUESTED — <N> findings to fix`, or `code review ❌ REJECTED`.
+
+A milestone `status.md` row or an issue-folder `code-review.md` marker already in context answers too — read it where it is in front of you, and do not go resolving a path for either.
+
+**Three states, not two.** A review that ran and did not approve is not the same as one that never ran:
+
+| State | Action |
+|---|---|
+| Review `APPROVED`, verify done | proceed |
+| Review `CHANGES REQUESTED` or `REJECTED` | **say so first.** The findings are open on disk — ask whether to fix them before opening the MR. The review having *run* is not the gate being met |
+| Either absent | propose and wait, below |
+
+**Where something is missing, propose and wait** — name only the halves that are actually missing:
+
+> Before opening the MR: no `/review-code` run found for this work, and `planning/progress.md` carries no code-review line.
+> 1. Run it now, then come back to the MR
+> 2. Open the MR without it — say why, and that reason goes in the description's "How It Was Tested"
+
+**Not a hard gate.** Option 2 is a legitimate answer the user is entitled to give; this step exists so the choice is made rather than skipped. Do not infer either answer from a green suite you ran yourself — `/verify` is more than its test step and its ledger gate is what a bare test run misses, and no suite run is a code review at all.
+
 ### 2. Verify Issue Acceptance Criteria
 
 If the branch is linked to an issue (look for `Ref #NNN` in commit messages or the branch name):
@@ -280,7 +317,7 @@ Follow the steps in that fragment. Surface the §8.2 warning block on failure; d
 **Guidelines:**
 - **Summary:** 1-2 sentences maximum, architecture level (WHAT and WHY)
 - **Implementation Details:** 2-4 bullet points, high-level changes only
-- **How It Was Tested:** 1-2 bullets max — which test commands were run and whether they passed. Never include assertion counts, test case counts, or file-level test details.
+- **How It Was Tested:** 1-2 bullets max — which test commands were run and whether they passed, plus one further bullet naming any review or verification gate deliberately skipped per Step 1a and the reason given. Never include assertion counts, test case counts, or file-level test details.
 - Use `|` for multi-line YAML strings
 - Keep descriptions SHORT and HIGH-LEVEL
 - Avoid file-level details - reviewers can see the code
