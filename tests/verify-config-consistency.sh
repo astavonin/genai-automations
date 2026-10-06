@@ -1718,8 +1718,8 @@ if [ "${T1_ROOTS+set}" = set ]; then
     # every site index, not a hardcoded pair, so a future fourth site added to t7_files is
     # compared too; index 0 against itself is a trivial no-op equality.
     for i in "${!t7_files[@]}"; do
-        if [ -n "${t7_domain_clauses[0]:-}" ] && [ -n "${t7_domain_clauses[$i]:-}" ] \
-            && [ "${t7_domain_clauses[$i]}" != "${t7_domain_clauses[0]}" ]; then
+        if [ -n "${t7_domain_clauses[0]:-}" ] && [ -n "${t7_domain_clauses[i]:-}" ] \
+            && [ "${t7_domain_clauses[i]}" != "${t7_domain_clauses[0]}" ]; then
             t7_bad="${t7_bad}${t7_files[$i]#"$ROOT"/}: shared domain clause differs from ${t7_files[0]#"$ROOT"/} — not byte-identical; "
         fi
     done
@@ -2159,7 +2159,7 @@ FIXMR="$CLAUDE/commands/fix-mr.md"
 FIXMR_FETCH_CMD_COUNT=3      # Step 3a + Step 4a + Step 5b's guard block — bump when fix-mr.md gains or loses a fetch call
 FIXMR_FORCED_REFSPEC_COUNT=5 # forced refspecs across those three lines — 2 + 2 + 1
 FIXMR_TARGET_REFSPEC_COUNT=2 # of those, the ones naming <target_branch>; Step 5b's guard fetch names only <source_branch>
-FIXMR_SHELL_BLOCK_COUNT=8    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
+FIXMR_SHELL_BLOCK_COUNT=9    # ```bash/```sh/```shell fenced blocks in fix-mr.md — bump likewise
 
 # Shared scope-limiters: confine every scan below to fix-mr.md's own fenced/inline shell text, never the whole file.
 fixmr_fenced_lines() {   # emits only lines inside a ```bash/```sh/```shell fenced block
@@ -2836,6 +2836,11 @@ fi
 
 # 20: Step 6's call order — replies comment, then load, then resolve comment, then load —
 # matched by line number so a reorder inside the extracted body is caught, not just presence.
+# The pre-post citation scan is pinned by five conjuncts, each with its own bad= message: its
+# position (the scan block starts after 6a's YAML write and before the replies post), its
+# pattern still carrying the `§` alternative, its pattern derived from the planning tree rather
+# than enumerated, it carrying the $replies_yaml existence guard, and it exiting 1 on a match
+# rather than warning.
 bad=""
 if [ -z "$step6_body" ]; then
     bad="extract-section found no '### Step 6: Post' body in fix-mr.md — extraction broken"
@@ -2846,18 +2851,53 @@ else
     first_load_ln=$(printf '%s\n' "$step6_body" | $GREP -nF 'projctl load mr' | head -1 | cut -d: -f1)
     resolve_comment_ln=$(printf '%s\n' "$step6_body" | $GREP -nF "projctl comment '<issue-folder>/fix-mr-MR<mr_number>-resolve.yaml'" | head -1 | cut -d: -f1)
     second_load_ln=$(printf '%s\n' "$step6_body" | $GREP -nF 'projctl load mr' | tail -1 | cut -d: -f1)
+    # The citation scan's position is anchored on its own first line, the replies_yaml
+    # assignment — stable under every conjunct mutation below except the one that relocates the
+    # block itself. 6a's own YAML write ('approval: none') anchors the lower bound: a scan above
+    # it reads last run's overwritten file, not this run's; the upper bound (replies_comment_ln,
+    # above) is unchanged.
+    scan_start_ln=$(printf '%s\n' "$step6_body" | $GREP -nF "replies_yaml='" | head -1 | cut -d: -f1)
+    approval_none_ln=$(printf '%s\n' "$step6_body" | $GREP -nF 'approval: none' | head -1 | cut -d: -f1)
     if [ -z "$replies_comment_ln" ] || [ -z "$first_load_ln" ] || [ -z "$resolve_comment_ln" ] || [ -z "$second_load_ln" ]; then
         bad="one of the four calls was not found (replies_comment=$replies_comment_ln first_load=$first_load_ln resolve_comment=$resolve_comment_ln second_load=$second_load_ln)"
     elif [ "$first_load_ln" = "$second_load_ln" ]; then
         bad="only one 'projctl load mr' line found — Step 6 needs two distinct re-reads"
     elif ! { [ "$replies_comment_ln" -lt "$first_load_ln" ] && [ "$first_load_ln" -lt "$resolve_comment_ln" ] && [ "$resolve_comment_ln" -lt "$second_load_ln" ]; }; then
         bad="calls are out of order: replies_comment=$replies_comment_ln first_load=$first_load_ln resolve_comment=$resolve_comment_ln second_load=$second_load_ln"
+    elif [ -z "$approval_none_ln" ]; then
+        bad="Step 6 carries no 'approval: none' line — 6a's YAML write, the citation scan's position lower bound, is missing"
+    elif [ -z "$scan_start_ln" ]; then
+        bad="Step 6 carries no pre-post citation scan at all — no replies_yaml assignment found ahead of the post"
+    elif [ "$scan_start_ln" -lt "$approval_none_ln" ]; then
+        bad="the citation scan sits at line $scan_start_ln, before 6a's YAML write ('approval: none') at $approval_none_ln — it would scan last run's overwritten file, not this run's"
+    elif [ "$scan_start_ln" -gt "$replies_comment_ln" ]; then
+        bad="the citation scan sits at line $scan_start_ln, after the replies projctl comment at $replies_comment_ln — it must run before the post, not after"
+    else
+        scan_block=$(printf '%s\n' "$step6_body" | sed -n "${scan_start_ln},${replies_comment_ln}p")
+        # The existence guard's own one-liner carries its own "exit 1", so the block-blocks
+        # conjunct below counts occurrences rather than matching the guard's by coincidence —
+        # two are expected (the guard's, and the match-conditional's); dropping to one means
+        # whichever of the two was deleted, and the existence-guard conjunct above already pins
+        # which one that is when it's the guard's.
+        n_exit1=$(printf '%s\n' "$scan_block" | $GREP -c 'exit 1')
+        # Anchor on the assignment, not on a bare `§|`: the block's own WHY comment explains
+        # what an empty alternative does and therefore contains that literal, so a bare-literal
+        # pin is satisfied by the prose while the operative line is gutted. Measured — it was.
+        if ! printf '%s\n' "$scan_block" | $GREP -qF 'citation_pattern="§|'; then
+            bad="the citation scan's pattern no longer carries the \`§\` alternative"
+        elif ! printf '%s\n' "$scan_block" | $GREP -qF 'docs_alt'; then
+            bad="the citation scan's pattern is not derived from the planning tree — no 'docs_alt' token in the scan block"
+        elif ! printf '%s\n' "$scan_block" | $GREP -qF -- 'is not on disk'; then
+            bad="the citation scan carries no existence guard for \$replies_yaml — grep exits 2 on an unreadable path, which an unguarded 'if grep' reads as a clean scan"
+        elif [ "$n_exit1" -lt 2 ]; then
+            bad="the citation scan's exit 1 on a match is missing — it would warn and still post"
+        fi
     fi
 fi
 if [ -z "$bad" ]; then
-    pass "fix-mr.md's Step 6 issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr"
+    pass "fix-mr.md's Step 6 scans for gitignored planning-document citations before posting — positioned after 6a's YAML write and before the replies post, its pattern derived from the planning tree and still carrying \`§|\`, guarded by a \$replies_yaml existence check, and exiting 1 on a match — then issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr"
 else
-    fail "fix-mr.md's Step 6 issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr" "$bad"
+    fail "fix-mr.md's Step 6 scans for gitignored planning-document citations before posting — positioned after 6a's YAML write and before the replies post, its pattern derived from the planning tree and still carrying \`§|\`, guarded by a \$replies_yaml existence check, and exiting 1 on a match — then issues its four calls in order: replies projctl comment, projctl load mr, resolve projctl comment, projctl load mr" "$bad"
 fi
 
 # 21: the end-state table names all ten state tokens as first cells — omitting one leaves a
@@ -3543,8 +3583,8 @@ done
 # shared domain clause — three independent per-site checks cannot catch one copy drifting from
 # the other two while each still passes on its own.
 for i in "${!stepg_sites[@]}"; do
-    if [ -n "${stepg_lines[0]:-}" ] && [ -n "${stepg_lines[$i]:-}" ] \
-        && [ "${stepg_lines[$i]}" != "${stepg_lines[0]}" ]; then
+    if [ -n "${stepg_lines[0]:-}" ] && [ -n "${stepg_lines[i]:-}" ] \
+        && [ "${stepg_lines[i]}" != "${stepg_lines[0]}" ]; then
         delivb_bad="${delivb_bad}${stepg_sites[$i]#"$ROOT"/}: '**Step G:**' line differs from ${stepg_sites[0]#"$ROOT"/} — not byte-identical; "
     fi
 done
@@ -3890,7 +3930,7 @@ for i in "${!FR8_LOOP_FILES[@]}"; do
     fr8_add_lines[i]=$(printf '%s\n' "$pd_span" | $GREP -F '**Add** an entry')
 
     for lit in "${fr8_phrases[@]}"; do
-        printf '%s' "${fr8_add_lines[$i]}" | $GREP -qF "$lit" \
+        printf '%s' "${fr8_add_lines[i]}" | $GREP -qF "$lit" \
             || fr8_bad="${fr8_bad}$name: Protocol Deviations span missing '$lit'; "
     done
 done
@@ -3899,8 +3939,8 @@ done
 # meaning-inverting or scope-narrowing edit to the prose between the six pinned phrases,
 # which the literal loop above cannot see: all six substrings survive such an edit unchanged.
 for i in "${!FR8_LOOP_FILES[@]}"; do
-    if [ -n "${fr8_add_lines[0]:-}" ] && [ -n "${fr8_add_lines[$i]:-}" ] \
-        && [ "${fr8_add_lines[$i]}" != "${fr8_add_lines[0]}" ]; then
+    if [ -n "${fr8_add_lines[0]:-}" ] && [ -n "${fr8_add_lines[i]:-}" ] \
+        && [ "${fr8_add_lines[i]}" != "${fr8_add_lines[0]}" ]; then
         fr8_bad="${fr8_bad}${FR8_LOOP_FILES[$i]#"$ROOT"/}: '**Add**' bullet differs from ${FR8_LOOP_FILES[0]#"$ROOT"/} — not byte-identical; "
     fi
 done
@@ -4409,6 +4449,7 @@ DF_DESIGN_DOC="$CLAUDE/commands/review-design.md"
 DF_CODE_DOC="$CLAUDE/commands/review-code.md"
 DF_DESIGN_PHRASE='exists to justify the chosen mechanism rather than to constrain it'
 DF_CODE_PHRASE='A §3 requirement is not a clearance'
+DF_CODE_OPERATIVE_PHRASE='would deleting it force a caller to do something no compiler and no test already check'
 
 if [ ! -f "$DF_DESIGN_DOC" ]; then
     df_bad="${df_bad}commands/review-design.md does not resolve; "
@@ -4431,7 +4472,7 @@ else
     # sibling §3-admission item, so the design-side phrase itself is the anchor instead.
     df_sev_line=$($GREP -m1 -F "$DF_DESIGN_PHRASE" "$DF_DESIGN_DOC")
     if [ -z "$df_sev_line" ] \
-       || ! printf '%s' "$df_sev_line" | $GREP -qF '— flag as Medium' \
+       || ! printf '%s' "$df_sev_line" | $GREP -qE -- '— flag as Medium$' \
        || ! printf '%s' "$df_sev_line" | $GREP -qF 'rests on the item alone'; then
         df_bad="${df_bad}the design-side item ('$df_sev_line') must end '— flag as Medium' and carry 'rests on the item alone' — added ungraded, regraded away from Medium, or reworded back to a shape-only or tag-only test; "
     fi
@@ -4440,6 +4481,11 @@ else
     # between `## Review Scope` and `## Behavioral Bug Test Requirement` — both unique in
     # this file.
     df_bad="${df_bad}$(d_at "$DF_CODE_DOC" '## Review Scope' '## Behavioral Bug Test Requirement' "$DF_CODE_PHRASE")"
+
+    # Code-side operative test: the headline alone trims to a label with nothing to apply —
+    # pin the clause's actual question (does the indirection earn itself?) in the same section,
+    # not just its headline, so a trim that keeps the title and deletes the question reddens.
+    df_bad="${df_bad}$(d_at "$DF_CODE_DOC" '## Review Scope' '## Behavioral Bug Test Requirement' "$DF_CODE_OPERATIVE_PHRASE")"
 
     # Cross-absence, both directions: neither wording may survive in the other file. A fix
     # pass that unifies the two near-duplicate rules — the realistic edit, since the two
@@ -4467,9 +4513,9 @@ else
 fi
 
 if [ -z "$df_bad" ]; then
-    pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it"
+    pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it"
 else
-    fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause sits in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
+    fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
 fi
 
 # D-g: /mr asks whether the work was code-reviewed and verified before it opens an MR. The step
