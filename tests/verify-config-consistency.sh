@@ -3982,15 +3982,17 @@ TICKET_DOC="$CLAUDE/commands/ticket.md"
 # above the start would otherwise make every containment test vacuously true.
 d_at() {
     local f=$1 s=$2 e=$3 lit=$4 ns ne nl ls le ll
-    ns=$($GREP -oF "$s" "$f" | wc -l | tr -d ' ')
-    ne=$($GREP -oF "$e" "$f" | wc -l | tr -d ' ')
-    nl=$($GREP -oF "$lit" "$f" | wc -l | tr -d ' ')
+    # `--` before each pattern: an anchor that is itself a markdown bullet (e.g. `- **Minimality:**`)
+    # starts with `-`, which grep otherwise parses as an option string rather than a pattern.
+    ns=$($GREP -oF -- "$s" "$f" | wc -l | tr -d ' ')
+    ne=$($GREP -oF -- "$e" "$f" | wc -l | tr -d ' ')
+    nl=$($GREP -oF -- "$lit" "$f" | wc -l | tr -d ' ')
     [ "$ns" -eq 1 ] || { printf "section start '%.38s…' occurs %s time(s), want 1; " "$s" "$ns"; return; }
     [ "$ne" -eq 1 ] || { printf "section end '%.38s…' occurs %s time(s), want 1; " "$e" "$ne"; return; }
     [ "$nl" -eq 1 ] || { printf "'%.44s…' occurs %s time(s), want exactly 1; " "$lit" "$nl"; return; }
-    ls=$($GREP -nF "$s" "$f" | head -1 | cut -d: -f1)
-    le=$($GREP -nF "$e" "$f" | head -1 | cut -d: -f1)
-    ll=$($GREP -nF "$lit" "$f" | head -1 | cut -d: -f1)
+    ls=$($GREP -nF -- "$s" "$f" | head -1 | cut -d: -f1)
+    le=$($GREP -nF -- "$e" "$f" | head -1 | cut -d: -f1)
+    ll=$($GREP -nF -- "$lit" "$f" | head -1 | cut -d: -f1)
     [ "$le" -gt "$ls" ] \
         || { printf "section bounds inverted: end '%.28s…' at line %s is not after start '%.28s…' at line %s; " "$e" "$le" "$s" "$ls"; return; }
     # `-ge` on the start, not `-gt`: this corpus bans manual line wrapping, so a one-line rule
@@ -4470,42 +4472,70 @@ else
     # Severity and firing condition, extracted as a single line rather than a span: `d_at`
     # needs a file-wide-unique anchor and `— flag as Medium` already occurs once on the
     # sibling §3-admission item, so the design-side phrase itself is the anchor instead.
-    df_sev_line=$($GREP -m1 -F "$DF_DESIGN_PHRASE" "$DF_DESIGN_DOC")
+    df_sev_line=$($GREP -m1 -F -- "$DF_DESIGN_PHRASE" "$DF_DESIGN_DOC")
     if [ -z "$df_sev_line" ] \
        || ! printf '%s' "$df_sev_line" | $GREP -qE -- '— flag as Medium$' \
-       || ! printf '%s' "$df_sev_line" | $GREP -qF 'rests on the item alone'; then
-        df_bad="${df_bad}the design-side item ('$df_sev_line') must end '— flag as Medium' and carry 'rests on the item alone' — added ungraded, regraded away from Medium, or reworded back to a shape-only or tag-only test; "
+       || ! printf '%s' "$df_sev_line" | $GREP -qF -- 'rests on the item alone' \
+       || ! printf '%s' "$df_sev_line" | $GREP -qF -- 'referent cites a source outside the design itself and is exempt' \
+       || ! printf '%s' "$df_sev_line" | $GREP -qF -- 'exempt only if the cited Clarification chose the mechanism'; then
+        df_bad="${df_bad}the design-side item ('$df_sev_line') must end '— flag as Medium', carry 'rests on the item alone', exempt the out-of-reach referents, and condition the 'decision' exemption on the Clarification choosing the shape — one of those four is missing, so the item is ungraded, regraded, reworded to a shape-only or tag-only test, or has lost a tag exemption; "
     fi
 
-    # Code-side presence: the clause must sit inside the Minimality bullet's own section,
-    # between `## Review Scope` and `## Behavioral Bug Test Requirement` — both unique in
-    # this file.
-    df_bad="${df_bad}$(d_at "$DF_CODE_DOC" '## Review Scope' '## Behavioral Bug Test Requirement' "$DF_CODE_PHRASE")"
-
-    # Code-side operative test: the headline alone trims to a label with nothing to apply —
-    # pin the clause's actual question (does the indirection earn itself?) in the same section,
-    # not just its headline, so a trim that keeps the title and deletes the question reddens.
-    df_bad="${df_bad}$(d_at "$DF_CODE_DOC" '## Review Scope' '## Behavioral Bug Test Requirement' "$DF_CODE_OPERATIVE_PHRASE")"
+    # Code-side presence, both literals on the Minimality bullet's own line. One extraction
+    # replaces two `d_at` calls: the bullet is one physical line, so a span bound was only
+    # ever one line wide by the accident of `- **Design adherence:**` sitting directly below
+    # it — insert any bullet between the two and the span silently widens, re-admitting the
+    # sibling-bullet relocation this check exists to catch. Extracting the line drops that
+    # dependency and the second anchor with it.
+    #
+    # Both literals must be on the line, not merely in the file: the headline alone trims to
+    # a label with nothing to apply, and the question alone loses what it applies to.
+    df_min_n=$($GREP -oF -- '- **Minimality:**' "$DF_CODE_DOC" | wc -l | tr -d ' ')
+    df_min_line=$($GREP -m1 -F -- '- **Minimality:**' "$DF_CODE_DOC")
+    if [ "$df_min_n" -ne 1 ]; then
+        df_bad="${df_bad}'- **Minimality:**' occurs $df_min_n time(s) in commands/review-code.md, want exactly 1 — the extraction below cannot be trusted to grab the Minimality bullet; "
+    elif ! printf '%s' "$df_min_line" | $GREP -qF -- "$DF_CODE_PHRASE"; then
+        df_bad="${df_bad}the §3-is-not-a-clearance clause is not on commands/review-code.md's Minimality bullet line — deleted, or relocated into a sibling Review Scope bullet; "
+    elif ! printf '%s' "$df_min_line" | $GREP -qF -- "$DF_CODE_OPERATIVE_PHRASE"; then
+        df_bad="${df_bad}the earn-itself question is not on commands/review-code.md's Minimality bullet line — the headline was kept and the question trimmed, leaving a label with nothing to apply; "
+    fi
 
     # Cross-absence, both directions: neither wording may survive in the other file. A fix
     # pass that unifies the two near-duplicate rules — the realistic edit, since the two
     # read as redundant to anyone scanning for it — moves one phrase into the other file and
     # reddens here.
-    ! $GREP -qF "$DF_DESIGN_PHRASE" "$DF_CODE_DOC" \
+    ! $GREP -qF -- "$DF_DESIGN_PHRASE" "$DF_CODE_DOC" \
         || df_bad="${df_bad}the design-side phrase has leaked into commands/review-code.md — the two clauses were unified on the design-side wording; "
-    ! $GREP -qF "$DF_CODE_PHRASE" "$DF_DESIGN_DOC" \
+    ! $GREP -qF -- "$DF_CODE_PHRASE" "$DF_DESIGN_DOC" \
         || df_bad="${df_bad}the code-side phrase has leaked into commands/review-design.md — the two clauses were unified on the code-side wording; "
 
     # Pre-fix adjacency absent: the step-1 bullet ran the §3/§5 sentence straight into the
     # public-API sentence. That sentence survives verbatim (NFR-2), so an absence check on it
     # alone would fail on the shipped text — what must die is the adjacency itself, which this
     # checks by matching across the join.
-    ! $GREP -qF 'no §5 contract. This covers public API surface too' "$DF_CODE_DOC" \
+    ! $GREP -qF -- 'no §5 contract. This covers public API surface too' "$DF_CODE_DOC" \
         || df_bad="${df_bad}commands/review-code.md's Minimality bullet reverted to its step-1 form — the new clause is no longer between the §3/§5 sentence and the public-API sentence; "
 
     # Delivery mandate: FR-7 names the Review Scope section on Actions item 1's must-include
     # enumeration, by prose rather than the heading literal, so the `## Review Scope` anchor
     # the code-side presence check above relies on stays the file's only occurrence.
+    #
+    # Uniqueness backstop: unlike df_sev_line above — which rides on DF_DESIGN_PHRASE's own
+    # file-wide d_at check — this literal has no sibling check forcing it to occur once, so a
+    # second occurrence would silently feed the wrong line through -m1. Count occurrences
+    # directly rather than lines: never `-cF`, since this corpus bans manual line wrapping
+    # and several statements can share one line.
+    # FR-7's reach to the Step G verifiers. A code-side minimality finding is a presence claim,
+    # so Step B's direct-inclusion exception does not cover it and it routes to Step G — where a
+    # verifier without the criterion defaults to refute. The clause closing that is rule text in
+    # a live file, so it is pinned like any other; without this it can be trimmed with nothing red.
+    $GREP -qF -- 'pasted the same way it reached the three primary reviewers' "$DF_CODE_DOC" \
+        || df_bad="${df_bad}commands/review-code.md no longer pastes the Review Scope section into the Step G verifier prompts — a single-agent code-side minimality finding meets default-to-refute with no criterion in hand; "
+
+    df_mandate_n=$($GREP -oF 'Every Claude agent prompt must include' "$DF_CODE_DOC" | wc -l | tr -d ' ')
+    if [ "$df_mandate_n" -ne 1 ]; then
+        df_bad="${df_bad}'Every Claude agent prompt must include' occurs $df_mandate_n time(s) in commands/review-code.md, want exactly 1 — the -m1 extraction below cannot be trusted to grab the delivery-mandate line; "
+    fi
     df_mandate_line=$($GREP -m1 -F 'Every Claude agent prompt must include' "$DF_CODE_DOC")
     if [ -z "$df_mandate_line" ] || ! printf '%s' "$df_mandate_line" | $GREP -qF 'Review Scope'; then
         df_bad="${df_bad}commands/review-code.md's must-include enumeration ('$df_mandate_line') no longer names the Review Scope section — FR-7's delivery mandate is trimmed, reopening the code-side delivery gap; "
@@ -4513,9 +4543,9 @@ else
 fi
 
 if [ -z "$df_bad" ]; then
-    pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it"
+    pass "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit within review-code.md's Minimality bullet without reverting to its step-1 form, neither wording leaked into the other file, and FR-7's delivery mandate names it"
 else
-    fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit in review-code.md's Minimality section, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
+    fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit within review-code.md's Minimality bullet without reverting to its step-1 form, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
 fi
 
 # D-g: /mr asks whether the work was code-reviewed and verified before it opens an MR. The step
