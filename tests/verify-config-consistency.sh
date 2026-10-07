@@ -4433,16 +4433,11 @@ fi
 # === The self-authored requirement and the §3-is-not-a-clearance clause (mechanism-
 # proportionality step 8) =====================================================================
 #
-# Both Minimality criteria resolved against §3 alone, and §3 and §5 share one author — a
-# requirement written to fit the mechanism clears both tests by construction. Two new clauses
-# close the hole: a design-side flag item asking whether a §3 item exists only to justify the
-# mechanism, and a code-side clause asking whether an indirection earns itself in the code
-# regardless of what §3 names. D-f is one block, one pass/fail pair, covering both sites and
-# the contract that keeps their wordings apart.
-#
-# No positive control counts either list: a presence-inside-span check cannot pass on an empty
-# extraction, and an exact list size would redden on the next ordinary flag-rule addition,
-# which is maintenance, not a defect.
+# §3 and §5 share one author, so a requirement written to fit the mechanism cleared both
+# Minimality tests by construction. Two clauses close that; one pass/fail pair covers both
+# sites and the contract keeping their wordings apart. No positive list-size control: a
+# presence-inside-span check cannot pass on an empty extraction, and an exact size would
+# redden on the next ordinary flag-rule addition.
 
 echo "== D-f: the self-authored-requirement flag item and the §3-is-not-a-clearance clause =="
 
@@ -4463,15 +4458,12 @@ fi
 if [ -n "$df_bad" ]; then
     : # a renamed or moved command file — every check below would grade the wrong (or no) text
 else
-    # Flag-list membership: the design-side item must sit inside the Flag list, not the
-    # Do NOT flag list below it. d_at compares line positions against both unique anchors, so
-    # a move into the wrong list — present, but outside its span — fails here rather than
-    # passing a whole-file count that cannot tell the two lists apart.
+    # Flag-list membership: a whole-file count cannot tell the Flag list from the Do-NOT-flag
+    # list below it, so d_at compares line positions and a move between them reddens.
     df_bad="${df_bad}$(d_at "$DF_DESIGN_DOC" '**Flag (design-level concerns):**' '**Ticket Constraint Guardrail (applies to all flag rules above):**' "$DF_DESIGN_PHRASE")"
 
-    # Severity and firing condition, extracted as a single line rather than a span: `d_at`
-    # needs a file-wide-unique anchor and `— flag as Medium` already occurs once on the
-    # sibling §3-admission item, so the design-side phrase itself is the anchor instead.
+    # A line, not a span: `— flag as Medium` already occurs on the sibling §3-admission item,
+    # so the design-side phrase is the anchor instead of a file-wide-unique suffix.
     df_sev_line=$($GREP -m1 -F -- "$DF_DESIGN_PHRASE" "$DF_DESIGN_DOC")
     if [ -z "$df_sev_line" ] \
        || ! printf '%s' "$df_sev_line" | $GREP -qE -- '— flag as Medium$' \
@@ -4481,15 +4473,11 @@ else
         df_bad="${df_bad}the design-side item ('$df_sev_line') must end '— flag as Medium', carry 'rests on the item alone', exempt the out-of-reach referents, and condition the 'decision' exemption on the Clarification choosing the shape — one of those four is missing, so the item is ungraded, regraded, reworded to a shape-only or tag-only test, or has lost a tag exemption; "
     fi
 
-    # Code-side presence, both literals on the Minimality bullet's own line. One extraction
-    # replaces two `d_at` calls: the bullet is one physical line, so a span bound was only
-    # ever one line wide by the accident of `- **Design adherence:**` sitting directly below
-    # it — insert any bullet between the two and the span silently widens, re-admitting the
-    # sibling-bullet relocation this check exists to catch. Extracting the line drops that
-    # dependency and the second anchor with it.
-    #
-    # Both literals must be on the line, not merely in the file: the headline alone trims to
-    # a label with nothing to apply, and the question alone loses what it applies to.
+    # One extraction, not two d_at calls: a span bound was one line wide only while
+    # `- **Design adherence:**` sat directly below, so inserting any bullet between them
+    # silently widened it and re-admitted the sibling-bullet relocation. Both literals must be
+    # on the line — the headline alone is a label with nothing to apply, the question alone
+    # loses what it applies to.
     df_min_n=$($GREP -oF -- '- **Minimality:**' "$DF_CODE_DOC" | wc -l | tr -d ' ')
     df_min_line=$($GREP -m1 -F -- '- **Minimality:**' "$DF_CODE_DOC")
     if [ "$df_min_n" -ne 1 ]; then
@@ -4500,10 +4488,8 @@ else
         df_bad="${df_bad}the earn-itself question is not on commands/review-code.md's Minimality bullet line — the headline was kept and the question trimmed, leaving a label with nothing to apply; "
     fi
 
-    # Cross-absence, both directions: neither wording may survive in the other file. A fix
-    # pass that unifies the two near-duplicate rules — the realistic edit, since the two
-    # read as redundant to anyone scanning for it — moves one phrase into the other file and
-    # reddens here.
+    # Cross-absence, both directions: the realistic edit is a pass unifying two rules that
+    # read as near-duplicates, which moves one phrase into the other file and reddens here.
     ! $GREP -qF -- "$DF_DESIGN_PHRASE" "$DF_CODE_DOC" \
         || df_bad="${df_bad}the design-side phrase has leaked into commands/review-code.md — the two clauses were unified on the design-side wording; "
     ! $GREP -qF -- "$DF_CODE_PHRASE" "$DF_DESIGN_DOC" \
@@ -4548,12 +4534,9 @@ else
     fail "the self-authored-requirement flag item sits in the design-level Flag list at Medium with its firing condition stated, the §3-is-not-a-clearance clause and its operative earn-itself question both sit within review-code.md's Minimality bullet without reverting to its step-1 form, neither wording leaked into the other file, and FR-7's delivery mandate names it" "$df_bad"
 fi
 
-# D-g: /mr asks whether the work was code-reviewed and verified before it opens an MR. The step
-# reads what /review-code and /verify already wrote rather than tracking anything of its own, so
-# every property below is text in one step — there is no state for a test to inspect instead.
-#
-# Position is half the contract: the step has to run before Step 3 writes the YAML, because a
-# gate that fires after the MR exists is not a gate. d_at pins it between Steps 1 and 2.
+# D-g: /mr gates on a code review and a /verify run before opening an MR. The step tracks no
+# state of its own, so text in one step is all there is to assert. Position is half the
+# contract — a gate firing after Step 3 writes the YAML is not a gate.
 
 echo "== D-g: /mr gates on code review and verification before opening an MR =="
 
@@ -4564,44 +4547,33 @@ DG_STEP='### 1a. Confirm the work was code-reviewed and verified'
 if [ ! -f "$DG_DOC" ]; then
     dg_bad="${dg_bad}commands/mr.md does not resolve; "
 else
-    # Presence and position in one predicate: the step must sit between Step 1 and Step 2,
-    # both unique headings. A step moved after Step 3 would still be present file-wide.
+    # Presence and position together: a step moved after Step 3 is still present file-wide.
     dg_bad="${dg_bad}$(d_at "$DG_DOC" '### 1. Analyze Current Branch' '### 2. Verify Issue Acceptance Criteria' "$DG_STEP")"
 
-    # Extract the step's own span, so the tokens below cannot be satisfied by matching text
-    # elsewhere in a 300-line command file.
+    # Span-scoped, so the tokens below cannot match elsewhere in a 300-line file.
     dg_span=$(awk '/^### 1a\./{f=1} /^### 2\./{f=0} f' "$DG_DOC")
 
-    # Both commands, named. The code-review half was added after the verify half and is the
-    # one a later trim would drop, leaving a step whose heading still promises both.
+    # Both commands: the code-review half came second and is the one a trim would drop.
     for dg_cmd in '/review-code' '/verify'; do
         printf '%s' "$dg_span" | $GREP -qF "$dg_cmd" \
             || dg_bad="${dg_bad}the step no longer names ${dg_cmd} — half the gate is gone while the heading still promises both; "
     done
 
-    # The three-state distinction. Without it the step collapses into did-it-run, and a review
-    # that ran and returned CHANGES REQUESTED reads as the gate being satisfied — the inversion
-    # that makes this step worse than nothing, since open findings would be on disk unmentioned.
+    # Three states, not two: a review that ran and returned CHANGES REQUESTED must not read as
+    # the gate satisfied, or open findings sit on disk unmentioned.
     printf '%s' "$dg_span" | $GREP -qF 'The review having *run* is not the gate being met' \
         || dg_bad="${dg_bad}the step no longer distinguishes a review that returned CHANGES REQUESTED or REJECTED from one that never ran; "
 
-    # Active-section scoping — this is the recorded observed failure. progress.md holds
-    # closed-out entries and a Discovered-work list, so a whole-file grep answers with a
-    # neighbouring entry and reports another issue's verification as this branch's.
-    #
-    # Pin the COMMAND, not the comment explaining it. An earlier version of this check greped
-    # the rationale prose, which left the whole-file grep free to return with this block green:
-    # reverting the command while keeping the comment passed all four checks. A regression test
-    # that survives its own failure mode manufactures the confidence the ledger then records.
+    # Active-section scoping — the recorded observed failure: progress.md holds other entries,
+    # so a whole-file grep reports another issue's verification as this branch's. Pin the
+    # COMMAND, not the comment: an earlier version greped the rationale prose, so reverting the
+    # command while keeping the comment passed every check.
     printf '%s' "$dg_span" | $GREP -qF '/^## Active/{f=1;next}' \
         || dg_bad="${dg_bad}the step no longer scopes its progress.md read to the Active section — a whole-file grep answers with another issue's verification; "
 
-    # The /verify marker set, derived cross-site rather than hardcoded. /verify Step 7 writes
-    # one on-device: line on every run and all of its values mean it ran — including
-    # 'not asked (no interactive user)', which means ran-but-incomplete. A step naming only
-    # some of them reads a real run as absent and proposes a run that already happened.
-    # Deriving the set from verify.md means a fourth value added there reddens here until this
-    # step names it, which a hardcoded list could not do.
+    # Marker set derived from verify.md, not hardcoded: all three on-device: values mean the
+    # run happened, including 'not asked', so naming only some reads a real run as absent. A
+    # fourth value added there reddens here until this step names it.
     DG_VERIFY_DOC="$CLAUDE/commands/verify.md"
     if [ ! -f "$DG_VERIFY_DOC" ]; then
         dg_bad="${dg_bad}commands/verify.md does not resolve, so the on-device marker set cannot be derived; "
@@ -4614,9 +4586,8 @@ else
         done < <($GREP -oE 'on-device: [a-z ()-]+' "$DG_VERIFY_DOC" | sort -u)
     fi
 
-    # Propose-and-wait: the action the request actually asked for. Detect-and-say-nothing
-    # satisfies every other predicate in this block, so without this the step can lose its
-    # whole purpose with the suite green.
+    # Propose-and-wait is the requested action: detect-and-say-nothing passes every other
+    # predicate here, so without this the step loses its purpose with the suite green.
     printf '%s' "$dg_span" | $GREP -qF 'Open the MR without it' \
         || dg_bad="${dg_bad}Step 1a no longer offers the propose-and-wait choice — it would detect without proposing, which is the behaviour the step exists to provide; "
 fi
