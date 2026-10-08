@@ -166,6 +166,7 @@ Before saving, parse and verify:
 5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
 6. Severity values are exactly one of: `Critical`, `High`, `Medium`, `Low` (case-sensitive)
 7. Any finding that identifies **incorrect runtime behavior** (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `Required test:` line inside its `fix:` field describing: what input triggers the bug and what the test asserts
+8. `approval` agrees with the finding set it ships beside: `changes_requested` when at least one `Critical` or `High` finding is present, `approved` when none is. `none` is exempt — it applies no approval action. Check 2 tests the value against the three literals and nothing more, so without this a review can carry an approval state its own findings contradict
 
 If validation fails:
 - Report the specific validation errors to the user
@@ -188,13 +189,38 @@ Do NOT keep them around "just in case" — the final YAML carries the aggregated
 ### Step 6: Display Summary and Post Instructions
 
 Show the user:
-- Total finding count by severity (Critical: N, High: N, Medium: N, Low: N)
+- **One row per finding**, in YAML order: `<severity> · <title> · <location> · <class>` — render `<location>` as the first entry where the finding uses `locations:`, and as `—` where it carries neither field
+- Total finding count by severity (Critical: N, High: N, Medium: N, Low: N), then the `cosmetic` and `theoretical` counts
 - Overall assessment based on findings:
   - **Approve** — zero `Critical` and zero `High` findings
   - **Request Changes** — one or more `Critical` or `High` findings
 - Full path to the YAML file
 
-Ask the user if they want to `open <path>` the YAML file before displaying the post instructions.
+**Classify every finding into exactly one class.** The class is display metadata only — it is never written to the YAML and never changes a severity.
+
+| Class | Test |
+|---|---|
+| `cosmetic` | The finding's whole subject is how the code reads, not what it does — naming, formatting, comment or doc wording, file placement, a style preference. Fixing it changes behaviour at no input. |
+| `theoretical` | The mechanism is real but the trigger is absent: the failure needs a caller that does not exist, an input no reachable path supplies, a race window no scheduler reaches, or a config value no deployment sets. |
+| `substantive` | Everything else — a defect reachable from the tree as it stands, or a gap whose trigger a reader can name. |
+
+Where either test is genuinely arguable, classify `substantive`. An under-cut review costs the author one extra comment; an over-cut one drops the finding the review exists to deliver.
+
+**A finding whose description carries the `[Reverified]` prefix is never `theoretical`.** Step G's two verifiers already asked whether its precondition is reachable and both said yes, so relabelling it here reverses a 2-of-2 adversarial verdict on no new evidence — and the row the user answers from shows only severity, title, location, and class, so the reversal would be invisible at the moment of the cut.
+
+**Then ask, as its own message, and wait for the answer:**
+
+```
+<N> cosmetic, <M> theoretical. Cut them from the YAML? (yes / no)
+```
+
+- **On `yes`:** remove those findings from `MR<number>-review.yaml`, name each cut finding in one line so the decision is auditable, then reprint the severity counts and the assessment — cutting a `High` can move it to Approve. **Then set `approval:` to match the reprinted assessment** — `approved` with zero Critical and zero High, `changes_requested` otherwise; a field already reading `none` stays `none`. `projctl comment` applies that field to the real MR, so a stale `changes_requested` unapproves an MR the user was just shown as Approve. Re-run Step 5b validation against the rewritten file.
+- **On `no`:** the YAML stands unchanged.
+- **No answer obtainable** (non-interactive run): keep every finding and record `cut: not asked (no interactive user)`.
+
+Never cut without an answer — the classification is a recommendation, and which findings reach the author is the user's call.
+
+Ask the user if they want to `open <path>` the YAML file before displaying the post instructions. Ask it as its own message, after the cut question is settled — never bundled with it.
 
 Then display:
 ```
@@ -214,7 +240,7 @@ The command never posts automatically. Posting requires explicit user action.
 **If the MR being reviewed is linked to an active issue in `progress.md`** (look for the MR number in the Active section or `status.md`):
 
 Update `planning/progress.md` Active entry:
-- Append `- MR review written: <N> findings (Critical: N, High: N, Medium: N, Low: N)`
+- Append `- MR review written: <N> findings (Critical: N, High: N, Medium: N, Low: N)` — the **post-cut** counts, matching what the YAML now holds
 - Update `**Last Updated:**` to today's date.
 
 **Always** push planning to backup after writing the YAML:
