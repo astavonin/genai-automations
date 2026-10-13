@@ -48,7 +48,7 @@ A fix loop states it at **three** exits, each of which carries the line in its o
 
 **Out of scope, recorded so the absence is a decision rather than an oversight:**
 
-- `/review-mr` — its output is a YAML posted to the merge request, not a conversational report; there is no reader to volunteer a verdict to.
+- `/review-mr` — reviews a merge request we do not own, so there is no next round to call. Its Step 8 read-out is conversational, but it reconciles intent rather than closing a cycle.
 - `/review-fix` — reviews one fix, not a cycle, and has no between-rounds step to attach to.
 - `/review-iterate` — runs one unconditional final sweep by design. Its divergence is recorded in `~/.claude/skills/workflows/review-output-format/SKILL.md` → Assessment Criteria as known and not licensed; giving it a verdict would imply a choice it does not offer.
 

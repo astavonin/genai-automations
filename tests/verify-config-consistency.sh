@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=104
+EXPECTED_TESTS=105
 
 PASS=0
 FAIL=0
@@ -181,6 +181,26 @@ if [ -z "$tc_bad" ]; then
     pass "the tracking-file entry cap keeps its anchor heading and word bound, and both declared pointers still name it"
 else
     fail "the tracking-file entry cap keeps its anchor heading and word bound, and both declared pointers still name it" "$tc_bad"
+fi
+
+# Same two-pointer shape as the cap above: "Compression Has a Floor" in communication/SKILL.md is
+# reached by heading text from CLAUDE.md → Verbosity and from review-mr.md's Step 8, where it is the
+# only thing giving that step's "short and human-readable" requirement any teeth. A rename leaves no
+# trace in either pointing file's diff.
+CHF_SRC="$CLAUDE/skills/domains/communication/SKILL.md"
+CHF_ANCHOR='## Compression Has a Floor'
+chf_bad=""
+$GREP -qF "$CHF_ANCHOR" "$CHF_SRC" \
+    || chf_bad="${chf_bad}communication/SKILL.md no longer carries the '$CHF_ANCHOR' heading both pointers name; "
+for chf_ptr in "$CLAUDE/CLAUDE.md" "$CLAUDE/commands/review-mr.md"; do
+    $GREP -qF 'Compression Has a Floor' "$chf_ptr" \
+        || chf_bad="${chf_bad}${chf_ptr#"$CLAUDE"/} no longer points at it; "
+done
+
+if [ -z "$chf_bad" ]; then
+    pass "the 'Compression Has a Floor' anchor survives and both declared pointers still name it"
+else
+    fail "the 'Compression Has a Floor' anchor survives and both declared pointers still name it" "$chf_bad"
 fi
 
 echo "== Change-class label sets agree across architecture, review-checklist, and testing tables =="

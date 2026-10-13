@@ -1,6 +1,6 @@
 ---
 name: review-mr
-description: Review MR code and generate YAML for projctl comment
+description: Review MR code, generate YAML for projctl comment, and reconcile the diff against the ticket and MR descriptions
 ---
 
 # MR Review Command
@@ -57,7 +57,7 @@ Every MR review file lives under `planning/<epic-slug>/reviews/`. The epic slug 
 **Resolution chain:** MR → linked issue → epic → local slug.
 
 1. **Extract linked issue** from the Step 2 MR data. Parse `Ref #<N>` from the MR title; fall back to `<N>` from the source branch (`feature/<N>-*`, `fix/<N>-*`, etc.). If neither yields a number, prompt the user for the linked issue and do not proceed without one.
-2. **Load the issue and parse the epic:** `projctl load issue <linked_issue>` → extract the `## Epic &<N>: <title>` header line. **Retained verbatim:** the issue's description field from this same call — no second network call — for use in Step 4's agent prompts and the review-request document's `## Context` section. If the issue has no epic, prompt the user for an epic number. If the user confirms there is no epic (personal repo, single-milestone project, OSS fork without epics), prompt for a manual folder slug (default: repo name in lowercase with `-` separators) and proceed with that slug as `<epic-slug>`. Skip `overview.md` instantiation in this case and note in Step 2b confirmation: `(no epic — using manual slug)`. Document this path as an explicit exception for epic-less projects.
+2. **Load the issue and parse the epic:** `projctl load issue <linked_issue>` → extract the `## Epic &<N>: <title>` header line. **Retained verbatim:** the issue's description field from this same call — no second network call — for use in Step 4's agent prompts, the review-request document's `## Context` section, and Step 8's reconciliation. If the issue has no epic, prompt the user for an epic number. If the user confirms there is no epic (personal repo, single-milestone project, OSS fork without epics), prompt for a manual folder slug (default: repo name in lowercase with `-` separators) and proceed with that slug as `<epic-slug>`. Skip `overview.md` instantiation in this case and note in Step 2b confirmation: `(no epic — using manual slug)`. Document this path as an explicit exception for epic-less projects.
 3. **Resolve the local slug.** List `planning/*/overview.md` and grep each with `grep -F "**Source:** [&<N>]"` (fixed-string match — plain `grep` misinterprets `[&44]` as a character class). If a match exists, reuse that folder's slug. If no `overview.md` match is found, also list `planning/*/` folders that lack an `overview.md` entirely — a folder without `overview.md` may already belong to this epic (partial migration state or manual creation). Present any such orphan folders to the user alongside the proposed new slug; let the user select an existing folder for backfill or confirm the new slug. Only after user confirmation derive a proposed slug — lowercase the epic title, replace whitespace with `-`, strip punctuation, truncate at 2–4 natural words — and create the folder. Do not create silently.
 4. **Instantiate or refresh the epic folder** per `~/.claude/skills/workflows/planning/OVERVIEW-TEMPLATE.md`:
    - `mkdir -p planning/<epic-slug>/reviews`
@@ -244,11 +244,75 @@ Update `planning/progress.md` Active entry:
 - Update `**Last Updated:**` to today's date.
 
 **Always** push planning to backup after writing the YAML:
-```bash
 ```
 Read ~/.claude/skills/workflows/push-planning/SKILL.md
 ```
 Follow the steps in that fragment. Surface the §8.2 warning block on failure; do not fail the skill.
+
+### Step 8: Intent Reconciliation
+
+The run's last output. Every input is already in context: the MR description from Step 2, the ticket description retained verbatim in Step 2b, and the diff from Step 3. Make no new `projctl` call. If the diff has aged out of context, re-run Step 3's `git diff` against the refs it already fetched — never write this summary from the finding list.
+
+**Write the what-it-does summary from the diff before re-reading either description.** With a description in view the summary degrades into a paraphrase of it and the comparison then confirms itself — a description that does not match its own diff is exactly what this step exists to surface.
+
+The two pairings carry different signal:
+
+| Pairing | What a mismatch tells you |
+|---|---|
+| diff vs ticket | scope drift, or an acceptance criterion the MR does not meet |
+| diff vs MR description | the author's own account of the change is incomplete or wrong |
+
+A third mismatch — the ask restated wrong before any code was written — needs no row of its own: it prints as an unmerged pair, the ticket's claim marked `no` beside the MR's marked `yes`.
+
+**Short and human-readable is the requirement, not the aspiration.** A person skims this to decide whether the MR does what it says; a reader who has to decode it gets nothing the finding list did not already give them. Fifteen non-blank lines at most, one screen, no exceptions — and plain sentences, not compressed ones. Write it for someone who has not read the diff: ordinary words, no reviewer shorthand, no acronym introduced here for the first time, no identifier where a verb phrase says it. `~/.claude/skills/domains/communication/SKILL.md` → "Compression Has a Floor" is the governing rule — two plain sentences beat one dense clause, and a 25-word line that needs re-reading has failed even though it is inside the bound.
+
+Print this block and nothing else:
+
+```
+MR <N> — what the diff does
+
+- <one behavioural change per line, read off the diff>
+
+| Claim | From | In the diff |
+|---|---|---|
+| <claim> | ticket / MR / both | yes / partial / no |
+
+Undisclosed: <in the diff, in neither description — or `none`>
+Unmet: <one per claim row marked `no`; a `partial` row carries its own qualifier and is not counted — or `none`>
+Verdict: Aligned | Divergent (<n> undisclosed, <m> unmet)
+```
+
+Rules for the block:
+
+- **One behaviour per bullet, never one file per bullet.** Three to six bullets; a 40-file rename is one line.
+- Every line stays inside 25 words — that is the countable half of the requirement above, not a substitute for it.
+- One claim row per acceptance criterion in the ticket and per promise in the MR description. Merge identical claims and mark them `both`. Six rows is the cap: past that, keep the `no` and `partial` rows and close with `+<N> more claims, all met`.
+- `partial` is useless without a qualifier naming what is missing — fit it inside the 25 words.
+- If Step 3 truncated the diff, open the block with `SCOPED: <N> of <M> files read.` `Undisclosed` is unfounded otherwise, and silently so.
+
+Filled in, it reads like this — the register to match:
+
+```
+MR 156 — what the diff does
+
+- Caches invalidate on write instead of on a 30-second timer.
+- Adds a second cache keyed by tenant, so one tenant's writes no longer flush another's reads.
+- Renames `flush()` to `invalidate()` across 14 call sites. No behaviour change.
+
+| Claim | From | In the diff |
+|---|---|---|
+| Stale reads after a write are gone | both | yes |
+| Cache hit rate improves under load | MR | no — nothing measures it |
+| Eviction stays LRU | ticket | partial — LRU per tenant now, not global |
+
+Undisclosed: the tenant split. Neither description mentions a second cache.
+Unmet: nothing in the diff measures cache hit rate.
+Verdict: Divergent (1 undisclosed, 1 unmet)
+```
+
+Note what the example does not do: it names no class, quotes no line number, and explains no call chain. Those belong in the findings, which the user has already read by this point.
+
+**This is a read-out, not a finding source.** The YAML is written and validated by now. Do not edit it here, and do not re-open the Step 6 cut question. One case earns an exception: a divergence that would itself be a `Critical` or `High` finding. Name it in one line and leave the decision to the user — nothing has been posted yet, so re-opening the YAML before posting is still their option.
 
 ---
 
