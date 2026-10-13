@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=105
+EXPECTED_TESTS=106
 
 PASS=0
 FAIL=0
@@ -2194,6 +2194,39 @@ elif [ -n "$uc_missing" ]; then
          "no pointer in:$uc_missing"
 else
     pass "every agent points at the untrusted-content fragment"
+fi
+
+echo "== Command files: review-mr.md's cut gate =="
+
+# Observed 2026-10-13: a real /review-mr run printed "1 cosmetic, 0 theoretical", skipped the cut
+# question, and ended the turn with "Next: decide whether to cut" — so Steps 7 and 8 never ran either.
+# Root cause was a firing condition nobody stated: the question reads absurd at 0/0, so a run infers a
+# skip threshold and 1/0 falls under it. These properties keep that closed, all in Step 6. The two
+# count-routing checks are deliberately both kept: the positive pin catches a reworded re-add of the
+# counts, the negative one catches a verbatim revert, and each survives the mutant the other kills.
+CUT_SECTION=$(extract-section "$CLAUDE/commands/review-mr.md" '### Step 6' 2>/dev/null)
+cut_bad=""
+if [ -z "$CUT_SECTION" ]; then
+    cut_bad="review-mr.md Step 6 did not extract; "
+else
+    printf '%s\n' "$CUT_SECTION" | $GREP -qF 'N + M ≥ 1' \
+        || cut_bad="${cut_bad}Step 6 states no firing condition for the cut question (expected the literal 'N + M ≥ 1') — a run infers a threshold and skips at 1/0; "
+    printf '%s\n' "$CUT_SECTION" | $GREP -qF '0 cosmetic, 0 theoretical' \
+        || cut_bad="${cut_bad}Step 6 names no zero-count exception (expected the literal '0 cosmetic, 0 theoretical'), which is what makes the firing condition inferable rather than stated; "
+    # Subject-bound: a generic "in the turn that reaches this step" satisfies a loose pin even with the
+    # ask obligation moved onto something else, which was a surviving mutant of the first version.
+    printf '%s\n' "$CUT_SECTION" | $GREP -qF 'Ask in the turn that reaches' \
+        || cut_bad="${cut_bad}Step 6 no longer binds the same-turn obligation to the ask (expected 'Ask in the turn that reaches'); "
+    printf '%s\n' "$CUT_SECTION" | $GREP -qF 'printed by the cut question below and nowhere else' \
+        || cut_bad="${cut_bad}Step 6 no longer routes the cosmetic/theoretical counts to the question alone, so showing them stops implying asking; "
+    printf '%s\n' "$CUT_SECTION" | $GREP -qF 'then the `cosmetic` and `theoretical` counts' \
+        && cut_bad="${cut_bad}Step 6's display list prints the counts again, so showing them no longer implies asking; "
+fi
+
+if [ -z "$cut_bad" ]; then
+    pass "/review-mr's cut gate keeps its firing condition, zero-count exception, same-turn ask obligation, and single print site for the counts"
+else
+    fail "/review-mr's cut gate keeps its firing condition, zero-count exception, same-turn ask obligation, and single print site for the counts" "$cut_bad"
 fi
 
 echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="

@@ -188,14 +188,6 @@ Do NOT keep them around "just in case" — the final YAML carries the aggregated
 
 ### Step 6: Display Summary and Post Instructions
 
-Show the user:
-- **One row per finding**, in YAML order: `<severity> · <title> · <location> · <class>` — render `<location>` as the first entry where the finding uses `locations:`, and as `—` where it carries neither field
-- Total finding count by severity (Critical: N, High: N, Medium: N, Low: N), then the `cosmetic` and `theoretical` counts
-- Overall assessment based on findings:
-  - **Approve** — zero `Critical` and zero `High` findings
-  - **Request Changes** — one or more `Critical` or `High` findings
-- Full path to the YAML file
-
 **Classify every finding into exactly one class.** The class is display metadata only — it is never written to the YAML and never changes a severity.
 
 | Class | Test |
@@ -208,7 +200,17 @@ Where either test is genuinely arguable, classify `substantive`. An under-cut re
 
 **A finding whose description carries the `[Reverified]` prefix is never `theoretical`.** Step G's two verifiers already asked whether its precondition is reachable and both said yes, so relabelling it here reverses a 2-of-2 adversarial verdict on no new evidence — and the row the user answers from shows only severity, title, location, and class, so the reversal would be invisible at the moment of the cut.
 
-**Then ask, as its own message, and wait for the answer:**
+Show the user:
+- **One row per finding**, in YAML order: `<severity> · <title> · <location> · <class>` — render `<location>` as the first entry where the finding uses `locations:`, and as `—` where it carries neither field
+- Total finding count by severity (Critical: N, High: N, Medium: N, Low: N). The `cosmetic` and `theoretical` counts are printed by the cut question below and nowhere else
+- Overall assessment based on findings:
+  - **Approve** — zero `Critical` and zero `High` findings
+  - **Request Changes** — one or more `Critical` or `High` findings
+- Full path to the YAML file
+
+**Then ask, as its own message, and wait for the answer.** Ask whenever `N + M ≥ 1`: one cosmetic finding and no theoretical ones still gets the question. The single exception is `0 cosmetic, 0 theoretical`, which prints `No cosmetic or theoretical findings — nothing to cut.` and moves on.
+
+**Ask in the turn that reaches this step.** Ending the turn with "next, decide whether to cut" skips the gate: the user was never asked, and Steps 7 and 8 never ran.
 
 ```
 <N> cosmetic, <M> theoretical. Cut them from the YAML? (yes / no)
@@ -216,7 +218,7 @@ Where either test is genuinely arguable, classify `substantive`. An under-cut re
 
 - **On `yes`:** remove those findings from `MR<number>-review.yaml`, name each cut finding in one line so the decision is auditable, then reprint the severity counts and the assessment — cutting a `High` can move it to Approve. **Then set `approval:` to match the reprinted assessment** — `approved` with zero Critical and zero High, `changes_requested` otherwise; a field already reading `none` stays `none`. `projctl comment` applies that field to the real MR, so a stale `changes_requested` unapproves an MR the user was just shown as Approve. Re-run Step 5b validation against the rewritten file.
 - **On `no`:** the YAML stands unchanged.
-- **No answer obtainable** (non-interactive run): keep every finding and record `cut: not asked (no interactive user)`.
+- **No answer obtainable** — a headless or cron run with no user turn available, never a run where asking was judged not worth it: keep every finding and report `cut: not asked (no interactive user)` in the run output. It is not a YAML field; the schema has none.
 
 Never cut without an answer — the classification is a recommendation, and which findings reach the author is the user's call.
 
