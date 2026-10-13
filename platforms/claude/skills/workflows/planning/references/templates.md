@@ -139,30 +139,6 @@ planning/
 
 ---
 
-### `milestone-XX-<name>/epic-YY-<name>.md`
-
-**Purpose:** Detailed tracking for complex epics
-**Updated:** As work progresses
-**Format:** Issue-focused
-
-**When to create:**
-- Epic has >5 issues
-- Epic spans multiple weeks
-- Epic has complex dependencies
-- Epic needs detailed status documentation
-
-**Contains:**
-- Epic description and goals
-- Issues breakdown (open/closed)
-- Implementation notes
-- Testing status
-- Known issues
-- Technical decisions
-
-**Style:** More detailed than status.md, but still concise
-
----
-
 ## Workflow
 
 ### 1. Starting Work
@@ -255,15 +231,6 @@ mkdir -p planning/<epic-slug>/milestone-XX-<name>/issues/<NNN-name>/
 - `status.md` - weekly or when status changes
 - `overview.md` - when milestones added/completed
 
-### Epic Details
-
-**Only create epic files when:**
-- Epic is complex (>5 issues, multi-week)
-- Need to track technical details
-- Multiple dependencies to document
-
-**Otherwise:** Track in milestone status.md only
-
 ---
 
 ## Examples
@@ -354,12 +321,7 @@ None
 - Use milestone status.md for simple tracking
 
 ❌ **Implementation details in status tracking**
-- Don't put architecture diagrams in status.md
-- Don't put code snippets in status.md or progress.md
-- Don't put detailed design in status.md
-- ✅ DO: Put architecture/design in `issues/<NNN-name>/` folder
-- ✅ DO: Keep status.md as the phase table + dependency diagram only
-- ✅ DO: Keep progress.md to ≤ 30 lines
+- Rules live in one place: `../SKILL.md` → "Separate Tracking from Design", including the per-entry cap (one line, ≤ 25 words) and the worked wrong/right pair.
 
 ---
 

@@ -24,6 +24,8 @@ Two distinct rules in this config use the word "register". They do not overlap a
 
 Satisfying one does not satisfy the other. A design document passes the prose-register gate and still needs this file's rules for whatever is said *about* it in conversation. Do not apply this file's brevity limits to document bodies — a design doc, review report, analysis, or brief is a deliverable, and its length is set by its own template. Brevity governs what you *say about* the document, not what is *in* it.
 
+**Tracking files are not deliverables.** `progress.md` and `status.md` record state; they do not carry reasoning, so the exemption above does not reach them and this file's brevity limits apply to their bodies. The per-entry form is set by `~/.claude/skills/workflows/planning/SKILL.md` → "Separate Tracking from Design". Two neighbours keep the deliverable exemption: `overview.md`, whose form is set by `OVERVIEW-TEMPLATE.md`, and the ledger class (`observed-failures.md`, `dropped-findings.md`), which is a record rather than a tracker.
+
 ## The Goal
 
 The reader skips paragraphs and reads lines. Volume that buries the point is a defect, not thoroughness. **The reader asks when more is needed** — under-length beats over-length. Never pad to seem complete.

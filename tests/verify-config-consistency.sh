@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=103
+EXPECTED_TESTS=104
 
 PASS=0
 FAIL=0
@@ -156,6 +156,31 @@ elif [ "$src_rows" = "$mirror_rows" ]; then
 else
     fail "severity table ($n_src rows) is identical in regression-test and review-checklist" \
          "$(diff <(printf '%s\n' "$src_rows") <(printf '%s\n' "$mirror_rows") | head -12)"
+fi
+
+# The tracking-file entry cap lives in one place — planning/SKILL.md → "Separate Tracking from
+# Design" — and two files reach it by heading text: communication/SKILL.md, which is loaded for
+# every reply, and planning/references/templates.md, whose own copy of the rule was deleted in
+# favour of the pointer. Renaming the heading breaks both silently: a pointer into a heading
+# leaves no trace in a diff of the pointing file, which is the failure mode at the top of this
+# suite. Assert the anchor, the word bound the pointers advertise, and both pointers.
+TRACK_SRC="$CLAUDE/skills/workflows/planning/SKILL.md"
+TRACK_ANCHOR='### Separate Tracking from Design'
+tc_bad=""
+$GREP -qF "$TRACK_ANCHOR" "$TRACK_SRC" \
+    || tc_bad="${tc_bad}planning/SKILL.md no longer carries the '$TRACK_ANCHOR' heading both pointers name; "
+$GREP -qF '≤ 25 Words' "$TRACK_SRC" \
+    || tc_bad="${tc_bad}planning/SKILL.md no longer states the per-entry word bound the pointers advertise; "
+for tc_ptr in "$CLAUDE/skills/domains/communication/SKILL.md" \
+              "$CLAUDE/skills/workflows/planning/references/templates.md"; do
+    $GREP -qF 'Separate Tracking from Design' "$tc_ptr" \
+        || tc_bad="${tc_bad}${tc_ptr#"$CLAUDE"/} no longer points at the cap; "
+done
+
+if [ -z "$tc_bad" ]; then
+    pass "the tracking-file entry cap keeps its anchor heading and word bound, and both declared pointers still name it"
+else
+    fail "the tracking-file entry cap keeps its anchor heading and word bound, and both declared pointers still name it" "$tc_bad"
 fi
 
 echo "== Change-class label sets agree across architecture, review-checklist, and testing tables =="

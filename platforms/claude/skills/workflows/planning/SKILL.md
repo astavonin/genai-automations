@@ -172,6 +172,28 @@ This includes:
 - ✅ DO: Keep `status.md` as the phase table + dependency diagram only
 - ✅ DO: Keep `progress.md` to ≤ 30 lines — active item, last 3 merged, next steps
 
+#### Entry Form — One Line, ≤ 25 Words
+
+Applies to every entry in `progress.md` and `status.md`. The `≤ 30 lines` cap above bounds lines, not words: a 90-word bullet is still one line and passes it, which is why this cap exists alongside it. `overview.md` is out of scope — `OVERVIEW-TEMPLATE.md` sets its form.
+
+- ✅ DO: State the current fact, its date, and its ticket. Nothing else fits in 25 words.
+- ✅ DO: Put the WHY in `issues/<NNN-name>/analysis.md` or `design.md`, and point the entry at that file.
+- ❌ DON'T: write a WHY clause or a consequence chain into the entry. "This also removes…", "since…", "so a missing board is a wait rather than a fault" — all of it belongs in the issue folder.
+- ❌ DON'T: record the file's own history. "The entry previously here named a serial that no longer enumerates and was dropped" — git holds that.
+
+Wrong — one line, a consequence chain, and a coined phrase ("the only prove-first host"):
+
+```markdown
+- **The local bench board is dead (D-19, 2026-10-12)** — does not boot at all, no cause established, diagnosis blocked on a UART cable. On-device verification has no bench host; it runs on HIL through the `ota-e2e` job meanwhile. This also removes the fleet's only prove-first host for WiFi-risky actions, since HIL WiFi cannot be restored remotely (D-12).
+```
+
+Right:
+
+```markdown
+- 🔴 Bench board dead since 2026-10-12 (D-19) — blocked on UART cable. On-device verification runs on HIL.
+- 🔶 HIL: 0–2 boards online, selected dynamically; never address by serial. See `issues/<NNN-name>/analysis.md`.
+```
+
 ### Update Frequently
 - `progress.md` - daily or every work session
 - `status.md` - weekly or when status changes
