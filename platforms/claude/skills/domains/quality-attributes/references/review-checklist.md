@@ -377,12 +377,13 @@ Severity is assigned after the Change Class Calibration at the top of this file,
 
 **Design/code/spec reviews use Markdown with a `**Status:**` marker (see the design-review.md / code-review.md / spec-review.md format).**
 
-**MR reviews use YAML format:**
+**MR reviews use YAML format** — the block below illustrates fields, not description shape; for MR reviews `review-mr.md` → "Description shape" governs the published description:
 
 ```yaml
 mr_number: 134
 title: "Draft: Pipeline refactoring"
 review_date: "2026-02-04"
+approval: changes_requested
 
 findings:
   - severity: High
@@ -443,6 +444,7 @@ findings:
 - `mr_number` - MR number (integer)
 - `title` - MR title (string)
 - `review_date` - Date in YYYY-MM-DD format (string)
+- `approval` - One of: `approved`, `changes_requested`, `none`. Write it explicitly — `projctl comment` reads a missing key as `approved` and approves the MR
 - `findings` - List of finding objects
 
 **Each finding:**

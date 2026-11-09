@@ -151,7 +151,7 @@ GitLab will interpret these as real user mentions and send notifications.
 Write the review to `planning/<epic-slug>/reviews/MR<number>-review.yaml` following the schema below.
 Include ALL findings from the aggregation pipeline in this order: consensus findings first, then Step G `[Reverified]` survivors (single-agent Claude and Codex-only findings that both verifiers CONFIRMED — Step G rejects — REFUTED and unparseable-after-retry — MUST NOT appear in the YAML; rule 4 warnings surface unparseable-after-retry cases to the user, not the YAML), then Step F test-coverage-only findings. Do NOT prefix titles with `[Codex]` or any other source label — all findings appear identically regardless of origin; use only the `[Reverified]` description prefix defined in Step 4 for Step G survivors.
 
-**Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced. **Target ~25–30 words; reach for 60 only when the chain is genuinely tangled.** Trim call-chain re-derivations, framework classification meta, and MR-description quotes. A reader scrolling eight findings drops off after two dense ones — brevity is a correctness concern, not a style preference.
+**Before writing each finding description:** rewrite it to follow the Writing Style rules below — sound human, friendly, no blame, focus on the problem not the person. Raw reviewer agent wording may not follow these rules; the aggregation step is where style is enforced. **Every finding opens on the stake — the guarantee this MR exists to provide and now fails to — then one sentence of mechanism; see "Description shape" below for the form and the two worked contrasts.** Agents return mechanism-first prose by default, so this is a rewrite, not a tidy-up: if a description's first clause names a function rather than something the author loses, it is not done. Target two sentences, 40 words at most; where you cannot name a guarantee the change was supposed to provide, one plain sentence is finished. Trim call-chain re-derivations, framework classification meta, and MR-description quotes. A reader scrolling eight findings drops off after two dense ones — brevity is a correctness concern, not a style preference.
 
 If this file already exists (re-review), it will be overwritten. Previous review output
 is not preserved. Copy the file manually before re-running if you need to keep it.
@@ -160,13 +160,13 @@ is not preserved. Copy the file manually before re-running if you need to keep i
 
 Before saving, parse and verify:
 1. Valid YAML syntax (no parse errors)
-2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `findings`; `approval` is optional (defaults to `"approved"`) but when present must be one of `"approved"`, `"changes_requested"`, `"none"`
+2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `step_g`, `approval`, `findings`; `approval` must be one of `"approved"`, `"changes_requested"`, `"none"`. An absent `approval` is a validation failure, not a default — `projctl comment` reads a missing key as `"approved"` and approves the MR
 3. `mr_number` is an integer (not a string)
 4. Each finding has required fields: `severity`, `title`, `description`
 5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
 6. Severity values are exactly one of: `Critical`, `High`, `Medium`, `Low` (case-sensitive)
 7. Any finding that identifies **incorrect runtime behavior** (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `Required test:` line inside its `fix:` field describing: what input triggers the bug and what the test asserts
-8. `approval` agrees with the finding set it ships beside: `changes_requested` when at least one `Critical` or `High` finding is present, `approved` when none is. `none` is exempt — it applies no approval action. Check 2 tests the value against the three literals and nothing more, so without this a review can carry an approval state its own findings contradict
+8. `approval` agrees with the finding set it ships beside, an absent key graded as the `approved` it defaults to: `changes_requested` when at least one `Critical` or `High` finding is present, `approved` when none is. `none` is exempt — it applies no approval action. Check 2 tests the value against the three literals and nothing more, so without this a review can carry an approval state its own findings contradict
 
 If validation fails:
 - Report the specific validation errors to the user
@@ -323,7 +323,7 @@ Note what the example does not do: it names no class, quotes no line number, and
 When drafting replies to reviewer comments (for posting via `projctl comment` with a `replies:` section), apply the same writing style as finding descriptions (see above), plus:
 
 - When agreeing: state what was fixed, one sentence, done.
-- When pushing back: explain the reasoning directly — the goal is shared understanding, not winning the point.
+- When pushing back: explain the reasoning directly — the goal is shared understanding, not winning the point. One or two sentences, ~25–30 words.
 
 **Re-posting warning:** Running `comment` more than once on the same YAML will create duplicate comments on the MR. If a previous posting attempt failed or was partial, resolve the underlying issue (e.g. fix `:1` line numbers in the YAML) before re-running — do not retry blindly.
 
@@ -337,14 +337,16 @@ title: "Brief MR title"                 # string, REQUIRED (match MR title)
 review_date: "2026-02-11"               # YYYY-MM-DD, REQUIRED
 codex: ran                              # REQUIRED: "ran" | "not run: <reason>"
 step_g: 3 eligible, 2 confirmed, 1 refuted, 0 unparseable  # REQUIRED: "<N> eligible, <C> confirmed, <R> refuted, <U> unparseable" | "not run: <reason>"
-approval: approved                      # "approved" | "changes_requested" | "none" — default: "approved"
+approval: changes_requested              # REQUIRED: "approved" | "changes_requested" | "none" — must agree with the findings below
+                                        # Write it explicitly — the default is "approved", so omitting the key
+                                        # approves a third party's merge request as the price of posting findings.
                                         # projctl comment applies this automatically after posting findings
 
 findings:
   - severity: Critical                  # REQUIRED: Critical | High | Medium | Low
     title: "Brief problem statement"    # REQUIRED: concise, specific
-    description: |                      # REQUIRED: impact-first, 1–2 sentences (~25–30 words); reach for 60 only for tangled chains
-      Short, plain statement of the problem and its impact.
+    description: |                      # REQUIRED: stake first, then mechanism — two sentences, 40 words at most
+      What the change stops guaranteeing, in the author's terms. Then one sentence of mechanism naming the symbols.
     location: "path/to/file.cc:123"     # Single file:line (use this OR locations)
     locations:                          # Multiple files (use this OR location)
       - "path/to/file.cc:181"
@@ -359,9 +361,12 @@ findings:
 - Be friendly: acknowledge the point before explaining or disagreeing. Short sentences, first person is fine.
 - Never blame: don't mention how a mistake happened ("I forgot", "this was left over", "accidentally"). Don't attribute problems to prior authors or external constraints. State what's wrong or what changed — nothing more.
 - Focus on the problem, not the person: describe what the code does, not what the author did or failed to do.
-- Description shape: lead with the impact in plain language — what breaks, for whom, when. Target 1–2 sentences (~25–30 words). Add mechanism as a second sentence only when it isn't obvious at the file:line. Reserve 60 words for genuinely tangled chains; do not fill the quota. Leave out framework/runtime classification, MR-description quote-backs, and chain restatement past two hops. If a finding doesn't fit the "X breaks when Y" shape (test-coverage gap, unclear naming, scope-creep question), drop the template — one plain sentence naming the concern is fine.
-- Bad (~50 words, mechanism-first, technical noise): "`~Server` calls `listener_thread.join()` on a default-constructed thread when `Buffer::allocate()` throws before `start_listener()`. The join throws inside an implicitly noexcept destructor, so `std::terminate` → SIGABRT. Supervisor still restarts and the log line fires first."
-- Good (~25 words, impact-first): "If allocation fails before the listener starts, `~Server` aborts instead of exiting cleanly. Supervisor still restarts, so no user-visible impact — but not the promised exit 1."
+- **Description shape (the published YAML's finding descriptions — not agent output, not replies) — sentence one names the stake, sentence two names the mechanism.** The stake is the guarantee the change exists to provide, stated in the reader's terms: what this MR promised to start catching, preventing, or recording, and what it now fails to. Not "what the code does wrong" — "what the change stops guaranteeing". Then one sentence of mechanism, naming the symbols. Two sentences, 40 words at most — a ceiling, not a quota; padding a finished description to reach it is the defect this bound exists to remove, and no example below runs past it. Where you cannot name a guarantee the change was supposed to provide, there is no stake to name and one plain sentence is finished. Leave out framework/runtime classification, MR-description quote-backs, and chain restatement past two hops.
+- **Why the order matters:** mechanism-first descriptions are individually accurate and collectively unreadable — the author gets a list of true statements and no sense of which hole matters. The stake clause is what lets them rank eight findings without re-deriving the feature's purpose for each one. Leading with impact is not enough on its own: "X aborts instead of exiting cleanly" is an impact, but "the gate never opens the file it exists to vouch for" is a stake, and only the second tells the author what they lose by shipping it.
+- Bad (mechanism-first; every clause true, nothing ranked): "`load_group_adapters()` only `os.path.isfile()`s each artifact, then builds the session from the paired intermediate file, so a truncated artifact beside a good intermediate scores PASS and exits 0."
+- Good (stake-first): "The gate never opens the file it exists to vouch for. `load_group_adapters()` only `os.path.isfile()`s each artifact and then builds the session from the paired intermediate, so a truncated artifact scores PASS and exits 0."
+- Bad (impact-first but stake-free): "A startup allocation failure crashes the process. `~Server` joins a default-constructed thread when `Buffer::allocate()` throws, so `std::terminate` fires inside an implicitly noexcept destructor."
+- Good (stake-first): "A startup allocation failure crashes instead of reporting the exit code the contract promises. `~Server` joins a default-constructed thread when `Buffer::allocate()` throws, so `std::terminate` fires inside an implicitly noexcept destructor."
 - No passive-aggressive language: never "you should have", "obviously", "this ignores", "dangerously", "poorly".
 - Bad: "This function dangerously ignores the error return value." Good: "If the error return is ignored here, the caller proceeds with an invalid state."
 - **Unrelated / scope-creep changes → ask "why?", don't demand revert or split.** When a diff contains a change that looks unrelated to the MR's stated purpose (config value tweaks, block-list additions, dependency bumps, formatting sweeps, etc.), the default fix is NOT "revert" or "split into a separate commit/MR". First check whether the MR description already explains it — if it does, don't file the finding. If it doesn't, frame the finding as a question about intent and ask for a one-line rationale in the **MR description** (not the commit message — MR description is the review record; commit messages are not). Reserve "revert" only for changes that are clearly wrong (e.g., a value that breaks something) — and even then, phrase it as "confirm intent; if yes, document it; if no, revert." Severity for pure "why?" findings is Medium at most, usually Low.
@@ -384,6 +389,7 @@ title: "Brief MR title"
 review_date: "2026-02-11"
 codex: ran
 step_g: 0 eligible, 0 confirmed, 0 refuted, 0 unparseable
+approval: approved
 findings: []
 ```
 
@@ -397,13 +403,13 @@ title: "Add adaptive cache invalidation"
 review_date: "2026-02-11"
 codex: ran
 step_g: 2 eligible, 1 confirmed, 1 refuted, 0 unparseable
+approval: changes_requested
 
 findings:
   - severity: Critical
     title: "SQL injection via unsanitized user input"
     description: |
-      `build_query()` concatenates `filter` directly into the SQL string.
-      Any caller-controlled value can read or modify arbitrary tables.
+      Any caller who can set a filter can read or modify arbitrary tables — the new query path has no boundary between caller input and SQL. `build_query()` concatenates `filter` directly into the statement string.
     location: "src/db/query_builder.cc:45"
     fix: "Use parameterized queries: `db.execute(\"SELECT ... WHERE name = ?\", [filter])`"
     guideline: "OWASP A03:2021 Injection"
@@ -411,8 +417,7 @@ findings:
   - severity: High
     title: "Race condition in cache invalidation"
     description: |
-      `valid_` is read and written in `invalidate()` without synchronization.
-      Concurrent calls can leave the cache in a partially-invalidated state.
+      The invalidation this MR adds to remove stale reads can itself leave a stale read behind under concurrency. `valid_` is read and written in `invalidate()` without synchronization, so two concurrent calls can land the cache in a partially-invalidated state.
     location: "src/cache/cache_manager.cc:87"
     fix: "Protect the check-then-act with a mutex, or use std::atomic with compare-exchange."
     guideline: "C++ Core Guidelines CP.2"
@@ -420,8 +425,7 @@ findings:
   - severity: Medium
     title: "Eviction test asserts on its own re-computation of the LRU order"
     description: |
-      The test rebuilds the expected order with the same comparator the cache uses, so a
-      comparator bug passes both sides — the one regression this test exists to catch.
+      The one regression this test exists to catch is the one it cannot fail on. It rebuilds the expected order with the same comparator the cache uses, so a comparator bug passes both sides of the assertion.
     location: "tests/cache/test_cache_manager.cc:142"
     fix: "Assert against a hand-written literal order for a fixed insertion sequence."
     guideline: null

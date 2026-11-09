@@ -400,7 +400,7 @@ A general MR note (`resolvable: false`) never takes a resolve regardless of verd
 | no claim | none |
 | undecided | none — a split ballot has decided nothing, and one lens saying `real` is enough to withhold a message asserting the opposite |
 
-**Word bound.** A `real` reply's first sentence, a `by-design` reply, and a `refuted` reply target ~25–30 words, the same figure `review-mr.md` → Before writing each finding description already uses.
+**Word bound.** A `real` reply's first sentence, a `by-design` reply, and a `refuted` reply target ~25–30 words. No stake clause — the thread already established what is at stake, so a reply states one point into it.
 
 Reuse `review-mr.md` → Reply Drafting Guidelines and its Writing Style rules verbatim rather than restating them (sound human, acknowledge the point, never blame, describe the problem not the person). `review-mr.md` bars the `@mention` pattern only inside review findings — the bar on `/fix-mr` replies below is this command's own rule, since a reply quotes note bodies by construction.
 
