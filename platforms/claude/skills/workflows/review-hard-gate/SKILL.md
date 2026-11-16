@@ -16,10 +16,19 @@ Mandatory gate block that prevents sending the agent launch message until all re
 ## Caller Must Specify
 
 - **`test_coverage`** — `yes` (review-code, review-mr, review-fix) or `no` (review-design, review-spec). Determines whether the test-coverage agent (Step F) is required in addition to the 3 reviewers. Fix reviews require it: Step F is the primary enforcement of the observed-failure regression gate, alongside the three consensus reviewers and the Step H manual pass.
+- **`simplicity_channel`** — `yes` (review-code) or `no` (every other caller). Determines whether the frame-free simplicity channel is required in addition to the agents above. Only `/review-code` defines one (`review-code.md` → Setup → Simplicity Channel); a caller that has not chartered the channel passes `no`, and a gate block naming an agent the caller never launches is worse than no gate.
 
 ## Gate Block to Include (verbatim, before the agent launch step)
 
-**When `test_coverage = yes`:**
+**When `test_coverage = yes` and `simplicity_channel = yes`:**
+
+> **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
+> 1. All Agent calls (3 reviewers + test-coverage + simplicity channel) are present in this message.
+> 2. The `codex-flow` Bash call (`run_in_background: true`) is present in this message.
+>
+> **No justification overrides this gate.** If `codex-flow` cannot launch, do not send the agent calls — surface the blocker first. The simplicity channel counts toward condition 1: a channel the gate does not require is a channel a conforming run omits, and its independence from the round's frame is the only thing it contributes.
+
+**When `test_coverage = yes` and `simplicity_channel = no`:**
 
 > **🚫 HARD GATE — do not send this message until BOTH conditions are met:**
 > 1. All Agent calls (3 reviewers + test-coverage) are present in this message.

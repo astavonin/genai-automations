@@ -9,7 +9,7 @@ A shared multi-agent review mechanism used by all `/review*` commands.
 Three focus-differentiated reviewer agents evaluate the subject in parallel. The full pipeline is Steps 0–H:
 
 - **Step 0:** Write Codex review-request doc before any agents launch
-- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code, fix, and MR reviews only) launch simultaneously
+- **Step A:** 3 Claude reviewers (differentiated focus) + Codex (background) + test-coverage agent (Step F, code, fix, and MR reviews only) + the frame-free simplicity channel (code reviews only, where the invoking command charters one) launch simultaneously
 - **Steps B–D:** Claude consensus — findings need 2/3 agreement; non-exception single-agent findings route to Step G in every review type. Direct-inclusion exceptions (test-correctness → `## Test-coverage Findings`; cross-site → `## Manual Pass Findings`) apply in code, fix, and MR reviews only.
 - **Step E:** Codex cross-aggregate — Codex-only findings route to Step G in every review type
 - **Step F:** Test-coverage agent (code, fix, and MR reviews only) — findings included directly, not filtered by consensus
@@ -49,6 +49,7 @@ This takes seconds and unblocks Codex from starting the moment Step A fires.
   **Invoke it bare — do not append anything, and never pipe it into another command.** A trailing `; echo "exit=$?"`, `&& echo done`, or any other command makes the shell's exit status that of the *appended* command, so a failed `codex-flow` reports success in the completion notification. Piping into `head` or `tail` has the same effect: the exit status reported becomes the pipe's, not `codex-flow`'s, so a request rejected before Codex ever launches (e.g. `Request file not found`) still exits at 0. The notification is faithful; wrapping or piping it is what lies. If you want the exit code, read it from the notification rather than instrumenting for it — the launch runs in the background, so there is no inline exit status to capture and no `pipefail` setting that would reach it, since nothing pipes `codex-flow` to begin with. To inspect the output, tail the log path in a separate call after the completion notification arrives, not inline with the launch. (`tests/verify-config-consistency.sh` reads this paragraph.)
 
 - For **code, fix, and MR reviews only:** one test-coverage Agent call (Step F)
+- For **code reviews only, where the invoking command charters one:** the frame-free simplicity channel. Its charter and its prompt exclusions are the invoking command's (`review-code.md` → Setup → Simplicity Channel); this protocol only fixes where it launches and where its findings land. **Its findings are single-agent and route to Step G**, not to Step F's direct-inclusion exception below — and the verifier adjudicating one must not receive the scope frame the channel was exempted from, or the exemption buys nothing.
 
 Do not split these across separate messages. Codex is typically the slowest; starting it in the
 same batch as the Claude agents eliminates its wall-clock cost from the critical path.

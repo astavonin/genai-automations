@@ -32,6 +32,13 @@ What must not change:
 - **Class:** `CI` | `TEST` | `PRODUCT-NEW` | `PRODUCT-SHIPPED` — the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class` (either alone where only one is set; `PRODUCT-NEW` where neither is), with the calibration table pasted beneath this section.
 - Name the **file and symbol** for every finding (`src/pipeline/pipeline.cc` → `process_frame()`), or a quoted distinctive token where no symbol exists. A `file:line` may accompany the symbol but must never be the only locator, and no finding may reference a planning document by line — use `§N.M` and finding IDs.
 - This review runs with `--ignore-user-config --ignore-rules`, so the rule reaches it only through this line and the bundled `codex_flow/resources/skills/reviewer/SKILL.md`; editing `platforms/codex/` does not reach a review run.
+- The artifact's relation to pending work has three cases, not two — grade by this table, not by a marked/unmarked binary:
+
+| Relation | Correct treatment |
+|---|---|
+| Describes the target state, tree differs, divergence marked where it applies | Not a finding |
+| Describes the target state, tree differs, divergence unmarked | Finding |
+| Describes something the pending work **deletes** | Do not teach it as part of the model — the rule is moot, not merely unmarked |
 
 **Fill the `**Class:**` bullet above from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md` → Change Class Calibration, never from this template's placeholder.** Paste the table fresh rather than reusing an old copy — this review runs with `--ignore-user-config --ignore-rules`, so this pasted copy is the only calibration Codex ever reads. Leaving the alternation unresolved (the literal `CI | TEST | PRODUCT-NEW | PRODUCT-SHIPPED`) is read as undeclared, not as a declared `CI` — the bundled reviewer skill says so, and the fallback line below repeats it. Resolve it anyway: an undeclared class grades every compatibility finding at `PRODUCT-SHIPPED`.
 
@@ -40,6 +47,20 @@ What must not change:
 ~~~
 
 An absent or unresolved `**Class:**` value means the review is uncalibrated: grade as `PRODUCT-NEW`, with the pasted table's `PRODUCT-NEW` row applying its defaulted-class clause.
+
+---
+
+## Scheduled Deletions
+
+Every entity the design schedules for removal — enum entries, config keys, files, symbols — one per line, or the literal line `No deletions are scheduled by this design.` when it schedules none. Codex receives only this document, so an omitted section reads as "nothing is being deleted" and the third row of the Constraints relation table above becomes unreachable.
+
+**Fill this from the design's ticket table, never from this template's placeholder.** A deletion ticket is one that removes rather than adds; read the table for them rather than assuming the design only adds. Where there is no design doc, no ticket table, or no deletions — and for an external MR, where none of the three exists — write the no-op line with the reason on the same line after a ` — ` suffix (`No deletions are scheduled by this design. — external MR, no design doc`). The absence is only defensible when the reason travels with it, the same rule the ledger section below states.
+
+~~~markdown
+# (paste the list here, or the no-op line stated above — do not leave this fence as-is)
+~~~
+
+Flag any listed entity that the reviewed artifact presents as a live part of the model.
 
 ---
 

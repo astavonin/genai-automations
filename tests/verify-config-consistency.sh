@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=106
+EXPECTED_TESTS=109
 
 PASS=0
 FAIL=0
@@ -4674,6 +4674,210 @@ if [ -z "$dg_bad" ]; then
     pass "/mr Step 1a sits between Steps 1 and 2, names both /review-code and /verify, separates a non-approving review from an absent one, scopes its progress.md read to the Active section, names every on-device marker /verify writes, and still offers the propose-and-wait choice"
 else
     fail "/mr Step 1a sits between Steps 1 and 2, names both /review-code and /verify, separates a non-approving review from an absent one, scopes its progress.md read to the Active section, names every on-device marker /verify writes, and still offers the propose-and-wait choice" "$dg_bad"
+fi
+
+echo "== Premise-gap fix 1: the scheduled-deletion manifest =="
+
+# planning/genai-automations/review-code-premise-gap.md, and the code review of the fix itself
+# (planning/genai-automations/review-code-premise-gap/code-review.md). All three fixes are prose
+# the orchestrator pastes into agent prompts, so nothing downstream errors when one goes missing —
+# a review simply stops asking the question and reports APPROVED. Split into three assertions,
+# one per fix, following D-a/D-b: they fail for three unrelated reasons (manifest routing, frame
+# content, channel independence) and a merged assertion reports the wrong one.
+PG_CODE_DOC="$CLAUDE/commands/review-code.md"
+PG_REQ_DOC="$CLAUDE/skills/workflows/planning/REVIEW-REQUEST-TEMPLATE.md"
+PG_PROTOCOL="$CLAUDE/skills/domains/quality-attributes/references/consensus-review-protocol.md"
+PG_GATE="$CLAUDE/skills/workflows/review-hard-gate/SKILL.md"
+PG_OUTFMT="$CLAUDE/skills/workflows/review-output-format/SKILL.md"
+PG_NO_DELETIONS='No deletions are scheduled by this design.'
+PG_FLAG_CLAUSE='presents as a live part of the model'
+
+pg1_bad=""
+for pg_f in "$PG_CODE_DOC" "$PG_REQ_DOC"; do
+    [ -s "$pg_f" ] || pg1_bad="${pg1_bad}${pg_f#"$CLAUDE"/} is missing or empty — every check below would grade no text; "
+done
+
+if [ -z "$pg1_bad" ]; then
+    pg_setup=$(extract-section "$PG_CODE_DOC" '## Setup' 2>&1)
+    pg_setup_rc=$?
+    if [ "$pg_setup_rc" -ne 0 ] || [ -z "$pg_setup" ]; then
+        pg1_bad="${pg1_bad}extract-section on review-code.md '## Setup' failed or returned empty (rc=$pg_setup_rc): $pg_setup; "
+    else
+        # The producer half. Three clauses, each its own failure: the route to the request
+        # section, the no-op literal that separates "nothing scheduled" from "never asked",
+        # and the per-prompt delivery clause — without the last, the manifest reaches Codex
+        # only, and Codex is not the channel that missed the defect.
+        printf '%s\n' "$pg_setup" | $GREP -qF '## Scheduled Deletions' \
+            || pg1_bad="${pg1_bad}review-code.md Setup does not route the deletion list into the request's ## Scheduled Deletions section; "
+        printf '%s\n' "$pg_setup" | $GREP -qF "$PG_NO_DELETIONS" \
+            || pg1_bad="${pg1_bad}review-code.md Setup states no no-deletions-scheduled literal, so an omitted list reads as an absent question; "
+        printf '%s\n' "$pg_setup" | $GREP -qF 'in each agent prompt and in the review-request' \
+            || pg1_bad="${pg1_bad}review-code.md Setup no longer routes the deletion list into each agent prompt — a manifest that reaches only the Codex request restores the gap; "
+        printf '%s\n' "$pg_setup" | $GREP -qF "$PG_FLAG_CLAUSE" \
+            || pg1_bad="${pg1_bad}review-code.md Setup ships the list with no flag instruction attached — an unlabelled list asks nobody to check it; "
+        # No-design arm: this very fix was reviewed with no design doc and no analysis.md, so a
+        # rule conditioned only on "the design schedules none" matches neither arm and the topic
+        # is silently omitted.
+        printf '%s\n' "$pg_setup" | $GREP -qF 'no design doc at all' \
+            || pg1_bad="${pg1_bad}review-code.md Setup has no arm for a review with no design doc, so that review omits the topic rather than stating the no-op; "
+    fi
+
+    pg_req_section=$(extract-section "$PG_REQ_DOC" '## Scheduled Deletions' 2>&1)
+    pg_req_rc=$?
+    if [ "$pg_req_rc" -ne 0 ] || [ -z "$pg_req_section" ]; then
+        pg1_bad="${pg1_bad}REVIEW-REQUEST-TEMPLATE.md carries no non-empty ## Scheduled Deletions section (rc=$pg_req_rc), so the manifest never reaches Codex; "
+    else
+        # Bound to the instruction sentence, not the section body: the literal also occurred
+        # inside the ~~~markdown placeholder, where it asserted the no-op for an unfilled
+        # section and satisfied a body-scoped grep either way.
+        printf '%s\n' "$pg_req_section" | $GREP -qE "literal line \`$PG_NO_DELETIONS\`" \
+            || pg1_bad="${pg1_bad}the request template's ## Scheduled Deletions instruction sentence no longer names the no-op literal; "
+        printf '%s\n' "$pg_req_section" | $GREP -qF "$PG_FLAG_CLAUSE" \
+            || pg1_bad="${pg1_bad}the request template's ## Scheduled Deletions section carries no flag instruction; "
+        printf '%s\n' "$pg_req_section" | $GREP -qF 'external MR' \
+            || pg1_bad="${pg1_bad}the request template has no escape for a review type with no design doc or ticket table, so those requests default to the placeholder; "
+        # The placeholder must not assert the no-op — an unfilled fence would then read as a
+        # filled answer, the shape the sibling ledger section records reaching a review twice.
+        pg_fence=$(printf '%s\n' "$pg_req_section" | awk '/^~~~/{f=!f;next} f')
+        if printf '%s\n' "$pg_fence" | $GREP -qF "$PG_NO_DELETIONS"; then
+            pg1_bad="${pg1_bad}the request template's placeholder fence asserts the no-op literal, so an unfilled section is indistinguishable from a filled one; "
+        fi
+    fi
+fi
+
+if [ -z "$pg1_bad" ]; then
+    pass "fix 1: the deletion manifest has a producer routing it to every agent prompt and to the request, a carrier section, a flag instruction at both sites, a no-design arm at both sites, and a placeholder that does not assert the no-op"
+else
+    fail "fix 1: the deletion manifest has a producer routing it to every agent prompt and to the request, a carrier section, a flag instruction at both sites, a no-design arm at both sites, and a placeholder that does not assert the no-op" "$pg1_bad"
+fi
+
+echo "== Premise-gap fix 2: the three-row artifact-to-pending-work relation table =="
+
+# The incident's wrong answer was row 3 graded as row 2 under a binary marked/unmarked test. The
+# treatment cell is the entire instruction, so each row is pinned as a WHOLE line and the two
+# carriers are compared byte-for-byte — a subject-only pin admitted rewriting the treatment to
+# "Finding — mark the divergence and keep the rule" with this suite green, which is the mutation
+# that re-enacts the failure. Same idiom as t7_domain_clauses / stepg_lines / fr8_add_lines.
+PG_ROW_DELETES='| Describes something the pending work **deletes** | Do not teach it as part of the model — the rule is moot, not merely unmarked |'
+PG_BINARY_TEST='A divergence that is marked is not a finding'
+
+pg2_bad=""
+# Rows are extracted from the section that must carry them, not file-wide: a table relocated out
+# of the pasted section is not the rule, and Setup's charter says "the relation table above".
+pg_rows_in() {   # $1: file  $2: section heading
+    extract-section "$1" "$2" 2>/dev/null | $GREP '^| Describes '
+}
+pg_code_rows=$(pg_rows_in "$PG_CODE_DOC" '## Setup')
+pg_req_rows=$(pg_rows_in "$PG_REQ_DOC" '## Constraints')
+
+for pg_pair in "review-code.md:## Setup:$pg_code_rows" "REVIEW-REQUEST-TEMPLATE.md:## Constraints:$pg_req_rows"; do
+    pg_name=${pg_pair%%:*}
+    pg_rest=${pg_pair#*:}
+    pg_sect=${pg_rest%%:*}
+    pg_rows=${pg_rest#*:}
+    pg_n=$(printf '%s\n' "$pg_rows" | $GREP -c . || true)
+    [ "$pg_n" -eq 3 ] \
+        || pg2_bad="${pg2_bad}${pg_name} carries $pg_n relation row(s) inside ${pg_sect}, want 3 — a binary marked/unmarked test is what reported the deletion case as row 2; "
+    printf '%s\n' "$pg_rows" | $GREP -qxF "$PG_ROW_DELETES" \
+        || pg2_bad="${pg2_bad}${pg_name}'s deletes row is not the exact expected line inside ${pg_sect} — its treatment cell carries the whole instruction, so a reworded cell is a reversed rule; "
+done
+
+# Cross-carrier identity: Claude prompts are pasted from review-code.md and Codex reads only the
+# request, so a one-sided edit makes the two models grade one artifact by different rules.
+if [ "$pg_code_rows" != "$pg_req_rows" ]; then
+    pg2_bad="${pg2_bad}the relation table's rows differ between review-code.md and REVIEW-REQUEST-TEMPLATE.md — Claude and Codex would grade by different tables inside one review; "
+fi
+
+# Delivery: a table in config that no instruction routes into a prompt is inert documentation.
+pg_actions=$(extract-section "$PG_CODE_DOC" '## Actions' 2>&1)
+pg_actions_rc=$?
+if [ "$pg_actions_rc" -ne 0 ] || [ -z "$pg_actions" ]; then
+    pg2_bad="${pg2_bad}extract-section on review-code.md '## Actions' failed or returned empty (rc=$pg_actions_rc): $pg_actions; "
+else
+    printf '%s\n' "$pg_actions" | $GREP -qF 'the scheduled-deletion list, the three-row relation table' \
+        || pg2_bad="${pg2_bad}review-code.md's must-include enumeration no longer names both new artifacts, so neither reaches any Claude prompt; "
+fi
+if [ -n "$pg_setup" ]; then
+    printf '%s\n' "$pg_setup" | $GREP -qF 'Paste this table into every prompt' \
+        || pg2_bad="${pg2_bad}review-code.md Setup no longer mandates pasting the relation table into every prompt; "
+fi
+
+# Absence half, the shape T1/T4/T7/D-a/D-b all carry: the superseded binary rule must not come
+# back alongside the table. Positive control first — an empty corpus would pass the absence half.
+if [ "${T1_ROOTS+set}" = set ]; then
+    pg_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$pg_scanned" -eq 0 ]; then
+        pg2_bad="${pg2_bad}0 Markdown files found under the config roots — the absence-half scan ran over nothing; "
+    else
+        pg_binary_hits=$($GREP -rlF "$PG_BINARY_TEST" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        [ -z "$pg_binary_hits" ] \
+            || pg2_bad="${pg2_bad}the superseded binary divergence test is back in the shipped config ($(printf '%s' "$pg_binary_hits" | tr '\n' ' ')) — two contradicting frames would reach every prompt; "
+    fi
+else
+    pg2_bad="${pg2_bad}T1_ROOTS is unset — the absence half cannot run; "
+fi
+
+if [ -z "$pg2_bad" ]; then
+    pass "fix 2: both carriers hold the three relation rows as exact whole lines inside their own sections, the two carriers agree byte-for-byte, both artifacts are routed into every prompt, and the superseded binary test resolves nowhere in the shipped config"
+else
+    fail "fix 2: both carriers hold the three relation rows as exact whole lines inside their own sections, the two carriers agree byte-for-byte, both artifacts are routed into every prompt, and the superseded binary test resolves nowhere in the shipped config" "$pg2_bad"
+fi
+
+echo "== Premise-gap fix 4: the frame-free simplicity channel =="
+
+# The channel's whole contribution is independence from the round's frame, and every site below
+# is load-bearing for that: the charter withholds the frame on the way in, the Step G verifier
+# rule withholds it on the way out, the hard gate and Step A make a conforming run launch it,
+# and the report field makes a skipped run visible. The ## Agents roster line is deliberately
+# NOT pinned — both Step G verifiers found it subsumed by the launch-bullet pin, since a
+# declared-but-unlaunched channel already reds there and an undeclared-but-launched one runs.
+pg4_bad=""
+for pg_f in "$PG_PROTOCOL" "$PG_GATE" "$PG_OUTFMT"; do
+    [ -s "$pg_f" ] || pg4_bad="${pg4_bad}${pg_f#"$CLAUDE"/} is missing or empty; "
+done
+
+if [ -n "$pg_setup" ]; then
+    printf '%s\n' "$pg_setup" | $GREP -qF 'It does not receive the relation table above' \
+        || pg4_bad="${pg4_bad}review-code.md Setup's Simplicity Channel charter no longer withholds the round-authored frame — the seat stops being independent; "
+    # The routing claim must not contradict the protocol, which scopes direct inclusion to the
+    # test-coverage agent alone. Both Step G verifiers caught the earlier "aggregate the way
+    # Step F's do" wording against that rule.
+    printf '%s\n' "$pg_setup" | $GREP -qF 'route to Step G like any other single-agent finding' \
+        || pg4_bad="${pg4_bad}review-code.md Setup does not state the channel's Step G routing in the protocol's own terms; "
+fi
+if [ -n "$pg_actions" ]; then
+    printf '%s\n' "$pg_actions" | $GREP -qF '+ simplicity channel (Setup → Simplicity Channel) + Codex' \
+        || pg4_bad="${pg4_bad}review-code.md's Launch-simultaneously bullet does not name the simplicity channel between the test-coverage agent and Codex, so a declared agent never runs; "
+    printf '%s\n' "$pg_actions" | $GREP -qF 'never the relation table' \
+        || pg4_bad="${pg4_bad}review-code.md's Step G verifier clause does not withhold the relation table from a verifier adjudicating a simplicity-channel finding — the exemption would end at the channel's output; "
+    printf '%s\n' "$pg_actions" | $GREP -qF 'simplicity_channel = yes' \
+        || pg4_bad="${pg4_bad}review-code.md does not pass simplicity_channel = yes to the hard gate, so the gate does not require the channel; "
+fi
+
+$GREP -qF 'simplicity_channel' "$PG_GATE" \
+    || pg4_bad="${pg4_bad}review-hard-gate/SKILL.md has no simplicity_channel parameter — a channel the gate does not require is one a conforming run omits; "
+$GREP -qF '3 reviewers + test-coverage + simplicity channel' "$PG_GATE" \
+    || pg4_bad="${pg4_bad}review-hard-gate/SKILL.md's gate block does not count the simplicity channel toward its condition 1; "
+# Two protocol sites, pinned separately — a file-wide grep for the channel's name passed with the
+# overview line stripped, because the Step A body bullet still carried the phrase. Verified by
+# probe: that mutation was the one GREEN in this block's red proof before this split.
+$GREP -q '^- \*\*Step A:\*\*.*simplicity channel' "$PG_PROTOCOL" \
+    || pg4_bad="${pg4_bad}consensus-review-protocol.md's How-It-Works Step A line does not enumerate the simplicity channel; "
+$GREP -q '^- For \*\*code reviews only, where the invoking command charters one:\*\*' "$PG_PROTOCOL" \
+    || pg4_bad="${pg4_bad}consensus-review-protocol.md's Step A launch list has no simplicity-channel bullet, so the authoritative launch list omits it; "
+$GREP -qF 'Its findings are single-agent and route to Step G' "$PG_PROTOCOL" \
+    || pg4_bad="${pg4_bad}consensus-review-protocol.md gives the channel's findings no landing route; "
+$GREP -qF '**Simplicity:** ✓ ran | ✗ not run' "$PG_OUTFMT" \
+    || pg4_bad="${pg4_bad}review-output-format/SKILL.md has no Simplicity reachability field — an unlaunched channel produces a byte-identical report to a correct run; "
+$GREP -qF '**Scheduled deletions:**' "$PG_OUTFMT" \
+    || pg4_bad="${pg4_bad}review-output-format/SKILL.md has no scheduled-deletions header field, so a skipped manifest stays invisible in the output; "
+$GREP -qF '## Simplicity Findings' "$PG_OUTFMT" \
+    || pg4_bad="${pg4_bad}review-output-format/SKILL.md gives the channel no report section, so its findings have nowhere to land; "
+
+if [ -z "$pg4_bad" ]; then
+    pass "fix 4: the simplicity channel is chartered frame-free on input and on Step G adjudication, required by the hard gate and the protocol's Step A, routed to Step G in both carriers' terms, and reportable as ran/not-run with its own findings section"
+else
+    fail "fix 4: the simplicity channel is chartered frame-free on input and on Step G adjudication, required by the hard gate and the protocol's Step A, routed to Step G in both carriers' terms, and reportable as ran/not-run with its own findings section" "$pg4_bad"
 fi
 
 echo

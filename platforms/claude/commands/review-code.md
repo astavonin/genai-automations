@@ -11,6 +11,7 @@ description: Review code after implementation using reviewer agent
 
 **3 × reviewer (opus)** — parallel focus-differentiated reviewers per consensus protocol (Steps A–D)
 **1 × reviewer (opus)** — test-coverage agent (Step F)
+**1 × reviewer (opus)** — simplicity channel, frame-free (see Setup → Simplicity Channel)
 **1 × codex-flow** — Codex cross-check, background Bash call (no approval prompt with `codex-flow` in allow list)
 
 ## Setup
@@ -50,6 +51,18 @@ Typical files to pack:
 
 **Class for Codex — two parts.** Populate the review-request's `## Constraints` → `**Class:**` line with the **higher** of the design doc header's `**Class:**` value and `analysis.md` → `## Change Class` (either alone where only one is set), matching the higher-of-two rule the Claude agents grade by. Then **paste the Change Class Calibration table beneath that section's bullet list**, fresh from `~/.claude/skills/domains/quality-attributes/references/review-checklist.md`. Codex runs with `--ignore-user-config --ignore-rules` and reads only this document plus the bundled `codex_flow/resources/skills/reviewer/SKILL.md`, which carries a pointer to the table plus the two carve-outs, never the table itself — so a request with a class but no table falls back to `PRODUCT-NEW` with compatibility at `PRODUCT-SHIPPED`, and one with neither leaves Codex grading at that same fallback while the Claude agents in the same review grade at the declared class.
 
+**Scheduled deletions — enumerate them, never leave them to be inferred.** When the design schedules removals (a ticket table carrying deletion tickets, a migration that drops entities), the orchestrator lists every scheduled-for-deletion entity by name — enum entries, config keys, files, symbols — in each agent prompt and in the review-request's `## Scheduled Deletions` section, with the instruction: flag any that the reviewed artifact presents as a live part of the model. Paste it inside the prompt's fence, the way the ledger is pasted, so an entity name carrying a `## ` heading cannot terminate a prompt section. Where the design schedules none — or where there is no design doc at all — write the literal `No deletions are scheduled by this design.` with the reason on the same line after a ` — ` suffix, rather than omitting the topic. Any channel can then check the list by grep, which is what turns a cross-reference nobody was asked to make into a list anyone can verify.
+
+**The artifact's relation to pending work has three cases, not two.** Paste this table into every prompt and into the review-request's `## Constraints`, rather than authoring the rule freehand each round — a binary marked/unmarked test cannot express the third row, so a channel given one reports the third case as the second:
+
+| Relation | Correct treatment |
+|---|---|
+| Describes the target state, tree differs, divergence marked where it applies | Not a finding |
+| Describes the target state, tree differs, divergence unmarked | Finding |
+| Describes something the pending work **deletes** | Do not teach it as part of the model — the rule is moot, not merely unmarked |
+
+**Simplicity Channel.** One reviewer agent asks only whether the whole approach could be smaller, and that question includes whether the subject matter should exist at all — a section, an abstraction, or a model axis whose only example is being removed. Its prompt carries everything the `## Actions` must-include line lists — the ledger included, since a channel without it reports a user-approved waiver as a missing test — **except the relation table above, and any other scope frame the orchestrator authored for this round. It does not receive the relation table above.** The exclusion is the point: every other channel grades inside the same pasted frame, so a frame that cannot express a defect suppresses it in all of them at once. Its findings are single-agent and route to Step G like any other single-agent finding, under the verifier rule stated in `## Actions` — not by Step F's direct-inclusion exception, which the protocol scopes to the test-coverage agent alone.
+
 ## Status Marker Convention
 
 ```
@@ -67,13 +80,13 @@ This skill always writes a **single** file `code-review.md` inside the issue fol
    ```
    Read ~/.claude/skills/workflows/review-hard-gate/SKILL.md
    ```
-   (`test_coverage = yes`)
+   (`test_coverage = yes`, `simplicity_channel = yes`)
 
-   - **Launch simultaneously:** 3 focus-differentiated Claude reviewer agents + test-coverage agent (Step F) + Codex (Step E) in parallel — see protocol for agent focus assignments
-   - **Every Claude agent prompt must include** the bundle path and its `lines` count, the two quoted `analysis.md` sections (plus the orchestrator-supplied entry-point existence result when on-device scope applies), the ledger, the Review Scope section, and the review checklist — the checklist carries Test Quality Pass Step 3 and its severity table, so no separate paste is needed. See the Observed-Failure Regression Requirement section below.
+   - **Launch simultaneously:** 3 focus-differentiated Claude reviewer agents + test-coverage agent (Step F) + simplicity channel (Setup → Simplicity Channel) + Codex (Step E) in parallel — see protocol for agent focus assignments
+   - **Every Claude agent prompt must include** the bundle path and its `lines` count, the two quoted `analysis.md` sections (plus the orchestrator-supplied entry-point existence result when on-device scope applies), the ledger, the Review Scope section, the scheduled-deletion list, the three-row relation table, and the review checklist — the checklist carries Test Quality Pass Step 3 and its severity table, so no separate paste is needed. See the Observed-Failure Regression Requirement section below. **The simplicity channel is the one exception:** everything on this line except the relation table and any other round-authored frame, per Setup.
    - Do not wait for Claude agents to finish before starting Codex — they are independent
-   - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding adversarial reverification) → Step H (manual passes)
-   - **Before launching Step G verifier agents:** reuse the `Repository:` value from the Step 0 Codex review-request document if one was written (same value Codex used); otherwise obtain it by running `pwd` in the main conversation's shell. Supply this path as the `Repository:` field in each verifier prompt (see protocol §Step G "How the main conversation obtains Repository"), alongside the Review Scope section pasted the same way it reached the three primary reviewers. Without that path, relative paths in a finding's location cannot be resolved and Step G findings will be silently REFUTED-and-discarded.
+   - Aggregate per protocol: Steps B–D (Claude consensus) → Step E (Codex cross-aggregate) → Step F (test-coverage cross-aggregate) → Step G (single-finding adversarial reverification, which every simplicity-channel finding enters as single-agent) → Step H (manual passes)
+   - **Before launching Step G verifier agents:** reuse the `Repository:` value from the Step 0 Codex review-request document if one was written (same value Codex used); otherwise obtain it by running `pwd` in the main conversation's shell. Supply this path as the `Repository:` field in each verifier prompt (see protocol §Step G "How the main conversation obtains Repository"), alongside the Review Scope section pasted the same way it reached the three primary reviewers. Without that path, relative paths in a finding's location cannot be resolved and Step G findings will be silently REFUTED-and-discarded. **Paste the scheduled-deletion list and the three-row relation table into each verifier prompt as well, with one exception: a verifier adjudicating a simplicity-channel finding receives the deletion list and that channel's charter, never the relation table.** A verifier holding neither criterion defaults to refute, and a verifier holding the frame a finding was raised outside of refutes it on the frame's terms — either way the report reads as though the finding was wrong rather than unadjudicated, which is indistinguishable in the output.
 2. Format consolidated findings as a markdown review report:
    ```
    Read ~/.claude/skills/workflows/review-output-format/SKILL.md

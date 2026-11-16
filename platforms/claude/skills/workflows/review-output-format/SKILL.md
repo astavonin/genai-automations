@@ -35,6 +35,8 @@ Markdown report template for **code reviews** and **fix reviews**. Design and sp
 **Assessment:** ✅ Approve | ⚠️ Request Changes | ❌ Reject
 **Codex:** ✓ ran | ✗ not run — <reason if skipped>
 **Step G:** <N> eligible → <C> confirmed, <R> refuted, <U> unparseable | ✗ not run — <reason if skipped>
+**Simplicity:** ✓ ran | ✗ not run — <reason if skipped> | n/a — not chartered by this command
+**Scheduled deletions:** <N> listed | none scheduled — <reason> | ✗ not supplied
 **Class:** <value> (declared | defaulted)
 
 ## Findings (<N total — consensus of 3 reviewers>)
@@ -60,6 +62,14 @@ Single-agent Claude findings and Codex-only findings that survived Step G advers
 - **V1** [severity] [Reverified] Description...
 
 The `[Reverified]` prefix at the start of the description is required so downstream consumers (MR YAML posting, code review report readers, GitLab comment readers who see the finding stripped from its section) can distinguish reverified findings from consensus findings without relying on section membership. Section membership alone is not sufficient because the MR YAML output flattens all findings into a single list.
+
+## Simplicity Findings
+
+<!-- Code reviews only, where the invoking command charters the frame-free simplicity channel. Include even if 0 — write "None." Omit the section entirely where the command charters no channel, and set the header field to `n/a`. -->
+
+Subtraction findings from the frame-free simplicity channel — what could be deleted or collapsed, and what breaks if it is. The channel receives no scope frame the orchestrator authored for the round, so its findings are single-agent and route through Step G; survivors land here, refusals in the Step G discard record. A `None.` here and a `✗ not run` in the header are different facts and must not be conflated.
+
+- **S1** [severity] Description...
 
 ## Library Reuse Findings
 
