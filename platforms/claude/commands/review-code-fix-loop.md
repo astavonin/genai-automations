@@ -80,13 +80,13 @@ Invoke **coder agent** with:
 
 Passing the folder is not optional: `/verify-docs` cannot discover planning docs without it (`git diff` never lists them, since the global gitignore keeps `planning/` untracked), and both of its scans — citation form and prose metrics — resolve it directly. Invoked without it they check nothing and the command reports `Clean`.
 
-- If blockers are reported: invoke architecture-research-planner scoped to those blockers only (design docs and `docs/` are never edited with Write/Edit directly), then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles. If blockers persist, surface a blocker: "Doc consistency blockers remain after 2 fix cycles — manual intervention needed." Pause and wait for user.
+- If blockers are reported: invoke architecture-research-planner scoped to those blockers only (design docs and `docs/` are never edited with Write/Edit directly), then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles. If blockers persist, surface a blocker: "[<tag>] Doc consistency blockers remain after 2 fix cycles — manual intervention needed." Pause and wait for user.
 - If warnings only: continue to the build check below.
 
 **After the coder agent completes, verify the build.** Read the project's build command from its `CLAUDE.md`, `README.md`, or `dev.sh`, then run it.
 
 - If the build passes: proceed to `exit_to` — Step 3 on branch 3, Step 5 on branch 2. Never a literal step number: a hardcoded Step 3 here overrides the caller's branch and spends the round the Medium-only path exists to save.
-- If the build fails: invoke coder agent again scoped to the build failure only. Cap at 3 consecutive build-fix attempts; if the build still fails after 3 attempts, surface a blocker: "Build failed after 3 fix attempts — manual intervention needed." Pause and wait for user.
+- If the build fails: invoke coder agent again scoped to the build failure only. Cap at 3 consecutive build-fix attempts; if the build still fails after 3 attempts, surface a blocker: "[<tag>] Build failed after 3 fix attempts — manual intervention needed." Pause and wait for user.
 
 ### Step 3: Re-review
 
@@ -105,7 +105,7 @@ Pass the coder's fix response alongside the prior `code-review.md` — it record
 
 The blocker message this prints carries the verdict as its last line: `Another round: [yes|no] — [reason]`. A stall is an exit where a human decides whether to continue, and this block does not route through Step 5.
 
-If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "Finding area [file/component] unresolved after 3 passes — manual intervention needed." Pause and wait for user.
+If the same root-cause area (same file + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes, surface a blocker: "[<tag>] Finding area [file/component] unresolved after 3 passes — manual intervention needed." State the `Another round: [yes|no] — [reason]` verdict line as the blocker's last line, per `~/.claude/skills/workflows/round-verdict/SKILL.md` → Who states it. Pause and wait for user.
 
 ### Cap-pause
 
@@ -117,7 +117,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Report to the user and stop. If the re-review that reached the cap returned `CHANGES REQUESTED`:
 ```
-Code review loop paused — iteration cap reached
+[<tag>] Code review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md.
 Another round: [yes|no] — [reason]
@@ -126,7 +126,7 @@ Fix them manually, or re-invoke /review-code-fix-loop to continue.
 
 If it returned `REJECTED`:
 ```
-Code review loop paused — iteration cap reached
+[<tag>] Code review loop paused — iteration cap reached
 Iterations completed: [iteration]
 planning/<goal>/milestone-XX/issues/<NNN-name>/code-review.md was rejected.
 Another round: [yes|no] — [reason]
@@ -163,7 +163,7 @@ Read ~/.claude/skills/workflows/push-planning/SKILL.md
 
 Output:
 ```
-Code review loop complete: APPROVED
+[<tag>] Code review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
 Another round: [yes|no] — [reason]

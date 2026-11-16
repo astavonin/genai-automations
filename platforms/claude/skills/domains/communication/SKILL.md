@@ -94,6 +94,38 @@ Conversational text is warranted in exactly three cases:
 
 Nothing else warrants conversational text. Results, status, and findings are reported in the forms above. Agents have no case 3 — an agent never prompts for approval; it returns its result and the main conversation handles the gate.
 
+## Every Output Block Names Its Subject
+
+**The first line of a block is the only line a reader scanning parallel work actually reads. If it does not name the work, the block is unaddressed mail.** The reader runs several tasks at once — often two that intersect — and reads their output interleaved. A line that was unambiguous to the writer, who knows which work it is, carries nothing to a reader holding two of them.
+
+The form is a short tag at line start, in square brackets:
+
+```
+[<tag>] Another round: no — zero High, Mediums cleared
+[<tag>] Code review loop complete: APPROVED
+[<tag>] 7 suites green, 110 assertions
+[<tag>] Documentation items closed:
+```
+
+**The tag is the work's short slug** — the issue-folder leaf name where one resolves, carried verbatim and never re-derived, otherwise the subject in one to three words: an MR number, a file name, a topic. Resolve the folder per `issue-folder-resolve/SKILL.md`.
+
+**Reuse the resolved string; never re-derive it.** Where the command has already resolved an issue folder — the three fix loops do this at Step 0 and state that "re-deriving it per step is what produces silent ledger misses" — the tag **is** that folder's leaf name, carried verbatim through every line the run prints. A tag re-derived from whatever is in context after a long interleaved session names a neighbouring issue, and a line like `APPROVED` read against the wrong work is acted on. This is the one failure mode with no reader-side recovery: a confidently wrong address beats no address only if it is right.
+
+**Bound: three words, or the resolved folder name whatever its length.** A tag that costs a line of its own has defeated itself, so the *otherwise* branch stops at three words. The leaf-name branch carries no character bound — real folder names in this tree run to 28 characters, and truncating one invents a second spelling for work that already has one, which is the drift this rule exists to prevent. Never invent a new tag for work that already has a folder name.
+
+**Which lines take it — the test is positional, not grammatical:** the first line of any block, where "block" is a message, a section, or a list and its lead-in. That covers two kinds, and the second is the one that gets missed:
+
+1. **Bare state** — a line whose whole content is a status, count, verdict, or completion: round verdicts, loop pause / complete / stall blocks, phase-gate lines, suite and assertion counts, background-task completions, bare `done` / `green` / `pushed`.
+2. **A header or lead-in introducing a list** — `Documentation items closed:`, `Findings:`, `Fixed:`, `Remaining:`. These name a *category* of work rather than the work, which is why they feel complete while written and resolve to nothing while read. A category label plus a list of items is the single most ambiguous shape this rule exists to fix: the items are specific, the header is not, and the header is what the reader scans.
+
+Within a block, the first line carries the tag and every later line inherits it. One tag per block, never per line.
+
+**Which lines do not take it:** a line that names the work in its own text — if the first clause already says which design, issue, or file this is, a tag would repeat it. Naming the *command* is not naming the work: `=== CI Debug ===` identifies which command ran, not which branch it ran against, so it takes a tag. And anything written *into* a file: a report, a ledger entry, a commit message. Each already sits in a path that identifies the work, so a tag there adds a word and resolves nothing — and a tag on a file-written line breaks two gates, since a review file's `**Status:** APPROVED` is a bare first-line verdict that `head -20 <file> | grep -m 1 '^\*\*Status:\*\*'` must match, and a commit message's format is fixed to one line.
+
+That is the whole exemption. "It is obvious from the preceding message" is not on the list — the reader's preceding message may have been about the other task.
+
+The ceiling and the no-new-tag rule matter more than the bracket syntax. A tag that drifts between rounds, or grows into a sentence, is worse than none: the reader starts parsing the tag instead of the line.
+
 ## Relaying an Agent Result
 
 Relay the substance, drop the agent's framing. An agent's preamble, restatement of its task, and closing summary are not part of its result.
@@ -107,3 +139,4 @@ Relay the substance, drop the agent's framing. An agent's preamble, restatement 
 - [ ] Lists and tables used wherever there are more than two facts
 - [ ] Every sentence has an actor and carries one fact; no coined shorthand left undefined
 - [ ] Nothing restated that the tool output already showed
+- [ ] Every output block — bare status line or list lead-in alike — opens with its subject tag, reused and not re-derived

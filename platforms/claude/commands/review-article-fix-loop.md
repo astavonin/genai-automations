@@ -89,7 +89,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Then surface the finding to the user and stop:
 ```
-Article review loop paused — unaddressable finding
+[<tag>] Article review loop paused — unaddressable finding
 Iterations completed: [iteration]
 [Finding description]
 Re-invoke /review-article-fix-loop after resolving the finding manually.
@@ -132,7 +132,7 @@ If any line is printed, add to the combined writer prompt: "The following code b
 After each writer re-invocation, re-run both checks. If either check still fails and the shared budget is exhausted, surface a blocker including the last diagnostic output:
 
 ```
-Post-writer verification failed after 3 attempts — manual intervention needed.
+[<tag>] Post-writer verification failed after 3 attempts — manual intervention needed.
 Last diagnostic: [paste last diff/awk output]
 ```
 
@@ -170,9 +170,10 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 This is a terminal stop. Surface the stall and output:
 ```
-Article review loop paused — stall detected
+[<tag>] Article review loop paused — stall detected
 Finding area [section/scope] unresolved after 3 passes.
 Iterations completed: [iteration]
+Another round: [yes|no] — [reason]
 Re-invoke /review-article-fix-loop after addressing the stalled finding manually.
 ```
 
@@ -190,7 +191,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Report to the user and stop:
 ```
-Article review loop paused — iteration cap reached
+[<tag>] Article review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in <issue-folder>/article-review.md.
 Another round: [yes|no] — [reason]
@@ -227,7 +228,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Output:
 ```
-Article review loop complete: APPROVED
+[<tag>] Article review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
 Another round: [yes|no] — [reason]

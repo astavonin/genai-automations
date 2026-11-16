@@ -101,7 +101,7 @@ For **design-review findings**, no test requirements apply — the fix is a doc 
 - User explicitly requests manual for this finding → fall back to manual: wait for user to confirm the fix is applied, then continue
 - Agent declines with a reason → for design reviews, if `design_modified = true`, first run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`. For all review types, run the review-planning-update fragment (which includes push; use the review-type-matching parameters from Step 4). Surface as an unaddressable blocker: "Fix agent declined finding [ID] with reason: <reason>. Manual intervention needed." This is a terminal stop — do NOT silently fall back to manual. Output:
   ```
-  /review-iterate paused — fix agent declined finding [ID]
+  [<tag>] /review-iterate paused — fix agent declined finding [ID]
   Invoke /review-iterate after resolving.
   ```
 
@@ -123,12 +123,12 @@ After applying any design-review fix (agent-driven or confirmed manual), set `de
 - **RESOLVED** → mark finding fixed, proceed to next finding
 - **STILL OPEN** → show reviewer feedback, loop back to 2b for this finding (cap at 3 retries; 3 provides enough signal that the finding needs different intervention). If still open after 3 retries: (a) for design reviews, if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`; (b) for both review types, run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (use the review-type-matching parameters from Step 4); (c) surface as a blocker: "Finding [ID] unresolved after 3 attempts — manual intervention needed." This is a terminal stop. Output:
   ```
-  /review-iterate paused — finding [ID] unresolvable after 3 attempts
+  [<tag>] /review-iterate paused — finding [ID] unresolvable after 3 attempts
   Invoke /review-iterate after resolving.
   ```
 - **REGRESSION INTRODUCED** → treat as a new Critical finding with its own fresh 3-retry cap. Re-enter 2b for the regression; if the regression is resolved, resume the original loop at the parent finding's next retry attempt (the parent finding's retry counter is not reset). If a regression fix triggers a further REGRESSION result, apply the same stacking rules recursively — each nested regression gets its own fresh 3-retry cap; all ancestor counters remain frozen. A cap-3 failure at any nesting level is a terminal stop (same procedure as below). If the regression itself hits cap-3: (a) for design reviews, if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`; (b) for both review types, run the review-planning-update fragment (which includes push; use the review-type-matching parameters from Step 4); (c) surface as a blocker: "Regression [ID] unresolvable after 3 attempts — manual intervention needed." This is a terminal stop. Output:
   ```
-  /review-iterate paused — regression [ID] unresolvable after 3 attempts
+  [<tag>] /review-iterate paused — regression [ID] unresolvable after 3 attempts
   Invoke /review-iterate after resolving.
   ```
 
@@ -140,7 +140,7 @@ The folder is required, not contextual: `/verify-docs` discovers planning docs o
 
 - If blockers are reported: invoke architecture-research-planner scoped to those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles, matching `/review-design-fix-loop`. If blockers clear, continue. If they persist after 2 cycles: for design reviews, if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`; then run the review-planning-update fragment (which includes push; use the review-type-matching parameters from Step 4). This is a terminal stop. Output:
   ```
-  /review-iterate paused — doc consistency blockers after 2 fix cycles
+  [<tag>] /review-iterate paused — doc consistency blockers after 2 fix cycles
   Invoke /review-iterate after resolving the doc consistency issues.
   ```
 - If warnings only: continue — warnings are non-blocking.
@@ -170,13 +170,13 @@ Do not shortcut the protocol. This is the convergence gate.
 If the open-questions gate fires during Step 3 (the final re-review invokes `/review-design`, which runs its open-questions gate at Step 0): this means Step 2 applied a design fix that inadvertently introduced new open questions in `## 8. Open Questions`. Use this message:
 
 ```
-/review-iterate paused — Step 2 introduced open questions in ## 8. Open Questions.
+[<tag>] /review-iterate paused — Step 2 introduced open questions in ## 8. Open Questions.
 Resolve via /design then re-invoke /review-iterate.
 ```
 
 The pre-Step-3 bump (immediately before Step 3) has already run if `design_modified = true` — do not bump again. Run the review-planning-update fragment (which includes push) using the design-review parameters from Step 4. This is a terminal stop. Output:
 ```
-/review-iterate paused — open questions introduced during Step 2
+[<tag>] /review-iterate paused — open questions introduced during Step 2
 Invoke /review-iterate after resolving open questions via /design.
 ```
 
@@ -204,11 +204,11 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Output:
 ```
-Final re-review: APPROVED
+[<tag>] Final re-review: APPROVED
 ```
 or:
 ```
-Final re-review: CHANGES REQUESTED — N finding(s) remain.
+[<tag>] Final re-review: CHANGES REQUESTED — N finding(s) remain.
 Invoke /review-iterate to address them.
 ```
 

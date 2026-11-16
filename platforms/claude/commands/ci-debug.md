@@ -221,7 +221,7 @@ def cmd_ci_debug(args):
 
 **Success:**
 ```
-=== CI Debug ===
+[<tag>] === CI Debug ===
 Branch: feature/add-spanish-sync
 MR: !134 "Add Spanish vocabulary sync"
 Pipeline: #456789
@@ -238,7 +238,7 @@ Launching investigation agent...
 
 **No Failures:**
 ```
-=== CI Debug ===
+[<tag>] === CI Debug ===
 Branch: feature/add-spanish-sync
 MR: !134 "Add Spanish vocabulary sync"
 Pipeline: #456789
@@ -249,7 +249,7 @@ No investigation needed.
 
 **No Pipeline:**
 ```
-=== CI Debug ===
+[<tag>] === CI Debug ===
 Branch: feature/add-spanish-sync
 
 ✗ No merge request or pipeline found for this branch.

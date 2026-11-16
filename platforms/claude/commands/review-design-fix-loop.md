@@ -49,7 +49,7 @@ When running any review pass in this command (Steps 1 and 3), deviate from the `
 **Gate that remains active (not suppressed):** The open questions gate (Step 0 of `/review-design`) runs on every review pass (Steps 1 and 3). This is a separate invocation from the pre-Step-1 gate in the Prerequisite section — the gate re-evaluates on each pass because Step 2 may introduce new open questions despite the prohibition. If Step 2 introduces new open questions in `## 8. Open Questions` despite the prohibition in Step 2's agent instruction, the gate fires. When the gate fires during a loop pass (Step 3 — not Step 1, which cannot re-fire since the pre-Step-1 gate just passed), use this specific message instead of the gate's default:
 
 ```
-Fix loop paused — Step 2 introduced new open questions in ## 8. Open Questions despite the prohibition.
+[<tag>] Fix loop paused — Step 2 introduced new open questions in ## 8. Open Questions despite the prohibition.
 Resolve via /design then re-invoke /review-design-fix-loop.
 ```
 
@@ -115,7 +115,7 @@ Invoke **architecture-research-planner agent** with:
 
 **If the architecture-research-planner flags any finding as unaddressable:** run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md` (the agent just completed, so the doc may have been partially modified — bump unconditionally). Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the finding and output:
 ```
-Design review loop paused — unaddressable finding
+[<tag>] Design review loop paused — unaddressable finding
 Iterations completed: [iteration]
 Re-invoke /review-design-fix-loop after resolving the unaddressable finding via /design.
 ```
@@ -124,7 +124,7 @@ Do not proceed to Step 3.
 **Run `/verify-docs`** on the modified design doc, passing the `<issue-folder>` resolved in the Prerequisite section. Without the folder, `/verify-docs` has nothing to enumerate — `git diff` never lists a planning doc — so both its scans run over an empty file list and it reports `Clean`, taking the citation gate and the register gate with it.
 - If blockers are reported: invoke architecture-research-planner again scoped to fixing those blockers only, then re-run `/verify-docs`. Cap at 2 consecutive blocker-fix cycles (2 is sufficient; more signals a structural issue requiring design changes, not iterative fixes). If blockers clear within 2 cycles, proceed to `exit_to`. If blockers persist after 2 cycles, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the blocker and output:
 ```
-Design review loop paused — consistency blockers after 2 fix cycles
+[<tag>] Design review loop paused — consistency blockers after 2 fix cycles
 Iterations completed: [iteration]
 Re-invoke /review-design-fix-loop after resolving the doc consistency issues.
 ```
@@ -149,9 +149,10 @@ The blocker message this prints carries the verdict as its last line: `Another r
 
 If the same root-cause area (same section + same component — not finding ID, which resets each pass) appears unresolved in 3 consecutive passes (3 provides enough signal that the finding requires design-level intervention, not iterative fixes), run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`, then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Surface the stall and output:
 ```
-Design review loop paused — stall detected
+[<tag>] Design review loop paused — stall detected
 Finding area [section/component] unresolved after 3 passes.
 Iterations completed: [iteration]
+Another round: [yes|no] — [reason]
 Re-invoke /review-design-fix-loop after addressing the stalled finding via /design.
 ```
 
@@ -170,7 +171,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Report to the user and stop. If the re-review that reached the cap returned `CHANGES REQUESTED`:
 ```
-Design review loop paused — iteration cap reached
+[<tag>] Design review loop paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md.
 Another round: [yes|no] — [reason]
@@ -179,7 +180,7 @@ Resolve via /design, then re-invoke /review-design-fix-loop to continue.
 
 If it returned `REJECTED`:
 ```
-Design review loop paused — iteration cap reached
+[<tag>] Design review loop paused — iteration cap reached
 Iterations completed: [iteration]
 planning/<goal>/milestone-XX/issues/<NNN-name>/design-review.md was rejected.
 Another round: [yes|no] — [reason]
@@ -192,7 +193,7 @@ Step 1 gate re-fire is not possible — the pre-Step-1 gate in the Prerequisite 
 
 When the open questions gate fires during a review pass (Step 3): if `design_modified = true`, run `Read ~/.claude/skills/workflows/design-revision-bump/SKILL.md`. Then run the review-planning-update fragment (which includes push): `Read ~/.claude/skills/workflows/review-planning-update/SKILL.md` (`review_label = design review`, `approved_phase = implementing 🔨`, `approved_next = ready for implementation`, `escalation = standard`, `issue_folder = <issue-folder>`). This is a terminal stop. Output:
 ```
-Design review loop paused — new open questions introduced
+[<tag>] Design review loop paused — new open questions introduced
 Iterations completed: [iteration]
 Re-invoke /review-design-fix-loop after resolving open questions via /design.
 ```
@@ -230,7 +231,7 @@ Read ~/.claude/skills/workflows/review-planning-update/SKILL.md
 
 Output:
 ```
-Design review loop complete: APPROVED
+[<tag>] Design review loop complete: APPROVED
 Iterations: [iteration]  (fix+re-review cycles; 0 when no re-review ran)
 Mediums fixed without re-review: [finding IDs, or "none"]
 Another round: [yes|no] — [reason]

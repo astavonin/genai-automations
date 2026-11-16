@@ -18,8 +18,10 @@ metadata:
 One line, at the end of the run's conversational report:
 
 ```
-Another round: yes|no — <reason>
+[<tag>] Another round: yes|no — <reason>
 ```
+
+The `[<tag>]` prefix is the subject tag `~/.claude/skills/domains/communication/SKILL.md` → "Every Output Block Names Its Subject" defines: the issue-folder leaf name where one resolves, carried verbatim and never re-derived, otherwise the subject in one to three words. It is not decoration — this line is read interleaved with the output of whatever else is running, and a bare verdict names no work. Where the line sits inside a block that already opened with the tag (a fix loop's cap-pause or Step 5 output), the block's first line carries it and this line does not repeat it.
 
 **State it unprompted.** Volunteer it whether or not anyone asks — the point is that the call is made and stated, not that it is requested. A run that omits it is caught by the reader, not by a test: the operator asks for the call, as they did before this line existed. That recovery is cheap, which is why the line is stated in each message template rather than pinned by assertions — three review rounds established that greps over prose cannot pin what this rule means.
 

@@ -185,7 +185,7 @@ Before making any changes, print a structured summary. Include a timestamp heade
 Console/terminal display uses **bare sigils** for readability (CLI output is exempt from the clickable-links rule). File writes below (Step 6) still use the linked form.
 
 ```
-Sync Plan  (remote state captured at HH:MM)
+[<tag>] Sync Plan  (remote state captured at HH:MM)
 ─────────────────────────────────────
 Push to remote (close tickets):
   ✓ #145 Implement sync hook  →  will close
@@ -235,13 +235,14 @@ Append new remote issues: add to the bottom of the **Tasks** section in the rele
 ### Step 7 — Report
 
 After execution, print a summary of what was done — one line per item, no preamble:
+[<tag>] Sync complete
 - N tasks marked done locally
 - N tickets closed in remote
 - N new issues added to local planning
 
 If any remote close calls failed, list them explicitly:
 ```
-Failed to close (retry or resolve manually):
+[<tag>] Failed to close (retry or resolve manually):
   ✗ #148 Update CLAUDE.md  →  <error message>
 ```
 

@@ -42,7 +42,7 @@ One message form per verdict the loop can reach. Four values are filled in per l
 `CHANGES REQUESTED` form, shown with `/review-code-fix-loop`'s values:
 
 ```
-[label] paused — iteration cap reached
+[<tag>] [label] paused — iteration cap reached
 Iterations completed: [iteration]
 N finding(s) open in [report path].
 Another round: [yes|no] — [reason]
@@ -52,7 +52,7 @@ Another round: [yes|no] — [reason]
 `REJECTED` form — a rejection is not N findings to fix by hand, so this form names the report as rejected and sends the user to redesign instead of to a manual fix:
 
 ```
-[label] paused — iteration cap reached
+[<tag>] [label] paused — iteration cap reached
 Iterations completed: [iteration]
 [report path] was rejected.
 Another round: [yes|no] — [reason]
@@ -60,6 +60,8 @@ Another round: [yes|no] — [reason]
 ```
 
 A loop that never reaches `REJECTED` at the cap needs only the first form.
+
+**`[<tag>]` is the subject tag**, defined once at `~/.claude/skills/domains/communication/SKILL.md` → "Every Output Block Names Its Subject": the issue-folder leaf name where one resolves, carried verbatim and never re-derived, otherwise the subject in one to three words. It opens the block's first line only; the `Iterations completed:` and `Another round:` lines below it inherit it. A cap-pause is read by a human deciding whether to continue, often while other work is in flight, so a block whose first line names only the loop type tells them a loop paused without telling them which work stopped.
 
 The `Another round:` line is the verdict `~/.claude/skills/workflows/round-verdict/SKILL.md` defines. It belongs here and not only in the loop's Step 5 because the cap is an exit where a human decides whether to continue, and the loop's own report never runs on this path.
 
@@ -70,7 +72,7 @@ The `Another round:` line is the verdict `~/.claude/skills/workflows/round-verdi
 - **`### Stall stop`** — a heading the caller provides, stating both its own stall condition and its own procedure; this fragment routes to it by name and defines neither.
 - **Step 2 and Step 5** — the caller's fix step and its report-and-stop step; the Next column above routes to them by number.
 - **`exit_to`** — Step 2's mandatory parameter, naming the step Step 2 exits to. **This fragment's own route into Step 2 sets `exit_to = Step 3`**, because a below-cap round always re-reviews. Only the caller's Medium-only branch at Step 1 sets `Step 5`. Without this, the fragment routes into a step whose mandatory parameter is unset from the first round onward.
-- **the message's four values** — `label`, `report path`, `command`, `recovery` — filled in per loop, per verdict, from that loop's own other paused stops.
+- **the message's four values** — `label`, `report path`, `command`, `recovery` — filled in per loop, per verdict, from that loop's own other paused stops. The `[<tag>]` prefix is not one of them: it is resolved per *run* from the work under review, not per loop, and is the same tag every other status line in that run carries. **Its spelling also reaches `tests/verify-workflow-safety.sh` → `allowed_counter_lines()`**, which whitelists each cap-pause line by exact full text — so changing the placeholder reddens that suite with a message about iteration counters rather than about tags. Change both together.
 - **the `Read` call precedes the launch sentence** — the caller's Step 3 reads this fragment before running its own review pass; a launch sentence read first runs the pass twice, once on its own and once again as this fragment's position 2.
 
 **What this contract is checked by.** Five of the seven obligations above are asserted by `tests/verify-workflow-safety.sh` (`tests/verify-config-consistency.sh` pins that the `exit_to` bullet exists, not what it says): the two headings and the order their procedures run in, the `Step 2` / `Step 5` numbers the Next column names, and that the `Read` call precedes the launch sentence. A fifth — the `iteration` preamble initialisation — is asserted separately, by the same suite's check on each loop's preamble. The message's four values are not asserted as a group: a wrong fill is visible in the block that holds it, and this repo's test-authoring rule extracts no guard for a value that cannot drift silently — the one exception is the article loop's report path, which `tests/verify-config-consistency.sh` checks as a prohibited hardcoded form rather than a required one.

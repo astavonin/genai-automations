@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=109
+EXPECTED_TESTS=111
 
 PASS=0
 FAIL=0
@@ -4878,6 +4878,141 @@ if [ -z "$pg4_bad" ]; then
     pass "fix 4: the simplicity channel is chartered frame-free on input and on Step G adjudication, required by the hard gate and the protocol's Step A, routed to Step G in both carriers' terms, and reportable as ran/not-run with its own findings section"
 else
     fail "fix 4: the simplicity channel is chartered frame-free on input and on Step G adjudication, required by the hard gate and the protocol's Step A, routed to Step G in both carriers' terms, and reportable as ran/not-run with its own findings section" "$pg4_bad"
+fi
+
+echo "== Subject tags: the rule exists and both callers read it =="
+
+# planning/genai-automations/status-line-tags/code-review.md, finding V5 (CONFIRMED by both
+# Step G verifiers). The first version of this block carried six prose greps over the rule's
+# own wording. Mutation showed it reproduced the failure mode recorded above the next-round
+# verdict block — three rounds of pinning a prose rule's MEANING with greps, each evadable:
+# renaming `ceiling` to `upper bound` reddened it on a semantically identical edit, while
+# appending "Both are advisory: a tag of any length is acceptable…" voided the ceiling, the
+# no-new-tag clause and both kinds and left it green. It pinned text, not meaning.
+#
+# So: two single-fact checks, and deliberately no more — the rule exists, and both declared
+# callers read it. What being wrong costs is that a line prints unaddressed and the operator
+# asks which work it belongs to, which is what already happened twice. Mechanism stays
+# proportional to that. The sweep below is the one exception, and it earns its place by
+# catching something the two facts cannot: a NEW untagged exit.
+ST_SRC="$CLAUDE/skills/domains/communication/SKILL.md"
+ST_ANCHOR='## Every Output Block Names Its Subject'
+st_bad=""
+
+st_section=$(extract-section "$ST_SRC" "$ST_ANCHOR" 2>&1)
+st_rc=$?
+if [ "$st_rc" -ne 0 ] || [ -z "$st_section" ]; then
+    st_bad="${st_bad}extract-section on communication/SKILL.md '$ST_ANCHOR' failed or returned an empty body (rc=$st_rc): $st_section; "
+fi
+
+# Both fragments print a tagged line and are read at the point of use by commands that never
+# read the owner file — verified at Step G: no *-fix-loop.md, tasks-sync.md or mr.md contains a
+# Read of communication/SKILL.md, so each fragment's in-band definition is the only resolvable
+# one there. That is why these are pointers AND restatements, and why the two must agree.
+ST_DEF='the issue-folder leaf name where one resolves, carried verbatim and never re-derived, otherwise the subject in one to three words'
+for st_ptr in "$CLAUDE/skills/workflows/round-verdict/SKILL.md" "$CLAUDE/skills/workflows/fix-loop-round/SKILL.md"; do
+    [ -s "$st_ptr" ] || { st_bad="${st_bad}${st_ptr#"$CLAUDE"/} is missing or empty; "; continue; }
+    # The fragments cite the heading as quoted text, so strip the ATX prefix before matching.
+    $GREP -qF "${ST_ANCHOR#\#\# }" "$st_ptr" \
+        || st_bad="${st_bad}${st_ptr#"$CLAUDE"/} no longer points at the subject-tag rule; "
+    # Literal equality, not a prose-meaning grep: this definition is a mirror across three
+    # files and it had already drifted once — both fragments carried the word bound without
+    # the rest. A mirrored literal is the one thing this corpus does pin byte-for-byte.
+    $GREP -qF "$ST_DEF" "$st_ptr" \
+        || st_bad="${st_bad}${st_ptr#"$CLAUDE"/}'s in-band tag definition differs from the owner's — a command that reads only this fragment would resolve the tag differently; "
+done
+$GREP -qF "$ST_DEF" "$ST_SRC" \
+    || st_bad="${st_bad}communication/SKILL.md no longer states the tag definition both fragments mirror; "
+
+if [ -z "$st_bad" ]; then
+    pass "the subject-tag rule exists with a non-empty body, and both declared callers point at it and mirror its definition verbatim"
+else
+    fail "the subject-tag rule exists with a non-empty body, and both declared callers point at it and mirror its definition verbatim" "$st_bad"
+fi
+
+echo "== Subject tags: every printed loop-exit block carries exactly one, on its first line =="
+
+# The negative half, and the only assertion here that catches an addition rather than a deletion.
+#
+# Three triggers were tried and measured before this one. A literal file list plus five literal
+# openers reported clean over nine untagged blocks inside its own four files. Widening to a
+# stop-word vocabulary (paused|complete:|failed after|…) still missed `Loop halted — budget
+# exhausted` and `Final re-review:` — a closed list in a third spelling. Grading every plain
+# fence across all 31 commands flagged 57 blocks, most of them invocation examples and log-line
+# formats the rule exempts, so it over-fired as badly as the others under-fired.
+#
+# What that measurement establishes is finding H5: the rule's population is open-ended and NOT
+# mechanically derivable, because "is this printed output or an example?" is a judgement. So the
+# sweep is scoped to the one population where the answer is structural and the operator-facing
+# cost is highest — the fix loops' and /review-iterate's printed exit templates: a plain fence,
+# no language tag, not a `Read` pointer, not an invocation line. 24 such blocks today, all
+# tagged, zero false positives. Everything outside that scope is behavioural, and the recovery
+# is the operator asking which work a line belongs to — the cost already priced above.
+#
+# The file set is derived, not listed: /active was committed mid-review, proving a literal list
+# goes stale within the hour.
+st_sweep_bad=""
+st_files=$(find "$CLAUDE/commands" -maxdepth 1 -type f \( -name 'review-*-fix-loop.md' -o -name 'review-iterate.md' \) | sort)
+st_n_files=$(printf '%s\n' "$st_files" | $GREP -c . || true)
+if [ "$st_n_files" -eq 0 ]; then
+    st_sweep_bad="0 loop-exit command files found — the sweep ran over nothing; "
+else
+    st_graded=0
+    while IFS= read -r st_f; do
+        [ -n "$st_f" ] || continue
+        # Per fence: grade the first non-empty body line, and forbid a tag on any later line —
+        # the rule says later lines inherit, so a second tag is the per-line tagging it bars.
+        st_out=$(awk '
+            function strip(s) { sub(/^[[:space:]]*"?/, "", s); return s }
+            # One fence state. The language is recorded when the fence OPENS; a closing line
+            # never carries one, so a two-rule toggle reads every close as a new plain fence —
+            # which is what the first version of this walker did, flooding on prose.
+            !inf && /^[[:space:]]*(```|~~~)/ {
+                inf = 1; first = 1
+                lang = ($0 ~ /^[[:space:]]*(```|~~~)[A-Za-z0-9]/) ? 1 : 0
+                next
+            }
+            inf && /^[[:space:]]*(```|~~~)[[:space:]]*$/ { inf = 0; next }
+            !inf || lang { next }
+            /^[[:space:]]*$/ { next }
+            {
+                line = strip($0)
+                if (first) {
+                    first = 0
+                    if (line ~ /^Read /) { lang = 1; next }    # a Read pointer is not output
+                    # An invocation example is a bare slash command, optionally with args. A
+                    # terminal stop may ALSO start with a slash (`/review-iterate paused — …`),
+                    # so the em dash separates them: probing showed a bare `^\/` filter
+                    # exempted every /review-iterate pause stop from its own sweep.
+                    if (line ~ /^\/[a-z-]+/ && line !~ / — /) { lang = 1; next }
+                    graded++
+                    if (line !~ /^\[<tag>\]/) print "untagged first line: " line
+                } else if (line ~ /^\[<tag>\]/) {
+                    print "tag on a later line (the rule says later lines inherit): " line
+                }
+            }
+            END { printf "GRADED=%d\n", graded }
+        ' "$st_f")
+        st_graded=$(( st_graded + $(printf '%s\n' "$st_out" | sed -n 's/^GRADED=//p') ))
+        st_hits=$(printf '%s\n' "$st_out" | $GREP -v '^GRADED=' || true)
+        [ -z "$st_hits" ] \
+            || st_sweep_bad="${st_sweep_bad}${st_f#"$CLAUDE"/}: $(printf '%s' "$st_hits" | tr '\n' '|'); "
+        # Inline blockers are prose, not fenced templates, and three of them print a terminal stop.
+        st_inline=$($GREP -o 'surface a blocker: "[^"]*"' "$st_f" | $GREP -v 'surface a blocker: "\[<tag>\]' || true)
+        [ -z "$st_inline" ] \
+            || st_sweep_bad="${st_sweep_bad}${st_f#"$CLAUDE"/}: untagged inline blocker: $(printf '%s' "$st_inline" | tr '\n' '|'); "
+    done <<EOF
+$st_files
+EOF
+    # F5-style positive control: a trigger that matches nothing reads identically to a clean corpus.
+    [ "${st_graded:-0}" -gt 0 ] \
+        || st_sweep_bad="${st_sweep_bad}the fence walker graded 0 blocks across $st_n_files file(s) — the sweep matched nothing; "
+fi
+
+if [ -z "$st_sweep_bad" ]; then
+    pass "all $st_graded printed exit block(s) across $st_n_files derived loop-exit command file(s) carry exactly one subject tag, on the first line, and every inline blocker carries one"
+else
+    fail "every printed loop-exit block carries exactly one subject tag, on its first line" "$st_sweep_bad"
 fi
 
 echo

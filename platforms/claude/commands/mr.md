@@ -135,7 +135,7 @@ Read the issue's **Scope** and **Acceptance Criteria** sections. For each item, 
 Produce a checklist:
 
 ```
-Scope / Acceptance Criteria check:
+[<tag>] Scope / Acceptance Criteria check:
   ✅ <item> — implemented in <file>
   ❌ <item> — NOT implemented (missing)
   ⚠️  <item> — partially implemented
@@ -143,7 +143,7 @@ Scope / Acceptance Criteria check:
 
 **Then explicitly ask the user:**
 
-> The following items from the issue are not yet implemented:
+> [<tag>] The following items from the issue are not yet implemented:
 > - <item 1>
 > - <item 2>
 >
