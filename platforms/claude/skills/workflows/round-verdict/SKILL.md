@@ -48,6 +48,8 @@ Every command that ends a review cycle with a conversational report: `/review-co
 
 A fix loop states it at **three** exits, each of which carries the line in its own message template rather than inheriting it from prose: Step 5's `Output:` block, and the `### Cap-pause` and `### Stall stop` blocks. The last two matter most — they are where a human decides whether to continue — and they do not route through Step 5, so a rule stated only there would never reach them.
 
+**A below-cap round states no verdict line.** (`tests/verify-config-consistency.sh` reads this sentence.) The branch table's below-cap row routes back into the next round rather than out of the loop, and nothing on that route hands the decision to a human, so an `Another round:` line there announces a stop the loop has not reached.
+
 **Out of scope, recorded so the absence is a decision rather than an oversight:**
 
 - `/review-mr` — reviews a merge request we do not own, so there is no next round to call. Its Step 8 read-out is conversational, but it reconciles intent rather than closing a cycle.

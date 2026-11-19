@@ -379,7 +379,7 @@ Evaluate the outcome using the ordered rules below. Rules 1 and 2 gate the Unpar
 
 **Warning behavior.** Findings discarded via rule 4 (verifier failed twice) are logged as warnings to the main conversation so the user is aware; the finding is *not* held in some intermediate state. Discard-with-warning is chosen over "hold for manual triage" because none of the calling commands (`/review-mr`, `/review-code`) have a report section or workflow step for held items — held findings would silently disappear anyway. If a warning appears and the user believes the finding is real, they can add it manually.
 
-Run all reverification agents for all findings in a single parallel batch — do not serialize per finding. **Step G is a discrete blocking phase — Step H does not start until every finding's Step G outcome is resolved (Include, Discard, or Discard-with-warning).**
+Run all reverification agents for all findings in a single parallel batch — do not serialize per finding. **Run the verifiers for every eligible finding in the turn that reaches this step.** An empty eligible set and an unresolved required path are the only two routes out of Step G without verifiers; ending the turn with the batch announced is neither, and reporting that turn as `✗ not run` would name no reason. **Step G is a discrete blocking phase — Step H does not start until every finding's Step G outcome is resolved (Include, Discard, or Discard-with-warning).** (`tests/verify-config-consistency.sh` reads this paragraph.)
 
 **Note:** Step F (test-coverage agent) findings are not subject to Step G — they come from a dedicated specialized agent and are included directly in the `## Test-coverage Findings` section.
 

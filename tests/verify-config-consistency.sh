@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=111
+EXPECTED_TESTS=112
 
 PASS=0
 FAIL=0
@@ -2227,6 +2227,102 @@ if [ -z "$cut_bad" ]; then
     pass "/review-mr's cut gate keeps its firing condition, zero-count exception, same-turn ask obligation, and single print site for the counts"
 else
     fail "/review-mr's cut gate keeps its firing condition, zero-count exception, same-turn ask obligation, and single print site for the counts" "$cut_bad"
+fi
+
+echo "== In-command step execution: two turn-binding sentences plus the below-cap converse =="
+
+# Observed 2026-11-18, twice in one session: Step G of a review command was announced in prose
+# with no verifier batch launched, and inside a fix loop, Step 3's below-cap round was announced
+# rather than executed. Pin 1 binds Step G's own launch verb ("Run") to the turn that reaches it;
+# pin 2 binds The Round's own branching verb ("Take") to the below-cap row's re-entry; pin 3
+# states the converse Who states it omitted — a below-cap round states no verdict line — which is
+# what let occurrence 2 print an "Another round:" line on a route that is not an exit. Each
+# extraction is site-scoped so a sentence relocated out of its section cannot satisfy its pin.
+tbs_bad=""
+
+# Each of the three turn-binding literals below must also occur exactly once per extracted section (a same-section decoy copy stays invisible under a bare -qF match) and resolve to no second copy under either config root; FR-2's own carve-out is pinned separately under Pin 1 below, since it is a scope clause with no verb of its own to count.
+TBS_STEP_G_LIT='Run the verifiers for every eligible finding in the turn that reaches this step'
+TBS_FR2_LIT='An empty eligible set and an unresolved required path are the only two routes out of Step G without verifiers'
+TBS_THE_ROUND_LIT='Take the below-cap row in the turn that reaches it'
+TBS_WHO_STATES_LIT='A below-cap round states no verdict line'
+
+# Branch on the captured exit status, not emptiness — rows 1-6 above use the same idiom: a
+# renamed anchor (exit 1) and a real-but-empty section (exit 0) are different failures.
+tbs_step_g_raw=$(extract-section "$CLAUDE/skills/domains/quality-attributes/references/consensus-review-protocol.md" '### Step G' 2>&1)
+tbs_step_g_status=$?
+if [ "$tbs_step_g_status" -ne 0 ]; then
+    tbs_bad="${tbs_bad}consensus-review-protocol.md Step G did not extract (exit $tbs_step_g_status): $tbs_step_g_raw; "
+elif [ -z "$tbs_step_g_raw" ]; then
+    tbs_bad="${tbs_bad}consensus-review-protocol.md Step G anchor found, section body is empty; "
+else
+    tbs_step_g_n=$(printf '%s\n' "$tbs_step_g_raw" | $GREP -oF "$TBS_STEP_G_LIT" | wc -l | tr -d ' ')
+    [ "$tbs_step_g_n" -eq 1 ] \
+        || tbs_bad="${tbs_bad}Step G's launch-binding sentence occurs $tbs_step_g_n time(s) in its own section, want exactly 1 (expected '$TBS_STEP_G_LIT'); "
+
+    # FR-2's companion clause, pinned separately so deleting only this clause still reds the block.
+    printf '%s\n' "$tbs_step_g_raw" | $GREP -qF "$TBS_FR2_LIT" \
+        || tbs_bad="${tbs_bad}Step G does not name the two no-launch routes FR-2 requires (expected '$TBS_FR2_LIT'); "
+fi
+
+tbs_the_round_raw=$(extract-section "$CLAUDE/skills/workflows/fix-loop-round/SKILL.md" '## The Round' 2>&1)
+tbs_the_round_status=$?
+if [ "$tbs_the_round_status" -ne 0 ]; then
+    tbs_bad="${tbs_bad}fix-loop-round/SKILL.md's The Round did not extract (exit $tbs_the_round_status): $tbs_the_round_raw; "
+elif [ -z "$tbs_the_round_raw" ]; then
+    tbs_bad="${tbs_bad}fix-loop-round/SKILL.md's The Round anchor found, section body is empty; "
+else
+    tbs_the_round_n=$(printf '%s\n' "$tbs_the_round_raw" | $GREP -oF "$TBS_THE_ROUND_LIT" | wc -l | tr -d ' ')
+    [ "$tbs_the_round_n" -eq 1 ] \
+        || tbs_bad="${tbs_bad}The Round's below-cap re-entry sentence occurs $tbs_the_round_n time(s) in its own section, want exactly 1 (expected '$TBS_THE_ROUND_LIT'); "
+fi
+
+tbs_who_states_raw=$(extract-section "$CLAUDE/skills/workflows/round-verdict/SKILL.md" '## Who states it' 2>&1)
+tbs_who_states_status=$?
+if [ "$tbs_who_states_status" -ne 0 ]; then
+    tbs_bad="${tbs_bad}round-verdict/SKILL.md's Who states it did not extract (exit $tbs_who_states_status): $tbs_who_states_raw; "
+elif [ -z "$tbs_who_states_raw" ]; then
+    tbs_bad="${tbs_bad}round-verdict/SKILL.md's Who states it anchor found, section body is empty; "
+else
+    tbs_who_states_n=$(printf '%s\n' "$tbs_who_states_raw" | $GREP -oF "$TBS_WHO_STATES_LIT" | wc -l | tr -d ' ')
+    if [ "$tbs_who_states_n" -ne 1 ]; then
+        tbs_bad="${tbs_bad}Who states it's below-cap converse occurs $tbs_who_states_n time(s) in its own section, want exactly 1 (expected '$TBS_WHO_STATES_LIT'); "
+    else
+        # C-2: the section runs to EOF, so require the converse on a different line than the closing "this section classifies" sentence (same line-number idiom as /ticket's `d_at` helper below).
+        tbs_converse_ln=$(printf '%s\n' "$tbs_who_states_raw" | $GREP -nF "$TBS_WHO_STATES_LIT" | head -1 | cut -d: -f1)
+        tbs_classifies_ln=$(printf '%s\n' "$tbs_who_states_raw" | $GREP -nF 'this section classifies' | head -1 | cut -d: -f1)
+        if [ -n "$tbs_classifies_ln" ] && [ "$tbs_converse_ln" = "$tbs_classifies_ln" ]; then
+            tbs_bad="${tbs_bad}Who states it's below-cap converse sits on the same line (line $tbs_converse_ln) as 'this section classifies', so it is not its own paragraph; "
+        fi
+    fi
+fi
+
+# Absence half: each literal resolves to only the one file that states it under either config root, so a divergent duplicate elsewhere also reds this block. F5-style positive control (see T1/T7 above).
+if [ "${T1_ROOTS+set}" = set ]; then
+    n_tbs_scanned=$(find "${T1_ROOTS[@]}" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$n_tbs_scanned" -eq 0 ]; then
+        tbs_bad="${tbs_bad}0 Markdown files found under the config roots — the absence-half scan ran over nothing; "
+    else
+        tbs_step_g_files=$($GREP -rliF "$TBS_STEP_G_LIT" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        [ "$tbs_step_g_files" = "$CLAUDE/skills/domains/quality-attributes/references/consensus-review-protocol.md" ] \
+            || tbs_bad="${tbs_bad}Step G's launch-binding sentence resolves outside consensus-review-protocol.md: $(printf '%s' "$tbs_step_g_files" | tr '\n' ' '); "
+
+        tbs_the_round_files=$($GREP -rliF "$TBS_THE_ROUND_LIT" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        [ "$tbs_the_round_files" = "$CLAUDE/skills/workflows/fix-loop-round/SKILL.md" ] \
+            || tbs_bad="${tbs_bad}The Round's below-cap re-entry sentence resolves outside fix-loop-round/SKILL.md: $(printf '%s' "$tbs_the_round_files" | tr '\n' ' '); "
+
+        tbs_who_states_files=$($GREP -rliF "$TBS_WHO_STATES_LIT" "${T1_ROOTS[@]}" 2>/dev/null | sort -u)
+        [ "$tbs_who_states_files" = "$CLAUDE/skills/workflows/round-verdict/SKILL.md" ] \
+            || tbs_bad="${tbs_bad}Who states it's below-cap converse resolves outside round-verdict/SKILL.md: $(printf '%s' "$tbs_who_states_files" | tr '\n' ' '); "
+    fi
+else
+    tbs_bad="${tbs_bad}T1_ROOTS is unset — the absence-half scan cannot run; "
+fi
+
+TBS_MSG="Step G's batch launch and The Round's below-cap re-entry are each bound to their own site's verb in the turn that reaches it, Step G also names the two no-launch routes, Who states it states the below-cap converse on its own line apart from the section's closing classification sentence, and each of the three turn-binding literals occurs exactly once in its own section and resolves to exactly one file under either config root"
+if [ -z "$tbs_bad" ]; then
+    pass "$TBS_MSG"
+else
+    fail "$TBS_MSG" "$tbs_bad"
 fi
 
 echo "== Command files: fix-mr.md's fetch/diff/placeholder shell text =="

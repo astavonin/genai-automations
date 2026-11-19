@@ -19,6 +19,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNNER="$ROOT/tools/codex-flow/codex_flow/runner.py"
 README="$ROOT/tools/codex-flow/README.md"
 PROTOCOL="$ROOT/platforms/claude/skills/domains/quality-attributes/references/consensus-review-protocol.md"
+FIX_LOOP_ROUND="$ROOT/platforms/claude/skills/workflows/fix-loop-round/SKILL.md"
+ROUND_VERDICT="$ROOT/platforms/claude/skills/workflows/round-verdict/SKILL.md"
 
 pass=0
 fail=0
@@ -33,7 +35,7 @@ check() {
     fi
 }
 
-for path in "$RUNNER" "$README" "$PROTOCOL"; do
+for path in "$RUNNER" "$README" "$PROTOCOL" "$FIX_LOOP_ROUND" "$ROUND_VERDICT"; do
     [ -f "$path" ] || { printf 'FAIL: missing file %s\n' "$path"; exit 1; }
 done
 
@@ -75,12 +77,17 @@ check "protocol spells the rollout path with three date components" "$?"
 grep -qE 'sessions/(<YYYY>/<MM>/<DD>|[0-9]{4}/[0-9]{2}/[0-9]{2})/' "$README"
 check "README spells the rollout path with three date components" "$?"
 
-# 6. The live config and its repo backup agree. The protocol table is read at review time from
-#    `~/.claude/`, so a backup-only edit changes nothing about how reviews actually behave.
-LIVE="$HOME/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md"
-if [ -f "$LIVE" ]; then
-    diff -q "$LIVE" "$PROTOCOL" >/dev/null
+# 6. All three fragments' live `~/.claude/` copies match their repo backups — agents read the
+#    live tree, and the guard is on the tree so a missing fragment fails rather than skipping.
+if [ -d "$HOME/.claude" ]; then
+    diff -q "$HOME/.claude/skills/domains/quality-attributes/references/consensus-review-protocol.md" "$PROTOCOL" >/dev/null 2>&1
     check "live protocol matches repo backup" "$?"
+
+    diff -q "$HOME/.claude/skills/workflows/fix-loop-round/SKILL.md" "$FIX_LOOP_ROUND" >/dev/null 2>&1
+    check "live fix-loop-round/SKILL.md matches repo backup" "$?"
+
+    diff -q "$HOME/.claude/skills/workflows/round-verdict/SKILL.md" "$ROUND_VERDICT" >/dev/null 2>&1
+    check "live round-verdict/SKILL.md matches repo backup" "$?"
 fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
