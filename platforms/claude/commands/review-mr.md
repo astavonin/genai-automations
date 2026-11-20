@@ -163,7 +163,7 @@ Before saving, parse and verify:
 2. Required top-level fields present: `mr_number`, `title`, `review_date`, `codex`, `step_g`, `approval`, `findings`; `approval` must be one of `"approved"`, `"changes_requested"`, `"none"`. An absent `approval` is a validation failure, not a default — `projctl comment` reads a missing key as `"approved"` and approves the MR
 3. `mr_number` is an integer (not a string)
 4. Each finding has required fields: `severity`, `title`, `description`
-5. Each finding with a location uses a specific line number present in the diff — never `:1` as a placeholder
+5. Every finding carries `location` or `locations`, and every line named is an ADDED (`+`) line in the diff — never `:1` as a placeholder, and never an unchanged context line. An unanchored finding is dropped by `projctl comment` with only a `WARNING`, so this check is the last place it is visible. Resolve the added-line set per file from the diff itself rather than by eye
 6. Severity values are exactly one of: `Critical`, `High`, `Medium`, `Low` (case-sensitive)
 7. Any finding that identifies **incorrect runtime behavior** (wrong output, data corruption, silent invalid-input acceptance, infinite loop, security bypass) MUST include a `Required test:` line inside its `fix:` field describing: what input triggers the bug and what the test asserts
 8. `approval` agrees with the finding set it ships beside, an absent key graded as the `approved` it defaults to: `changes_requested` when at least one `Critical` or `High` finding is present, `approved` when none is. `none` is exempt — it applies no approval action. Check 2 tests the value against the three literals and nothing more, so without this a review can carry an approval state its own findings contradict
@@ -201,7 +201,7 @@ Where either test is genuinely arguable, classify `substantive`. An under-cut re
 **A finding whose description carries the `[Reverified]` prefix is never `theoretical`.** Step G's two verifiers already asked whether its precondition is reachable and both said yes, so relabelling it here reverses a 2-of-2 adversarial verdict on no new evidence — and the row the user answers from shows only severity, title, location, and class, so the reversal would be invisible at the moment of the cut.
 
 Show the user:
-- **One row per finding**, in YAML order: `<severity> · <title> · <location> · <class>` — render `<location>` as the first entry where the finding uses `locations:`, and as `—` where it carries neither field
+- **One row per finding**, in YAML order: `<severity> · <title> · <location> · <class>` — render `<location>` as the first entry where the finding uses `locations:`. A finding carrying neither field renders as `— WILL NOT POST`, since `projctl comment` skips it; Step 5b check 5 should already have caught it, so treat the marker appearing here as that check having been skipped rather than as a display case
 - Total finding count by severity (Critical: N, High: N, Medium: N, Low: N). The `cosmetic` and `theoretical` counts are printed by the cut question below and nowhere else
 - Overall assessment based on findings:
   - **Approve** — zero `Critical` and zero `High` findings
@@ -236,6 +236,8 @@ To post inline comments to the MR:
 ```
 
 The command never posts automatically. Posting requires explicit user action.
+
+**Whoever runs the real post should read the dry run's count first.** `--dry-run` ends with `Would post <N> inline comments`; compare `<N>` against the number of findings in the YAML, and grep the output for `WARNING`. A mismatch means a finding is being skipped for want of an anchor, and the real run reports `0 skipped, 0 failed` regardless — `0 failed` counts posting attempts, not findings. Re-running `projctl comment` to recover a skipped finding duplicates every comment that did post, so the count has to be right before the first run.
 
 ### Step 7: Update Planning State and Push
 
@@ -374,9 +376,11 @@ findings:
 
 **Schema rules:**
 - `location` (singular) and `locations` (plural list) are mutually exclusive
-- Every finding must have at least one location; findings without locations are skipped
+- **Every finding must carry `location` or `locations`, or it is silently dropped.** `projctl comment` prints `WARNING: Finding '<title>' has no location, skipping` and then reports its own posted count as a success — so an unanchored finding never reaches the author and nothing fails. There is **no** general-MR-note fallback; do not omit the field expecting one.
 - Line ranges (`123-145`) are supported; only start line is used for inline posting
-- **Always use a specific line number from the diff.** If no exact line is known, omit `location`/`locations` entirely — the tool will fall back to a general MR note. Never use `:1` as a placeholder; GitLab returns HTTP 500 for inline comments on lines not present in the diff.
+- **Always use a specific line number that is an ADDED (`+`) line in the diff.** GitLab anchors inline comments to diff lines and returns HTTP 500 for a line it cannot find, including an unchanged context line inside a hunk. Never use `:1` as a placeholder.
+- **When the text a finding is about sits on an unchanged line**, anchor to the nearest added line in the same file that shares the topic, and name the real passage in the `description`. A stale paragraph two screens from the one the MR corrected is still best raised beside the correction.
+- **When a file has no added line at all**, the finding cannot be an inline comment. Post it separately with `projctl note mr <N> --body "..."` and leave it out of the YAML — keeping it in guarantees it is skipped.
 - **The `description` names a symbol.** The `location:` line number is exempt from the file+symbol rule because GitLab anchors inline comments to diff lines, but that exemption covers the field only — a finding whose description identifies nothing but a line number is unactionable once the branch moves. See `~/.claude/CLAUDE.md` → Markdown Writing → code references.
 - Use `null` for optional fields with no value (not empty string)
 - Use `|` for multi-line strings (description, fix)
