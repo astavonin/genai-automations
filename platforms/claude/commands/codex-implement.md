@@ -45,22 +45,23 @@ Run with `run_in_background: true`. Then immediately start a Monitor to show liv
 
 ```bash
 sleep 2
-PROGRESS=$(ls -t /tmp/codex-flow-progress-state-*/codex-flow/runs/*/*.jsonl 2>/dev/null | head -1)
-if [ -n "$PROGRESS" ]; then
-  tail -f "$PROGRESS" | while IFS= read -r line; do
+PROGRESS_DIR=$(codex-flow progress-dir <design-doc-path> 2>/dev/null)
+PROGRESS=$(ls -t "$PROGRESS_DIR"/*.jsonl 2>/dev/null | head -1)
+if [ -n "$PROGRESS" ] && [ "$(( $(date +%s) - $(stat -c %Y "$PROGRESS") ))" -le 30 ]; then
+  tail -n +1 -f "$PROGRESS" | while IFS= read -r line; do
     jq -r '"[codex] \(.status) \(.phase): \(.message)"' <<< "$line" 2>/dev/null
     [[ "$line" == *"workflow_complete"* ]] && break
   done
+else
+  echo "[codex] no progress log under 30s old in ${PROGRESS_DIR:-<unresolved>} — live progress unavailable; the background task's completion notification is the authority"
 fi
 ```
 
-Run via the Monitor tool — each parsed line appears as a notification. The Monitor exits when
-Codex emits `workflow_complete`. The background task completion notification confirms the output
-file is ready.
+Run via the Monitor tool — each parsed line appears as a notification. The Monitor exits when Codex emits `workflow_complete`. The background task completion notification confirms the output file is ready.
 
-`codex-flow` validates the document, invokes `codex exec` in workspace-write mode (allows
-file modifications), runs the verification commands from the design doc's `Verification`
-block, and writes a standardised output artifact.
+Both guards are load-bearing. `codex-flow progress-dir` is what scopes the search to *this* repository — progress logs are stored per repository under a `sha256` key, so globbing every repository's directory attaches the monitor to whichever run on the machine wrote most recently and reports its `workflow_complete` as this run's success. The freshness test then rejects a *previous* run of the same repository, which matters because a request rejected during validation is parsed before any log exists, so this run may have written nothing at all.
+
+`codex-flow` validates the document, invokes `codex exec` with `--dangerously-bypass-approvals-and-sandbox` and no `--sandbox` flag (`danger-full-access` is `run_implementation()`'s internal `sandbox=` value, not argv — Codex runs unsandboxed and may touch anything the user can), runs the verification commands from the design doc's `Verification` block, and writes a standardised output artifact.
 
 ### Step 4: Read and display results
 
@@ -82,5 +83,5 @@ Before Step 3 runs, if this work fixes a failure that actually occurred, paste t
 ## Notes
 
 - The design document must follow `~/.claude/skills/workflows/planning/DESIGN-TEMPLATE.md` — `codex-flow` parses the `Implementation Context` section for Repository, Functional Requirements, Non-Functional Requirements, Constraints, Verification, and Context Files.
-- `codex-flow implement` runs in `workspace-write` sandbox — Codex can modify files in the repository.
+- `codex-flow implement` runs Codex with **no sandbox** — `tools/codex-flow/codex_flow/runner.py` → `run_implementation()` passes `sandbox="danger-full-access"`, which adds `--dangerously-bypass-approvals-and-sandbox` and, unlike review mode, does *not* pass `--ignore-user-config --ignore-rules`, so `~/.codex/config.toml` and the user's `.rules` apply. Codex can write outside the target repository.
 - After implementation, run `/review-code` as the mandatory code review checkpoint.

@@ -65,9 +65,7 @@ def parse_implementation_request(request_path: Path) -> ImplementationRequest:
 # its ledger fence as `~~~markdown`: anchored to a bare delimiter, that line survived into the
 # body and pushed the absent-ledger sentence off the start, rejecting every request that
 # followed the template and had no ledger to paste.
-_LEDGER_SCAFFOLDING = re.compile(
-    r"^(~~~\S*|```\S*|-{3,}|<!--.*|#\s+Observed Failures\b.*)$"
-)
+_LEDGER_SCAFFOLDING = re.compile(r"^(~~~\S*|```\S*|-{3,}|<!--.*|#\s+Observed Failures\b.*)$")
 # The one sentence that may stand in for a ledger, with the documented suffixes.
 _LEDGER_ABSENT = re.compile(r"^No ledger exists for this work\.?( — .+)?$", re.IGNORECASE)
 
@@ -195,6 +193,11 @@ def _read_text(path: Path) -> str:
             raise ValidationError(f"Request file not found: {path}")
         raise ValidationError(f"Request file not found: {path} (resolved against {Path.cwd()})")
     return path.read_text(encoding="utf-8")
+
+
+def request_title(request_path: Path) -> str:
+    """Return a request's H1 text, for callers dispatching on request type."""
+    return _find_first_heading(_read_text(request_path).splitlines())
 
 
 def _find_first_heading(lines: list[str]) -> str:

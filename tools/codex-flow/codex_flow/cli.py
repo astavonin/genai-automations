@@ -8,7 +8,7 @@ from typing import cast
 
 from .exceptions import CodexFlowError
 from .progress import PROGRESS_MODES, ProgressConfig, ProgressMode
-from .runner import run_implementation, run_review
+from .runner import resolve_progress_dir, run_implementation, run_review
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,6 +31,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_progress_arguments(review_parser)
     review_parser.add_argument("request", type=Path, help="Path to the review request.")
 
+    progress_dir_parser = subparsers.add_parser(
+        "progress-dir",
+        help="Print the directory this request's progress logs land in, and exit.",
+    )
+    progress_dir_parser.add_argument(
+        "request", type=Path, help="Path to the implementation or review request."
+    )
+
     return parser
 
 
@@ -52,6 +60,16 @@ def main(argv: list[str] | None = None) -> int:
     """Run the codex-flow CLI."""
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # Resolved before ProgressConfig is built: progress-dir reports where a log would go and runs
+    # no workflow, so it carries none of the progress flags those attributes come from.
+    if args.command == "progress-dir":
+        try:
+            print(resolve_progress_dir(args.request))
+        except CodexFlowError as err:
+            parser.exit(status=1, message=f"codex-flow: {err}\n")
+        return 0
+
     progress_config = ProgressConfig(
         mode=cast(ProgressMode, args.progress),
         log_enabled=not args.no_progress_log,

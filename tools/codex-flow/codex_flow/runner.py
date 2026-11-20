@@ -15,7 +15,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from .exceptions import ValidationError, WorkflowViolationError
-from .markdown_parser import parse_implementation_request, parse_review_request
+from .markdown_parser import parse_implementation_request, parse_review_request, request_title
 from .prompting import (
     build_implementation_prompt,
     build_review_prompt,
@@ -46,10 +46,10 @@ IGNORED_REVIEW_ARTIFACT_NAMES = {
 DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
 DEFAULT_REASONING_EFFORT = "xhigh"
 VALID_CODEX_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
+# Re-audit on every codex-cli upgrade: a de-registered name aborts `codex exec` with exit 1.
 DISABLED_EXTERNAL_TOOL_FEATURES = (
     "apps",
     "plugins",
-    "tool_search",
     "tool_suggest",
     "skill_mcp_dependency_install",
     "tool_call_mcp_elicitation",
@@ -170,6 +170,27 @@ def run_review(request_path: Path, progress_config: ProgressConfig | None = None
     except Exception:
         reporter.emit("workflow_failed", "failed", "Review workflow failed")
         raise
+
+
+def resolve_progress_dir(request_path: Path) -> Path:
+    """Return the directory this request's progress logs land in.
+
+    Exists so a progress monitor can name that directory without rebuilding it. The directory is
+    keyed on `sha256(repository)`, which shell cannot derive without copying the hashing scheme —
+    and a monitor that globs every repository's directory instead attaches to a foreign run and
+    reports its `workflow_complete` as this run's success.
+    """
+    title = request_title(request_path)
+    if title.startswith("Design"):
+        repository = parse_implementation_request(request_path).repository
+    elif title.startswith("Review Request"):
+        repository = parse_review_request(request_path).repository
+    else:
+        raise ValidationError(
+            "Request must start with a Design or Review Request heading to resolve a progress "
+            f"directory; found: {title!r}"
+        )
+    return repository_state_dir(repository)
 
 
 def _invoke_codex(

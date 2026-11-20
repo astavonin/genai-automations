@@ -51,6 +51,22 @@ $XDG_STATE_HOME/codex-flow/runs/<repo-hash>/<run-id>.jsonl
 ~/.local/state/codex-flow/runs/<repo-hash>/<run-id>.jsonl
 ```
 
+`<repo-hash>` is `sha256` of the resolved repository path, truncated to 16 characters, so a
+progress monitor cannot rebuild the directory without copying that scheme. Ask instead:
+
+```bash
+codex-flow progress-dir planning/design.md
+codex-flow progress-dir planning/reviews/request.md
+```
+
+It accepts either request type, dispatching on the H1, prints the one directory that request's
+runs write into, and exits non-zero rather than guessing if the document is neither. Resolve the
+directory this way instead of globbing `runs/*/`, which spans every repository on the machine: a
+monitor that does the latter attaches to whichever run wrote most recently and reports its
+`workflow_complete` as the current run's success. Note also that both workflows parse the request
+*before* the progress log exists, so a request rejected in validation produces no log at all —
+check the newest log in the directory is newer than the launch before trusting it.
+
 `codex-flow` does not persist raw Codex JSON traces.
 
 ## Install

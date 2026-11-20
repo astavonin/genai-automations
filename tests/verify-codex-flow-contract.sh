@@ -21,6 +21,8 @@ README="$ROOT/tools/codex-flow/README.md"
 PROTOCOL="$ROOT/platforms/claude/skills/domains/quality-attributes/references/consensus-review-protocol.md"
 FIX_LOOP_ROUND="$ROOT/platforms/claude/skills/workflows/fix-loop-round/SKILL.md"
 ROUND_VERDICT="$ROOT/platforms/claude/skills/workflows/round-verdict/SKILL.md"
+CODEX_IMPLEMENT="$ROOT/platforms/claude/commands/codex-implement.md"
+CODEX_REVIEW="$ROOT/platforms/claude/commands/codex-review.md"
 
 pass=0
 fail=0
@@ -88,6 +90,91 @@ if [ -d "$HOME/.claude" ]; then
 
     diff -q "$HOME/.claude/skills/workflows/round-verdict/SKILL.md" "$ROUND_VERDICT" >/dev/null 2>&1
     check "live round-verdict/SKILL.md matches repo backup" "$?"
+
+    diff -q "$HOME/.claude/commands/codex-implement.md" "$CODEX_IMPLEMENT" >/dev/null 2>&1
+    check "live codex-implement.md matches repo backup" "$?"
+
+    diff -q "$HOME/.claude/commands/codex-review.md" "$CODEX_REVIEW" >/dev/null 2>&1
+    check "live codex-review.md matches repo backup" "$?"
+fi
+
+# 7. Every progress monitor resolves its log directory through `codex-flow progress-dir` rather
+#    than rebuilding the path in shell. Three copies of a hand-written `/tmp/...` path once
+#    pointed where the tool never wrote, so monitoring was silently dead on every run; the
+#    replacement glob then scoped across every repository's directory, which is worse — it
+#    attaches to a foreign run and prints its `workflow_complete` as this run's success. Both
+#    defects are shaped as a path expression in Markdown that nothing compared to the tool.
+for monitor in "$CODEX_IMPLEMENT" "$CODEX_REVIEW" "$PROTOCOL"; do
+    name="$(basename "$monitor")"
+
+    grep -q 'PROGRESS_DIR=$(codex-flow progress-dir' "$monitor"
+    check "$name resolves the progress dir through the CLI" "$?"
+
+    grep -qE 'ls -t "\$PROGRESS_DIR"/\*\.jsonl' "$monitor"
+    check "$name globs only its own repository's directory" "$?"
+
+    grep -q 'stat -c %Y "$PROGRESS"' "$monitor"
+    check "$name rejects a log left by an earlier run" "$?"
+
+    grep -q 'tail -n +1 -f "$PROGRESS"' "$monitor"
+    check "$name streams the log from its first line" "$?"
+
+    ! grep -qE 'codex-flow-progress-state|XDG_STATE_HOME:-|runs/\*/' "$monitor"
+    check "$name derives no state path of its own" "$?"
+done
+
+# 8. `progress-dir` reports the directory a run writes into. Asserted against the CLI rather than
+#    against `repository_state_dir()` directly: the monitors call the CLI, so that is the surface
+#    whose drift breaks them.
+if command -v codex-flow >/dev/null 2>&1; then
+    probe_state="$(mktemp -d)"
+    probe_repo="$(mktemp -d)"
+    probe_request="$probe_state/design.md"
+    {
+        printf '# Design — progress-dir probe\n\n## 3. Implementation Context\n\n'
+        printf '**Repository:** `%s`\n\n' "$probe_repo"
+        printf '**Functional Requirements:**\n- probe\n\n'
+        printf '**Non-Functional Requirements:**\n- probe\n\n'
+        printf '**Constraints:**\n- none\n\n'
+        printf '**Verification:**\n```bash\ntrue\n```\n\n'
+        printf '**Context Files:**\n- `README.md`\n'
+    } > "$probe_request"
+
+    expected="$(
+        XDG_STATE_HOME="$probe_state" python3 -c '
+import sys
+from pathlib import Path
+from codex_flow.progress import repository_state_dir
+print(repository_state_dir(Path(sys.argv[1])))
+' "$probe_repo" 2>/dev/null
+    )"
+    actual="$(XDG_STATE_HOME="$probe_state" codex-flow progress-dir "$probe_request" 2>/dev/null)"
+
+    [ -n "$expected" ] && [ "$actual" = "$expected" ]
+    check "progress-dir agrees with repository_state_dir()" "$?"
+
+    XDG_STATE_HOME="$probe_state" codex-flow progress-dir "$probe_request" 2>/dev/null | grep -q "^$probe_state/codex-flow/runs/"
+    check "progress-dir honours XDG_STATE_HOME" "$?"
+
+    printf '# Meeting Notes\n\nnothing\n' > "$probe_state/notes.md"
+    ! XDG_STATE_HOME="$probe_state" codex-flow progress-dir "$probe_state/notes.md" >/dev/null 2>&1
+    check "progress-dir fails rather than guessing on an unrecognized request" "$?"
+
+    rm -rf "$probe_state" "$probe_repo"
+else
+    printf '  SKIP: codex-flow not on PATH — progress-dir checks not run\n'
+fi
+
+# 9. Every name in the feature-disable list is still registered in the binary. A de-registered
+#    name aborts `codex exec` with exit 1, taking both workflows down at launch.
+if command -v codex >/dev/null 2>&1; then
+    features="$(codex features list 2>/dev/null)"
+    for feature in $(sed -n '/^DISABLED_EXTERNAL_TOOL_FEATURES = (/,/^)/p' "$RUNNER" | grep -oE '"[a-z_]+"' | tr -d '"'); do
+        printf '%s\n' "$features" | awk -v f="$feature" '$1 == f && $2 != "removed" { found = 1 } END { exit !found }'
+        check "codex features list still registers '$feature'" "$?"
+    done
+else
+    printf '  SKIP: codex not on PATH — feature-registration checks not run\n'
 fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

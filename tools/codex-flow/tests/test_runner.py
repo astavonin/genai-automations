@@ -18,6 +18,7 @@ from codex_flow.runner import (
     MAX_CODEX_DIAGNOSTIC_CHARS,
     MAX_CODEX_DIAGNOSTIC_LINES,
     UNKNOWN_CODEX_ACTIVITY_INTERVAL,
+    resolve_progress_dir,
     run_implementation,
     run_review,
 )
@@ -205,7 +206,16 @@ def test_run_implementation_invokes_codex_with_full_access_sandbox(
         assert "--model" in command
         assert command[command.index("--model") + 1] == DEFAULT_CODEX_MODEL
         assert _config_values(command) == ["model_reasoning_effort=xhigh"]
-        assert _disabled_features(command) == list(DISABLED_EXTERNAL_TOOL_FEATURES)
+        # Named literally, not compared against the constant the argv is built from: that
+        # comparison passes for any edit to the tuple, including emptying it, so it could never
+        # notice a silent loss of the barrier keeping Codex out of apps and MCP install paths.
+        assert _disabled_features(command) == [
+            "apps",
+            "plugins",
+            "tool_suggest",
+            "skill_mcp_dependency_install",
+            "tool_call_mcp_elicitation",
+        ]
         assert "--dangerously-bypass-approvals-and-sandbox" in command
         assert "--sandbox" not in command
         _write_implementation_response(command)
@@ -1283,3 +1293,64 @@ def test_run_implementation_emits_plain_progress(
     progress = stream.getvalue()
     assert "codex-flow: Parsed implementation request" in progress
     assert "codex-flow: Codex ran tool: pytest" in progress
+
+
+# `progress-dir` exists for the progress monitors in `/codex-implement`, `/codex-review`, and the
+# consensus protocol. Before it, each one rebuilt the path in shell and globbed every repository's
+# directory, so a monitor could attach to a foreign run and print its `workflow_complete` as this
+# run's success. These tests pin the directory those monitors are handed.
+def test_resolve_progress_dir_matches_reporter_log_dir_for_implementation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    request = _make_implementation_repo(tmp_path)
+    repository = (tmp_path / "repo").resolve()
+
+    resolved = resolve_progress_dir(request)
+
+    expected = (
+        tmp_path / "state" / "codex-flow" / "runs" / repository_state_key(repository)
+    ).resolve()
+    assert resolved.resolve() == expected
+
+
+def test_resolve_progress_dir_matches_reporter_log_dir_for_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    request = tmp_path / "review-request.md"
+    _write_review_request(request, repository)
+
+    resolved = resolve_progress_dir(request)
+
+    expected = (
+        tmp_path / "state" / "codex-flow" / "runs" / repository_state_key(repository.resolve())
+    ).resolve()
+    assert resolved.resolve() == expected
+
+
+def test_resolve_progress_dir_is_the_directory_a_run_actually_writes_into(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The contract that matters: a real run's log lands in the directory this reports."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    request = _make_implementation_repo(tmp_path)
+
+    def on_start(command: list[str]) -> None:
+        _write_implementation_response(command)
+
+    _install_fake_popen(monkeypatch, on_start)
+    run_implementation(request, ProgressConfig(mode="quiet", log_enabled=True))
+
+    progress_dir = resolve_progress_dir(request)
+    assert sorted(path.name for path in progress_dir.glob("*.jsonl"))
+
+
+def test_resolve_progress_dir_rejects_a_request_that_is_neither_type(tmp_path: Path) -> None:
+    request = tmp_path / "notes.md"
+    request.write_text("# Meeting Notes\n\nnothing to see here\n", encoding="utf-8")
+
+    with pytest.raises(CodexFlowError, match="Design or Review Request heading"):
+        resolve_progress_dir(request)
