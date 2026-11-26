@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import CEILING, REGISTER, SHARE, TARGET, VERDICT, WORDS, field, summary
+from conftest import CEILING, REGISTER, SHARE, TARGET, VERDICT, WORDS, detail_rows, field, summary
 
 
 def test_words_and_register_attribute_to_the_enclosing_section(measure) -> None:
@@ -174,6 +174,37 @@ def test_the_document_ceiling_blocks_and_is_reported_on_the_total_row(measure) -
     assert summary(output, "CEILING") == "1"
 
 
+# Summary-line labels every seven-field-row check below skips — each opens a counter line,
+# not a section row, so it is exempt from the seven-field shape the row assertion pins.
+SUMMARY_LABELS = (
+    "REGISTER",
+    "CEILING",
+    "TESTNAMES",
+    "NOROW",
+    "UNSLOTTED",
+    "COST",
+    "MISSES",
+    "FROM",
+    "UNTAGGED",
+)
+
+
+def assert_seven_field_rows(output: str) -> None:
+    """Assert every section-row line of ``output`` splits into seven tab-separated fields.
+
+    A label missing from either skip list below collapses a row to fewer fields for any
+    caller reading columns.
+    """
+    for line in output.splitlines():
+        if not line or line.startswith(
+            ("==", " ", "register hits", "design-field hits", "test-identifier hits")
+        ):
+            continue
+        if line.split(":")[0] in SUMMARY_LABELS:
+            continue
+        assert len(line.split("\t")) == 7, line
+
+
 SLOT_CASES = [
     ("slot 1 target", "1. Problem Statement", "184"),
     ("slot 2 target", "2. Goals and Non-Goals", "283"),
@@ -298,13 +329,7 @@ def test_every_table_row_carries_seven_tab_separated_fields(measure) -> None:
     # A missing cell collapses the row for any caller reading columns.
     output = measure("## 5. Detailed Design\nalpha beta\n").output
 
-    summaries = ("REGISTER", "CEILING", "UNSLOTTED", "COST", "MISSES", "FROM", "UNTAGGED")
-    for line in output.splitlines():
-        if not line or line.startswith(("==", " ", "register hits", "design-field hits")):
-            continue
-        if line.split(":")[0] in summaries:
-            continue
-        assert len(line.split("\t")) == 7, line
+    assert_seven_field_rows(output)
 
 
 def test_a_third_repeat_of_a_heading_gets_its_own_suffix(measure) -> None:
@@ -337,3 +362,243 @@ def test_a_document_with_no_unslotted_section_reports_an_explicit_zero(measure) 
     output = measure("## 1. Problem Statement\n\nalpha beta\n").output
 
     assert "UNSLOTTED: 0 section(s) holding 0 word(s)" in output
+
+
+def test_a_prose_test_identifier_in_test_requirements_is_counted(measure) -> None:
+    body = (
+        "## 6. Test Requirements\n\n### Unit Tests\n\n"
+        "Covers test_login_flow failing without credentials.\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "1"
+    hits = [row for row in detail_rows(output) if row[1] == "test_login_flow"]
+    assert len(hits) == 1
+    assert hits[0][0] == "6. Test Requirements"
+    assert "name the behaviour it covers instead" in hits[0][2]
+
+
+def test_a_table_cell_test_identifier_in_test_requirements_is_counted(measure) -> None:
+    # The incident's own §6 content was two tables; a scan wired only into the prose call
+    # site would pass every other case here and still miss this one.
+    body = (
+        "## 6. Test Requirements\n\n### Unit Tests\n\n"
+        "| Case | Covers |\n|---|---|\n| test_login_flow | auth |\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "1"
+    assert summary(output, "NOROW") == "0"
+    hits = [row for row in detail_rows(output) if row[1] == "test_login_flow"]
+    assert len(hits) == 1
+    assert hits[0][0] == "6. Test Requirements"
+    assert "name the behaviour it covers instead" in hits[0][2]
+
+
+def test_two_test_identifiers_on_one_line_each_count(measure) -> None:
+    # finditer() counts every match on a line; replacing it with search() stops at one and
+    # survives every single-identifier fixture above.
+    body = "## 6. Test Requirements\n\nCovers test_login_flow and test_logout_flow together.\n"
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "2"
+    hits = [row for row in detail_rows(output) if row[0] == "6. Test Requirements"]
+    assert sorted(row[1] for row in hits) == ["test_login_flow", "test_logout_flow"]
+
+
+TESTNAMES_ZERO_CASES = [
+    ("a single-character identifier", "test_x"),
+    ("a two-character identifier", "test_ab"),
+    ("an uppercase test-head form", "Test_login_flow"),
+    ("a match beginning mid-word", "protest_value"),
+]
+
+
+@pytest.mark.parametrize(
+    "name,identifier", TESTNAMES_ZERO_CASES, ids=[c[0] for c in TESTNAMES_ZERO_CASES]
+)
+def test_testnames_reports_zero_for_an_excluded_shape(measure, name: str, identifier: str) -> None:
+    output = measure(f"## 6. Test Requirements\n\nSee {identifier} for details.\n").output
+
+    assert summary(output, "TESTNAMES") == "0"
+
+
+def test_a_three_character_identifier_tail_is_the_floor(measure) -> None:
+    # Pins the {3,} boundary from the counted side; the zero-case above pins it from the
+    # excluded side.
+    output = measure("## 6. Test Requirements\n\nSee test_abc for details.\n").output
+
+    assert summary(output, "TESTNAMES") == "1"
+
+
+def test_an_uppercase_character_after_the_prefix_is_still_counted(measure) -> None:
+    # The head's case sensitivity already excludes TestX/TEST_F/#[test]; the suffix must
+    # not also drop an acronym-cased Python identifier.
+    output = measure("## 6. Test Requirements\n\nSee test_HTTPClient_retries for details.\n").output
+
+    assert summary(output, "TESTNAMES") == "1"
+
+
+def test_a_test_identifier_outside_test_requirements_is_not_counted(measure) -> None:
+    # A document-wide counter would misfire on this file's own prose — Detailed Design,
+    # Implementation Context and Trade-offs all name real test functions as examples.
+    body = (
+        "## 3. Implementation Context\n\ntest_example_three mentioned here.\n\n"
+        "## 5. Detailed Design\n\ntest_example_five mentioned here.\n\n"
+        "## 7. Trade-offs and Alternatives\n\ntest_example_seven mentioned here.\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "0"
+    assert "test-identifier hits" not in output
+
+
+def test_a_fenced_test_identifier_in_test_requirements_is_not_counted(measure) -> None:
+    body = "## 6. Test Requirements\n\n```\ntest_login_flow\n```\n"
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "0"
+
+
+def test_a_backticked_test_identifier_in_test_requirements_is_counted(measure) -> None:
+    # No mention exemption is inherited here: every measured corpus hit is backticked.
+    body = "## 6. Test Requirements\n\nSee `test_login_flow` for details.\n"
+
+    output = measure(body).output
+
+    assert summary(output, "TESTNAMES") == "1"
+
+
+def test_testnames_and_norow_print_between_ceiling_and_unslotted_on_a_clean_document(
+    measure,
+) -> None:
+    body = "## 1. Problem Statement\n\nalpha\n\n## 6. Test Requirements\n\nno identifiers here.\n"
+
+    output = measure(body).output
+    lines = output.splitlines()
+    ceiling_index = next(i for i, line in enumerate(lines) if line.startswith("CEILING:"))
+    testnames_index = next(i for i, line in enumerate(lines) if line.startswith("TESTNAMES:"))
+    norow_index = next(i for i, line in enumerate(lines) if line.startswith("NOROW:"))
+    unslotted_index = next(i for i, line in enumerate(lines) if line.startswith("UNSLOTTED:"))
+
+    assert summary(output, "TESTNAMES") == "0"
+    assert summary(output, "NOROW") == "0"
+    assert ceiling_index < testnames_index < norow_index < unslotted_index
+
+
+def test_a_test_requirements_heading_the_resolver_cannot_slot_reports_norow_and_names_slot_six(
+    measure,
+) -> None:
+    # The remedy here is the opposite of the next case's: write the heading back to a
+    # spelling the resolver recognises.
+    output = measure("## Quality Verification\n\nalpha\n").output
+
+    assert summary(output, "NOROW") == "1"
+    assert "NOROW: 1 — slot 6: 0 row(s), 0 prose word(s)" in output
+
+
+def test_a_prose_free_slot_six_heading_reports_norow_one(measure) -> None:
+    # "Test Harness Changes" resolves to slot 6 by the bare word "Test" but carries no
+    # prose of its own; the real content sits under "Quality Verification", which the
+    # resolver cannot slot at all, so neither counter may read as a clean scan.
+    body = "## Test Harness Changes\n\n## Quality Verification\n\ngamma test_login_flow delta\n"
+
+    output = measure(body).output
+
+    assert summary(output, "NOROW") == "1"
+    assert "NOROW: 1 — slot 6: 1 row(s), 0 prose word(s)" in output
+    assert summary(output, "TESTNAMES") == "0"
+
+
+def test_a_prose_carrying_slot_six_decoy_covers_for_a_renamed_real_section(measure) -> None:
+    # Declared limit (metrics.py's fourth known limit, design.md Sec6 -> Tests Not
+    # Written): a second, unrelated section resolving to slot 6 with prose of its own
+    # makes NOROW read clean over a renamed real section instead of catching it.
+    body = (
+        "## Test Harness Changes\n\nunrelated prose here.\n\n"
+        "## Quality Verification\n\ngamma test_login_flow delta\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "NOROW") == "0"
+    assert summary(output, "TESTNAMES") == "0"
+
+
+def test_a_single_table_cell_word_in_test_requirements_reports_norow_zero(measure) -> None:
+    # One cell word is one halfword, which the word-count floor (// 2) rounds to zero —
+    # reading that floored count here reported NOROW: 1 on a section that has content.
+    output = measure("## 6. Test Requirements\n\n| alpha |\n").output
+
+    assert summary(output, "NOROW") == "0"
+
+
+def test_a_wholly_fenced_test_requirements_section_reports_norow_one(measure) -> None:
+    # Declared limit (metrics.py's fifth known limit, design.md Sec6 -> Tests Not
+    # Written): fenced content is never prose anywhere in this tool, so a section whose
+    # entire body is a code example has no prose to report, by design.
+    body = "## 6. Test Requirements\n\n```\nalpha\n```\n"
+
+    output = measure(body).output
+
+    assert summary(output, "NOROW") == "1"
+
+
+def test_a_test_requirements_heading_under_an_alternate_spelling_reports_norow_zero(
+    measure,
+) -> None:
+    output = measure("## Testing Strategy\n\nalpha\n").output
+
+    assert summary(output, "NOROW") == "0"
+
+
+def test_an_alternate_section_six_spelling_still_scans_for_identifiers(measure) -> None:
+    # The corpus resolves slot 6 under other spellings too; a scan keyed on heading text
+    # rather than on the resolved slot would leave these unscanned.
+    output = measure("## Testing Strategy\n\nCovers test_login_flow end to end.\n").output
+
+    assert summary(output, "TESTNAMES") == "1"
+
+
+def test_two_test_requirements_headings_each_scan_independently_for_identifiers(
+    measure,
+) -> None:
+    # A scan that stops at the first slot-6 section, or reads only the last one, would
+    # still report NOROW: 0 here — the fixture needs an identifier in each section to
+    # tell "both scanned" from "one scanned, one merely registered".
+    body = (
+        "## 6. Test Requirements\n\nSee test_alpha_flow here.\n\n"
+        "## 6. Test Requirements\n\nSee test_beta_flow here.\n"
+    )
+
+    output = measure(body).output
+
+    assert summary(output, "NOROW") == "0"
+    assert summary(output, "TESTNAMES") == "2"
+
+
+def test_norow_ignores_whether_slot_five_is_present(measure) -> None:
+    # Slot 5 is outside this count: only an absent or unresolvable slot 6 blocks it.
+    body = "## 5. Detailed Design\n\nsome design words.\n\n## 6. Test Requirements\n\nalpha\n"
+
+    output = measure(body).output
+
+    assert summary(output, "NOROW") == "0"
+
+
+def test_a_document_with_a_test_identifier_hit_still_has_seven_field_rows(measure) -> None:
+    # A label missing from either skip list collapses a summary or detail line to one field.
+    body = (
+        "## 5. Detailed Design\nalpha beta\n\n## 6. Test Requirements\n\n"
+        "| Case | Covers |\n|---|---|\n| test_login_flow | auth |\n"
+    )
+
+    output = measure(body).output
+
+    assert_seven_field_rows(output)
+    assert summary(output, "TESTNAMES") == "1"

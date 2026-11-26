@@ -56,7 +56,7 @@ fi
 # skips itself shows up as a count mismatch instead of a green run — the sibling suite
 # (verify-workflow-safety.sh) added this counter for the same reason; this suite had none,
 # which is finding T3 in planning/genai-automations/appendix-page-type.
-EXPECTED_TESTS=112
+EXPECTED_TESTS=116
 
 PASS=0
 FAIL=0
@@ -982,14 +982,41 @@ metric() { printf '%s\n' "$1" | $GREP -m1 "^$2:" | awk '{print $2}'; }
 tmpl_out=$(doc-metrics "$DESIGN_TEMPLATE" 2>&1); tmpl_rc=$?
 bad=""
 [ "$tmpl_rc" -eq 0 ] || bad="doc-metrics exited $tmpl_rc; "
-for counter in COST MISSES FROM UNTAGGED REGISTER; do
+# The counter list is the source of truth for the result strings below — a counter added
+# here without a sibling edit elsewhere still makes this loop catch it, but the message
+# itself must not go on saying "seven" once an eighth joins.
+i1_counters=(COST MISSES FROM UNTAGGED REGISTER TESTNAMES NOROW)
+for counter in "${i1_counters[@]}"; do
     v=$(metric "$tmpl_out" "$counter")
     [ "$v" = "0" ] || bad="$bad$counter=${v:-<no line>}; "
 done
+# L-B: ${#i1_counters[@]} is derived from the list it describes, so "all N counters" is
+# true however short the list is — a counter added to render() and never added here would
+# be uncovered with nothing red. Read the tool's own summary labels from the measured
+# output instead, and require each to be asserted-zero above or declared exempt.
+# CEILING and UNSLOTTED are exempt: CEILING can legitimately turn non-zero as a healthy
+# template grows, and UNSLOTTED is already non-zero on the shipped template (its own
+# preamble and Writing Rules section carry no template slot).
+i1_exempt=(CEILING UNSLOTTED)
+while IFS= read -r label; do
+    [ -n "$label" ] || continue
+    exempted=0
+    for c in "${i1_counters[@]}" "${i1_exempt[@]}"; do
+        [ "$label" = "$c" ] && exempted=1 && break
+    done
+    [ "$exempted" -eq 1 ] \
+        || bad="${bad}summary label $label is neither asserted zero above nor declared exempt; "
+done < <(awk '/^REGISTER:/{f=1} f' <<<"$tmpl_out" | $GREP -oE '^[A-Z][A-Z0-9_]*:' | tr -d ':')
+# L3: '^[A-Z]+:' fails open on a counter spelled with a digit or underscore (NOROW2:,
+# NO_ROW:) — neither asserted zero nor flagged — and fails loud on an all-caps section
+# heading ending in a colon, which the table prints before the summary block below. Widened
+# to '^[A-Z][A-Z0-9_]*:' and bound to the summary block (from the first 'REGISTER:' line
+# onward), which the table and any detail blocks above it never reach.
+i1_desc="the shipped DESIGN-TEMPLATE.md reports zero on all ${#i1_counters[@]} design-field/register/abstraction counters, and every summary label the tool prints is either asserted here or declared exempt"
 if [ -z "$bad" ]; then
-    pass "the shipped DESIGN-TEMPLATE.md reports zero on all five design-field/register counters"
+    pass "$i1_desc"
 else
-    fail "the shipped DESIGN-TEMPLATE.md reports zero on all five design-field/register counters" \
+    fail "$i1_desc" \
          "$bad$(printf '\n%s' "$tmpl_out" | tail -8)"
 fi
 
@@ -1092,6 +1119,272 @@ if [ "$agent_reg" = "0" ]; then
 else
     fail "the agent doc publishing the detector list does not trip its own detector" \
          "REGISTER=${agent_reg:-<no line>} :: $(printf '%s\n' "$agent_out" | tail -8)"
+fi
+
+DESIGN_CMD="$CLAUDE/commands/design.md"
+VERIFY_DOCS_CMD="$CLAUDE/commands/verify-docs.md"
+anchor="the query, not the result"
+
+# Word-to-number/ordinal helpers shared by I7 (read-item count) and I10 (kind count) below —
+# both pin a declared count against a bullet list the suite counts independently, the same
+# idiom /ticket's d_at-adjacent block below uses for fix-loop-round/SKILL.md's obligation count.
+word2num() { case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    one) echo 1;; two) echo 2;; three) echo 3;; four) echo 4;; five) echo 5;;
+    six) echo 6;; seven) echo 7;; eight) echo 8;; nine) echo 9;; ten) echo 10;; *) echo 0;; esac; }
+word2ord() { case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    first) echo 1;; second) echo 2;; third) echo 3;; fourth) echo 4;; fifth) echo 5;;
+    sixth) echo 6;; seventh) echo 7;; eighth) echo 8;; ninth) echo 9;; tenth) echo 10;; *) echo 0;; esac; }
+
+# I7: /verify-docs' Step 2 read-item and Step 3 blocker 11 both exist for TESTNAMES/NOROW,
+# scoped to the design.md run and naming the Writing Rules entry they enforce, and the
+# read-item/mechanical/judgement counts in the lead-in sentence are derived and compared
+# against the item list rather than pinned as a fixed sentence — adding a fifth read-item
+# without moving all three must leave the fourth misreported as mechanical.
+i7_bad=""
+step2_lead=$($GREP -oE 'Read (one|two|three|four|five|six|seven|eight|nine|ten) things from the output\. The first (one|two|three|four|five|six|seven|eight|nine|ten) are mechanical; only the (first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth) needs judgement:' "$VERIFY_DOCS_CMD" || true)
+n_step2_lead=$(printf '%s\n' "$step2_lead" | $GREP -c . || true)
+if [ "$n_step2_lead" -ne 1 ]; then
+    i7_bad="${i7_bad}found $n_step2_lead 'Read N things from the output...' lead-in sentence(s), want exactly 1; "
+elif ! awk '/^Read (one|two|three|four|five|six|seven|eight|nine|ten) things from the output\./{f=1;next} f&&/^\*\*Spec fact scan\.\*\*/{found=1;exit} END{exit !found}' "$VERIFY_DOCS_CMD"; then
+    # M-C: existence-after-start, not a bare grep for the terminator — a hoisted or
+    # renamed '**Spec fact scan.**' would otherwise leave the range below silently open
+    # to EOF (T7/FR-8 above use this same probe).
+    i7_bad="${i7_bad}Step 2 list terminator '**Spec fact scan.**' not found after the lead-in — the list would silently widen to EOF; "
+else
+    step2_total=$(word2num "$(printf '%s' "$step2_lead" | awk '{print $2}')")
+    step2_mech=$(word2num "$(printf '%s' "$step2_lead" | awk '{print $9}')")
+    step2_judge=$(word2ord "$(printf '%s' "$step2_lead" | awk '{print $14}')")
+    # L-A: widened from '^- \*\*' to the file's sibling bullet shape, so an item added
+    # indented, numbered, or without the bold opener is still counted.
+    # L5: also counts a markerless bold lead-in paragraph ('**Fifth item.** …', this
+    # corpus's commonest rule shape besides a list marker) — the one shape the marker-only
+    # pattern above still missed.
+    step2_items=$(awk '/^Read (one|two|three|four|five|six|seven|eight|nine|ten) things from the output\./{f=1;next} f&&/^\*\*Spec fact scan\.\*\*/{exit} f' "$VERIFY_DOCS_CMD" \
+        | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +|^\*\*[A-Z]' || true)
+    [ "$step2_total" -eq "$step2_items" ] \
+        || i7_bad="${i7_bad}lead-in declares $step2_total read-item(s) but the Step 2 list carries $step2_items; "
+    [ "$step2_mech" -eq "$((step2_total - 1))" ] \
+        || i7_bad="${i7_bad}lead-in's mechanical count ($step2_mech) is not total-minus-one ($((step2_total - 1))); "
+    [ "$step2_judge" -eq "$step2_total" ] \
+        || i7_bad="${i7_bad}lead-in's judgement ordinal does not name the last of $step2_total item(s); "
+fi
+
+# Bound to the read-item's own opener, not to a free TESTNAMES:/NOROW: co-occurrence: that
+# looser form also matches blocker 11 below, so a scope word deleted from the read-item alone
+# still reads present — borrowed from the blocker-11 line that carries the same two tokens.
+readitem_opener='`TESTNAMES:` and `NOROW:`'
+n_readitem=$($GREP -cF -- "$readitem_opener" "$VERIFY_DOCS_CMD" || true)
+# Declared up front, not only inside the else branch, so I9 below can read it under
+# `set -u` even on a run where this opener was not found.
+readitem=""
+if [ "$n_readitem" -ne 1 ]; then
+    i7_bad="${i7_bad}read-item opener occurs $n_readitem time(s), want exactly 1; "
+else
+    readitem=$($GREP -F -- "$readitem_opener" "$VERIFY_DOCS_CMD")
+    printf '%s' "$readitem" | $GREP -q 'design\.md' || i7_bad="${i7_bad}read-item not scoped to the design.md run; "
+    printf '%s' "$readitem" | $GREP -q 'Writing Rules' || i7_bad="${i7_bad}read-item does not name the Writing Rules entry; "
+    printf '%s' "$readitem" | $GREP -q 'verify-config-consistency\.sh' || i7_bad="${i7_bad}read-item carries no disclosure sentence; "
+    printf '%s' "$readitem" | $GREP -qF -- "$anchor" || i7_bad="${i7_bad}read-item does not keep the phrase '$anchor'; "
+    # M2: design §5.5/§6 require both counters classified as blockers OUTSIDE the
+    # design-field table — checked separately from scope/naming above, since
+    # reclassifying either counter as a warning in Step 2 stayed green without this.
+    printf '%s' "$readitem" | $GREP -qF 'must both be 0' \
+        || i7_bad="${i7_bad}read-item does not state both counters must be 0; "
+    printf '%s' "$readitem" | $GREP -qF 'blockers, outside the design-field table' \
+        || i7_bad="${i7_bad}read-item does not classify both counters as blockers outside the design-field table; "
+fi
+# L-E: selected by content (a numbered line naming TESTNAMES) rather than by ordinal —
+# '^11\.' hijacks on any earlier column-0 numbered list reaching 11, and reds on a
+# harmless renumbering that changes no rule.
+# L4: content selection alone has no occurrence guard — a decoy column-0 numbered line
+# naming TESTNAMES anywhere in blockers 1-10 would hijack -m1's extraction and the five
+# state greps below would then grade the decoy instead. Counted first, as I7 already does
+# for readitem_opener above.
+n_blocker11=$($GREP -cE '^[0-9]+\..*TESTNAMES' "$VERIFY_DOCS_CMD" || true)
+if [ "$n_blocker11" -ne 1 ]; then
+    i7_bad="${i7_bad}found $n_blocker11 numbered blocker(s) naming TESTNAMES, want exactly 1; "
+    blocker11=""
+else
+    blocker11=$($GREP -E '^[0-9]+\..*TESTNAMES' "$VERIFY_DOCS_CMD")
+    # Each state checked separately — an alternation here passes on naming only one, and
+    # blocker 11's reason text is entirely about NOROW, so a realistic trim that drops
+    # TESTNAMES from the blocker survives an alternation unnoticed.
+    printf '%s' "$blocker11" | $GREP -q 'TESTNAMES' || i7_bad="${i7_bad}blocker does not name TESTNAMES; "
+    printf '%s' "$blocker11" | $GREP -q 'NOROW' || i7_bad="${i7_bad}blocker does not name NOROW; "
+    printf '%s' "$blocker11" | $GREP -qi 'renamed' || i7_bad="${i7_bad}blocker reason omits the renamed-heading state; "
+    printf '%s' "$blocker11" | $GREP -qi 'absent' || i7_bad="${i7_bad}blocker reason omits the absent-section state; "
+    printf '%s' "$blocker11" | $GREP -qi 'resolved-but-empty' || i7_bad="${i7_bad}blocker reason omits the resolved-but-empty state; "
+fi
+if [ -z "$i7_bad" ]; then
+    pass "verify-docs.md reads TESTNAMES/NOROW as one blocker read-item carrying the anchor phrase and the must-both-be-0/outside-the-design-field-table wording, the numbered blocker names both counters and all three missing-row states, and the read-item/mechanical/judgement counts match the Step 2 list"
+else
+    fail "verify-docs.md reads TESTNAMES/NOROW as one blocker read-item carrying the anchor phrase and the must-both-be-0/outside-the-design-field-table wording, the numbered blocker names both counters and all three missing-row states, and the read-item/mechanical/judgement counts match the Step 2 list" "$i7_bad"
+fi
+
+# I8: the sixth Writing Rule's anchor phrase reaches both DESIGN-TEMPLATE.md and /design
+# Step 4 verbatim, exactly once each, each carrying its own disclosure sentence and (on the
+# design.md side) both new counter labels — Step 4 is the delivery path FR-4 exists for, so a
+# second, undisclosed copy anywhere in the file, including outside Step 4, is the failure mode
+# a whole-file grep with no occurrence count and no span cannot see.
+i8_bad=""
+# M1 (template side): a whole-file occurrence count passes when the rule is relocated out
+# of '## Writing Rules' into any other section, since nothing moved the count's scope with
+# it. Bound to the span instead, with the same existence-after-start probe the other spans
+# in this block carry, so a hoisted or renamed '---' separator cannot widen it to EOF.
+if ! awk '/^## Writing Rules/{f=1;next} f&&/^---$/{found=1;exit} END{exit !found}' "$DESIGN_TEMPLATE"; then
+    i8_bad="${i8_bad}DESIGN-TEMPLATE.md: span terminator '---' not found after '## Writing Rules' — the span would silently widen to EOF; "
+    tmpl_wr_span=""
+else
+    tmpl_wr_span=$(awk '/^## Writing Rules/{f=1;next} f&&/^---$/{exit} f' "$DESIGN_TEMPLATE")
+fi
+n_tmpl_anchor=$($GREP -oF -- "$anchor" "$DESIGN_TEMPLATE" | wc -l | tr -d ' ')
+if ! $GREP -qF -- '### Step 4:' "$DESIGN_CMD"; then
+    i8_bad="${i8_bad}commands/design.md: span start '### Step 4:' not found; "
+    step4_span=""
+elif ! awk '/^### Step 4:/{f=1;next} f&&/^### Step 5:/{found=1;exit} END{exit !found}' "$DESIGN_CMD"; then
+    # M-C: existence-after-start, not a bare grep — a hoisted or renamed '### Step 5:'
+    # would otherwise leave this range silently open to EOF. Terminated on '### Step 5:'
+    # rather than '## Output': the latter sits past Step 5, so a bullet relocated out of
+    # Step 4 into Step 5 stayed inside the old span and read as present.
+    i8_bad="${i8_bad}commands/design.md: span terminator '### Step 5:' not found after '### Step 4:' — the span would silently widen to EOF; "
+    step4_span=""
+else
+    step4_span=$(awk '/^### Step 4:/{f=1;next} f&&/^### Step 5:/{exit} f' "$DESIGN_CMD")
+fi
+n_cmd_anchor=$(printf '%s\n' "$step4_span" | $GREP -oF -- "$anchor" | wc -l | tr -d ' ')
+# L1: grep -cF counts matching LINES, so a second undisclosed copy appended to the same
+# line as the real one stayed invisible — the failure mode this comment's own purpose
+# names. Counted via grep -oF | wc -l instead, which counts true occurrences. The want
+# value is 2, not 1: each disclosure sentence below deliberately quotes the anchor
+# phrase a second time to name what it pins, so 2 is the legitimate shape and a THIRD,
+# undisclosed copy anywhere in the span is what this now catches.
+[ "$n_tmpl_anchor" -eq 2 ] \
+    || i8_bad="${i8_bad}anchor phrase occurs $n_tmpl_anchor time(s) in DESIGN-TEMPLATE.md, want exactly 2 (the rule plus its own disclosure sentence); "
+[ "$n_cmd_anchor" -eq 2 ] \
+    || i8_bad="${i8_bad}anchor phrase occurs $n_cmd_anchor time(s) inside /design Step 4, want exactly 2 (the clause plus its own disclosure sentence); "
+
+# H-A: pin each file's operative clause by a literal its own disclosure sentence does not
+# contain — the disclosure names the clause descriptively rather than re-quoting it, so
+# this count stays 1 and is not conflated with the anchor's deliberate double occurrence
+# above. Counted via grep -oF | wc -l, not matching lines, so deleting just the rule's
+# content reddens even though the line that held it still exists.
+tmpl_operative='Name the query, not the result'
+cmd_operative='derive is named as the query, not the result'
+n_tmpl_op=$(printf '%s\n' "$tmpl_wr_span" | $GREP -oF -- "$tmpl_operative" | wc -l | tr -d ' ')
+n_cmd_op=$(printf '%s\n' "$step4_span" | $GREP -oF -- "$cmd_operative" | wc -l | tr -d ' ')
+[ "$n_tmpl_op" -eq 1 ] \
+    || i8_bad="${i8_bad}operative clause occurs $n_tmpl_op time(s) within ## Writing Rules in DESIGN-TEMPLATE.md, want exactly 1 — zero means deleted or relocated out of the section, more than one means duplicated; "
+[ "$n_cmd_op" -eq 1 ] \
+    || i8_bad="${i8_bad}operative clause occurs $n_cmd_op time(s) inside /design Step 4, want exactly 1 — zero means deleted or relocated out of the step, more than one means duplicated; "
+
+if [ "$n_tmpl_anchor" -eq 2 ]; then
+    tmpl_anchor_line=$($GREP -F -- "$anchor" "$DESIGN_TEMPLATE")
+    printf '%s' "$tmpl_anchor_line" | $GREP -q 'verify-config-consistency\.sh' \
+        || i8_bad="${i8_bad}DESIGN-TEMPLATE.md's anchor sentence carries no disclosure sentence; "
+fi
+if [ "$n_cmd_anchor" -eq 2 ]; then
+    cmd_anchor_line=$(printf '%s\n' "$step4_span" | $GREP -F -- "$anchor")
+    printf '%s' "$cmd_anchor_line" | $GREP -q 'verify-config-consistency\.sh' \
+        || i8_bad="${i8_bad}commands/design.md's anchor sentence carries no disclosure sentence; "
+    printf '%s' "$cmd_anchor_line" | $GREP -qF 'TESTNAMES' \
+        || i8_bad="${i8_bad}commands/design.md's reporting clause does not name TESTNAMES; "
+    printf '%s' "$cmd_anchor_line" | $GREP -qF 'NOROW' \
+        || i8_bad="${i8_bad}commands/design.md's reporting clause does not name NOROW; "
+fi
+if [ -z "$i8_bad" ]; then
+    pass "the sixth Writing Rule's operative clause reaches DESIGN-TEMPLATE.md's Writing Rules and /design Step 4 exactly once each, the anchor phrase is pinned twice at each site (the rule plus its own disclosure), each site's disclosure names verify-config-consistency.sh, and Step 4's clause names both counters"
+else
+    fail "the sixth Writing Rule's operative clause reaches DESIGN-TEMPLATE.md's Writing Rules and /design Step 4 exactly once each, the anchor phrase is pinned twice at each site (the rule plus its own disclosure), each site's disclosure names verify-config-consistency.sh, and Step 4's clause names both counters" "$i8_bad"
+fi
+
+# I9: the template entry names architecture/SKILL.md and the TESTNAMES label, and carries
+# none of the pointed-at section's three prohibition forms within its own span — two of
+# those literals sit in the template's own §5/§6 guidance, so the check binds to the entry's
+# own line, not the file — and the verify-docs.md read-item names the entry back.
+i9_bad=""
+if [ "$n_tmpl_anchor" -ne 2 ]; then
+    i9_bad="no single DESIGN-TEMPLATE.md entry carries the anchor phrase at its expected count (found $n_tmpl_anchor, want 2); "
+else
+    entry="$tmpl_anchor_line"
+    printf '%s' "$entry" | $GREP -q 'architecture/SKILL\.md' \
+        || i9_bad="${i9_bad}entry does not name architecture/SKILL.md; "
+    printf '%s' "$entry" | $GREP -q 'TESTNAMES' || i9_bad="${i9_bad}entry does not name the TESTNAMES counter; "
+    printf '%s' "$entry" | $GREP -qF 'not implementations' \
+        && i9_bad="${i9_bad}entry restates the 'not implementations' parenthetical; "
+    printf '%s' "$entry" | $GREP -qF 'not file names' \
+        && i9_bad="${i9_bad}entry restates the 'not file names' parenthetical; "
+    printf '%s' "$entry" | $GREP -qF 'Files-changed tables are **not** part of design docs' \
+        && i9_bad="${i9_bad}entry restates the Files-changed tables sentence; "
+fi
+# L2: the former readback conjunct here was tautological — $readitem is selected by the
+# literal `TESTNAMES:` and `NOROW:`, which already contains TESTNAMES — and its other half
+# duplicated an assertion I7 already makes on the same extracted line (readitem's own
+# 'Writing Rules' check above). Deleted rather than bound, since binding left a dead check.
+#
+# M2: FR-2's negative half (checked above) is asserted; nothing asserted the positive
+# half — that the pointed-at section still carries the prohibition it backs. Checked
+# directly against $ARCH_CLASS, with its own existence-after-start probe, rather than
+# reusing the template's negative-grep variables above, since this probes a different
+# file for presence rather than absence.
+if ! $GREP -q '^## Required Design Doc Sections' "$ARCH_CLASS"; then
+    i9_bad="${i9_bad}architecture/SKILL.md no longer carries '## Required Design Doc Sections'; "
+elif ! awk '/^## Required Design Doc Sections/{f=1;next} f&&/^## Architecture Reviews/{found=1;exit} END{exit !found}' "$ARCH_CLASS"; then
+    i9_bad="${i9_bad}architecture/SKILL.md: span terminator '## Architecture Reviews' not found after the heading — the span would silently widen to EOF; "
+else
+    arch_sections_span=$(awk '/^## Required Design Doc Sections/{f=1;next} f&&/^## Architecture Reviews/{exit} f' "$ARCH_CLASS")
+    prohibition_survives=0
+    printf '%s' "$arch_sections_span" | $GREP -qF 'not implementations' && prohibition_survives=1
+    printf '%s' "$arch_sections_span" | $GREP -qF 'not file names' && prohibition_survives=1
+    printf '%s' "$arch_sections_span" | $GREP -qF 'Files-changed tables are **not** part of design docs' && prohibition_survives=1
+    [ "$prohibition_survives" -eq 1 ] \
+        || i9_bad="${i9_bad}architecture/SKILL.md's Required Design Doc Sections no longer carries any of the three prohibition forms the template entry points at; "
+fi
+if [ -z "$i9_bad" ]; then
+    pass "the template entry names architecture/SKILL.md and TESTNAMES, carries none of the pointed-at section's three prohibition forms, and architecture/SKILL.md's Required Design Doc Sections still carries the heading and at least one prohibition form"
+else
+    fail "the template entry names architecture/SKILL.md and TESTNAMES, carries none of the pointed-at section's three prohibition forms, and architecture/SKILL.md's Required Design Doc Sections still carries the heading and at least one prohibition form" "$i9_bad"
+fi
+
+# I10: the agent doc's counter-kind lead-in's declared numeral matches the bullet list it
+# summarises, and the fourth kind bullet naming TESTNAMES/NOROW is found by its own
+# list-marker shape ("- **"), scoped to that list — a shape the Quality Checks clearance
+# item cannot match, since it opens "- [ ] For a design doc," — so deleting the kind bullet
+# cannot fall through to the clearance item and still report present.
+i10_bad=""
+kinds_lead=$($GREP -oE '(One|Two|Three|Four|Five|Six|Seven|Eight|Nine) kinds of counter, with different scopes:' "$AGENT_DOC" || true)
+n_kinds_lead=$(printf '%s\n' "$kinds_lead" | $GREP -c . || true)
+if [ "$n_kinds_lead" -ne 1 ]; then
+    i10_bad="${i10_bad}found $n_kinds_lead 'N kinds of counter, with different scopes:' lead-in(s), want exactly 1; "
+elif ! awk '/kinds of counter, with different scopes:/{f=1;next} f&&/^[ \t]*A non-zero exit is not a result/{found=1;exit} END{exit !found}' "$AGENT_DOC"; then
+    # M-C: existence-after-start, not a bare grep — a hoisted or renamed terminator would
+    # otherwise leave this range silently open to EOF.
+    i10_bad="${i10_bad}span terminator 'A non-zero exit is not a result' not found after the lead-in — the kind list would silently widen to EOF; "
+else
+    declared_kinds=$(word2num "$(printf '%s' "$kinds_lead" | awk '{print $1}')")
+    kinds_span=$(awk '/kinds of counter, with different scopes:/{f=1;next} f&&/^[ \t]*A non-zero exit is not a result/{exit} f' "$AGENT_DOC")
+    # L-A: widened from '^[ \t]*- \*\*' to the file's sibling bullet shape, so a kind
+    # added indented, numbered, or without the bold opener is still counted.
+    # L5: also counts a markerless bold lead-in paragraph, the shape the marker-only
+    # pattern above still missed.
+    n_kinds=$(printf '%s\n' "$kinds_span" | $GREP -cE '^[ ]*([0-9]+\.|[-*+]) +|^\*\*[A-Z]' || true)
+    [ "$n_kinds" -eq "$declared_kinds" ] \
+        || i10_bad="${i10_bad}lead-in declares $declared_kinds kind(s) but the list carries $n_kinds bullet(s); "
+    # L18: '^[ ]*', matching the sibling patterns above — GNU grep expands \t to a tab
+    # here, not the literal backslash-t a POSIX-only grep would need, so '[ \t]' asked
+    # for a wider class than this repo's tooling ever runs against.
+    kind_bullet=$(printf '%s\n' "$kinds_span" | $GREP -E '^[ ]*- \*\*' | $GREP -F 'TESTNAMES' | $GREP -F 'NOROW' || true)
+    n_kind_bullet=$(printf '%s\n' "$kind_bullet" | $GREP -c . || true)
+    [ "$n_kind_bullet" -eq 1 ] \
+        || i10_bad="${i10_bad}found $n_kind_bullet counter-kind bullet(s) naming both TESTNAMES and NOROW, want exactly 1; "
+fi
+clearance=$($GREP -E '^- \[ \] For a design doc, `TESTNAMES`' "$AGENT_DOC" | $GREP -F 'NOROW' || true)
+n_clearance=$(printf '%s\n' "$clearance" | $GREP -c . || true)
+[ "$n_clearance" -eq 1 ] \
+    || i10_bad="${i10_bad}found $n_clearance Quality Checks clearance item(s) naming both counters, want exactly 1; "
+if [ -z "$i10_bad" ]; then
+    pass "architecture-research-planner.md's counter taxonomy carries a fourth kind (TESTNAMES/NOROW) found by its own bullet marker, its clearance item, and a lead-in whose kind count matches the bullet list"
+else
+    fail "architecture-research-planner.md's counter taxonomy carries a fourth kind (TESTNAMES/NOROW) found by its own bullet marker, its clearance item, and a lead-in whose kind count matches the bullet list" "$i10_bad"
 fi
 
 # === Discovered-work scope ask (mechanism-proportionality step 3a) =========================
@@ -3545,9 +3838,9 @@ if [ "$n_sentences" -eq 0 ]; then
 elif [ "$n_sentences" -gt 1 ]; then
     bad="${bad}found $n_sentences count sentences in fix-loop-round/SKILL.md, want exactly 1 — an earlier one would shadow the real one; "
 else
-    word2num() { case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
-        one) echo 1;; two) echo 2;; three) echo 3;; four) echo 4;; five) echo 5;;
-        six) echo 6;; seven) echo 7;; eight) echo 8;; nine) echo 9;; *) echo 0;; esac; }
+    # Reuses the word2num() declared once near I7/I10 above, rather than a second,
+    # narrower copy — a shell function definition is global, so the later of two
+    # same-named definitions silently wins for every caller after it.
     denom=$(word2num "$(printf '%s' "$count_sentence" | awk '{print $4}')")
     [ "$denom" -eq "$n_oblig" ] \
         || bad="${bad}fix-loop-round/SKILL.md declares $denom obligations but ## Caller Must Specify lists $n_oblig; "

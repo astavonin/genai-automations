@@ -1,4 +1,5 @@
-"""Per-section prose-word, defensive-register, and design-field counts for Markdown.
+"""Per-section prose-word, defensive-register, design-field, and test-identifier counts
+for Markdown.
 
 The unit is PROSE WORDS: words outside fenced blocks and headings, plus table cell
 text at half weight. ``wc -l`` misleads on these documents because the repo bans
@@ -35,6 +36,27 @@ Known limits, none of which affect a document following DESIGN-TEMPLATE.md:
   - Blockquote nesting depth is not tracked, only whether the fence was quoted at all, so
     a fence opened at ">>" stays open at ">" and a line visible at the outer depth reads
     as fenced content.
+  - A test identifier named in a Test Requirements heading itself, not its body, is
+    unseen: both _open_subheading() (### and deeper) and _open_section() (## and #) scan
+    heading text for register hits but never call the field scan, so both
+    "### test_client_contract" and "## 6. Test Requirements — test_login_flow" are
+    invisible while the same text in a bullet beneath either heading is caught.
+  - Non-Python identifier shapes — a Go TestX, a C++ TEST_F, a Rust #[test] attribute —
+    are invisible: the pattern is Python-shaped, not a per-language census.
+  - Test Requirements relocated under a stub heading still reports TESTNAMES: 0 — the real
+    identifiers sit elsewhere, under a heading the resolver cannot slot, so they are never
+    scanned. NOROW no longer reads this case as clean: slot 6 must carry prose, not merely
+    a registered row, so a bare "## 6. Test Requirements" with nothing under it reports
+    NOROW: 1.
+  - A heading the resolver slots to 6 that is not the real Test Requirements section covers
+    for a renamed one: any H1/H2 containing "test", "tests" or "testing" populates the slot,
+    so "## Test Harness Changes" with prose beneath it satisfies the prose test while the
+    real section sits unslotted and unscanned. The first H1 is excluded from slot
+    resolution, so a document title naming "test" does not cover.
+  - A Test Requirements section whose entire body sits inside a fenced block reports
+    NOROW: 1, same as an empty one: fenced content is never prose anywhere in this tool,
+    so a code example with no surrounding sentence genuinely has none. Write at least one
+    sentence of prose outside the fence.
 """
 
 from __future__ import annotations
@@ -109,6 +131,15 @@ REGISTER_DETECTORS: tuple[str, ...] = (
 )
 
 REGISTER_DETECTOR_LIST: str = "|".join(REGISTER_DETECTORS)
+
+# Left-bounded so an ordinary word ending "...contest_ok" must not match. Case sensitivity
+# lives entirely in the literal "test_" head — TestX, TEST_F, and a Rust #[test] attribute
+# never reach it (out of scope by design, see the module docstring's Known limits), so the
+# suffix admits any case and still catches an acronym-cased name like test_HTTPClient_retries.
+_TEST_IDENTIFIER = re.compile(r"(?<!\w)test_[A-Za-z0-9_]{3,}")
+_TEST_IDENTIFIER_REASON = (
+    "names a test identifier in Test Requirements — name the behaviour it covers instead"
+)
 
 # The From: value first-tokens that validate, declared exactly once so a consistency
 # test can read this table instead of re-deriving the accepted set from the validator.
@@ -250,8 +281,10 @@ class Report:
     rows: list[SectionRow] = field(default_factory=list)
     register_hits: list[Hit] = field(default_factory=list)
     field_hits: list[Hit] = field(default_factory=list)
+    identifier_hits: list[Hit] = field(default_factory=list)
     slot_words: dict[str, int] = field(default_factory=dict)
     slot_rows: dict[str, int] = field(default_factory=dict)
+    slot_halfwords: dict[str, int] = field(default_factory=dict)
     cost: int = 0
     misses: int = 0
     from_tags: int = 0
@@ -291,6 +324,32 @@ class Report:
             if self.slot_words.get(slot, 0) > ceiling
         )
         return over
+
+    @property
+    def missing_test_requirements_prose(self) -> int:
+        """Report whether slot 6 (Test Requirements) resolved no prose.
+
+        Reads `slot_halfwords`, the pre-floor tally, not `slot_words`: a single
+        table-cell word is one halfword, which `slot_words`'s `// 2` floor rounds to
+        zero even though the cell holds real content — reading the floored tally here
+        reported a false `NOROW: 1` on such a section. A slot 6 that is wholly a
+        fenced block still reports empty under either tally: fenced content never
+        reaches `_halfwords` at all, by design, so there is no halfword for the floor
+        to lose — the fifth known limit above.
+
+        Three failure modes reach here otherwise: a renamed heading, an absent
+        section, and a heading the resolver DOES slot but that carries no body text —
+        all three leave `slot_halfwords.get("6", 0)` at zero, so one check catches all
+        three rather than needing a separate test per cause. This must block rather
+        than read as a clean zero — unless an unrelated section also resolves to slot
+        6 and carries prose of its own, the fourth known limit above: there the
+        decoy's words make `slot_halfwords["6"]` non-zero, and this property returns 0
+        over a renamed or absent real section. `slot_rows` is not read here:
+        `_register_section()` registers a heading eagerly, so a stub heading already
+        yields a row over no scanned content, and row-presence implies nothing that
+        word-presence does not already decide.
+        """
+        return 0 if self.slot_halfwords.get("6", 0) > 0 else 1
 
     def verdict(self, slot: str) -> str:
         """Return a slot's verdict from its accumulated total, not from one row."""
@@ -460,6 +519,7 @@ class _Analyzer:
         self._seen_title = False
         self._register_hits: list[Hit] = []
         self._field_hits: list[Hit] = []
+        self._identifier_hits: list[Hit] = []
         self._slots: dict[str, str] = {}
         # True while the current section is /research's machine-pasted locator table —
         # see _is_prior_context_section().
@@ -747,6 +807,15 @@ class _Analyzer:
                 self.untagged += 1
                 self._record_field_hit(section, opening_words(raw), _BULLET_UNTAGGED)
 
+    def _scan_slot6_fields(self, raw: str, section: str) -> None:
+        """Record every test identifier named in Test Requirements.
+
+        No mention exemption: every corpus hit measured for this detector is backticked,
+        true and false alike, so a quoted identifier is still a named one and still counts.
+        """
+        for match in _TEST_IDENTIFIER.finditer(raw):
+            self._identifier_hits.append(Hit(section, match.group(0), _TEST_IDENTIFIER_REASON))
+
     def _scan_fields(self, raw: str, section: str) -> None:
         """Check the design fields on one raw line.
 
@@ -760,6 +829,8 @@ class _Analyzer:
             self._scan_slot7_fields(raw)
         elif slot == "3":
             self._scan_slot3_fields(raw, section)
+        elif slot == "6":
+            self._scan_slot6_fields(raw, section)
 
     # --- line dispatch -------------------------------------------------------
 
@@ -904,6 +975,7 @@ class _Analyzer:
             path=self._path,
             register_hits=self._register_hits,
             field_hits=self._field_hits,
+            identifier_hits=self._identifier_hits,
             cost=self.cost,
             misses=self.misses,
             from_tags=self.from_tags,
@@ -916,6 +988,13 @@ class _Analyzer:
             if slot:
                 report.slot_words[slot] = report.slot_words.get(slot, 0) + words
                 report.slot_rows[slot] = report.slot_rows.get(slot, 0) + 1
+                # Pre-floor, unlike slot_words: a single table-cell word (one halfword)
+                # floors to zero words but is still real content, the false positive
+                # missing_test_requirements_prose() below reads this instead of
+                # slot_words to avoid.
+                report.slot_halfwords[slot] = (
+                    report.slot_halfwords.get(slot, 0) + self._halfwords[name]
+                )
         return report
 
 
@@ -1021,6 +1100,13 @@ def render(report: Report) -> str:
     lines.append("")
     lines.append(f"REGISTER: {report.total_register} hit(s)")
     lines.append(f"CEILING: {report.over_ceiling} slot(s) over ceiling")
+    # Printed here, ahead of UNSLOTTED:, so neither reads as a fifth design-field counter —
+    # both block unconditionally and have no legacy population to warn about instead.
+    lines.append(f"TESTNAMES: {len(report.identifier_hits)} hit(s)")
+    lines.append(
+        f"NOROW: {report.missing_test_requirements_prose} — slot 6: "
+        f"{report.slot_rows.get('6', 0)} row(s), {report.slot_words.get('6', 0)} prose word(s)"
+    )
     # A heading that matches no slot has no ceiling, so a large unslotted section is
     # invisible to the length gate. Reported rather than blocked: a design doc
     # legitimately carries feature-specific sections.
@@ -1028,7 +1114,7 @@ def render(report: Report) -> str:
         f"UNSLOTTED: {report.unslotted_sections} section(s) "
         f"holding {report.unslotted_words} word(s)"
     )
-    # The four design-field counters print unconditionally, like the three above, so a
+    # The four design-field counters print unconditionally, like the five above, so a
     # zero reads as checked-and-clean rather than not-checked. This tool states counts,
     # not verdicts — /verify-docs owns the warn-versus-block split.
     lines.append(f"COST: {report.cost} option block(s) or option-less section(s) with no Cost line")
@@ -1042,4 +1128,10 @@ def render(report: Report) -> str:
         lines.append("")
         lines.append("design-field hits (section, locator, reason):")
         lines.extend(f"  {hit.section}\t{hit.locator}\t{hit.reason}" for hit in report.field_hits)
+    if report.identifier_hits:
+        lines.append("")
+        lines.append("test-identifier hits (section, identifier, reason):")
+        lines.extend(
+            f"  {hit.section}\t{hit.locator}\t{hit.reason}" for hit in report.identifier_hits
+        )
     return "\n".join(lines) + "\n"

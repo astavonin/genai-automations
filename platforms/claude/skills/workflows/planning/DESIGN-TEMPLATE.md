@@ -2,6 +2,8 @@
 
 **This section is guidance for the writer. Do not copy it into the design doc** — a `## Writing Rules` heading in a `design.md` is a `/verify-docs` blocker, in the same class as a stray `RESOLVED` marker.
 
+**A rule added here must also be added to `/design` Step 4's enumeration** — that enumeration is the only path reaching the writing agent, so a rule left here alone never reaches an author.
+
 **One statement per fact.** A fact belongs in exactly one place. When you find an argument stated twice, delete the copy — do not relocate it. Relocating inflates: measured on a real compaction pass, moving five arguments out of Detailed Design cost 1,215 words there and added 1,031 to Trade-offs, because the Pros/Cons form is more verbose than the inline sentence it replaced. Never expand an inline paragraph into a Pros/Cons block while moving it.
 
 **Dedup direction: keep the statement at the point of decision, delete the restatement.** Deleting the decision-point copy and keeping the summary strips the fact from where a reader needs it — on one pass a build-cache limit and a CI credential variable survived only in Trade-offs, gone from the two Detailed Design subsections that depended on them.
@@ -9,6 +11,8 @@
 **No self-history.** A design doc describes the design, not its own editing. Cut "previously", "this was changed to", "as noted above", revision narration, and reviewer-round references. One exception: a note explaining a load-bearing numbering gap stays (e.g. "the requirement numbering is non-contiguous — no requirement carries FR-9 or FR-10"), because without it a reader reads the gap as a missing requirement.
 
 **No defensive register.** The rule and its detector list live in `~/.claude/agents/architecture-research-planner.md` → Prose Register. A non-zero register count blocks in `/verify-docs`; the detector list is non-exhaustive, so zero is necessary, not sufficient.
+
+**Name the query, not the result.** A fact a repository query can derive — a file list, a test name — is named as the query, not pasted as its output; the query survives a path moving, the pasted result does not. The prohibition itself lives durably in `~/.claude/skills/domains/architecture/SKILL.md` → Required Design Doc Sections — this rule points there rather than restating it. Test Requirements is the half a flat scan can check: naming a test identifier there blocks as `TESTNAMES` in `/verify-docs`. `tests/verify-config-consistency.sh` keeps the phrase `the query, not the result` pinned here and inside `/design` Step 4's enumeration, and separately pins this rule's own lead-in sentence by occurrence, both bound to `## Writing Rules`. Reword freely around the phrase, but keep it, keep the lead-in intact, keep this disclosure naming `verify-config-consistency.sh`, and re-run the suite afterward.
 
 **Length: a target and a ceiling per section.** Run the tool — it prints both, plus your delta and a verdict per row:
 
