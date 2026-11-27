@@ -34,7 +34,9 @@ Optional context the user may provide:
 
 **Book-article-mode detection.** If the output path resolves under `planning/book/milestone-*/issues/*/` **or** `planning/book/appendix/issues/A<N>-<slug>/` (glob match, full shape required per `page-type/SKILL.md` → "Both globs require the full folder shape" — a child of `appendix/issues/` not starting with `A` + digit does not fire book-article mode; it falls through to the rejection rule below), book-article mode fires. This is the sole detection signal — no other markers (repo-level, user-flag, etc.) are consulted. Rationale: there is no other authoritative signal available to `/write` at invocation time.
 
-**Page type.** Resolve it, and the status file and companion policy that follow from it, here:
+**The rejection below does not key on the `planning/book/` prefix.** A path is "offered as an issue folder" — and so reaches `page-type/SKILL.md` → "Rejection is mandatory" — when its tail matches `*/issues/<something>/`, whatever its prefix: an issue-folder-shaped path outside `planning/book/` (e.g. `planning/streams/npu-gpu/issues/x2-vpu-parallel-sessions/`) is exactly as much an issue folder as one inside it. A path whose tail does not match this shape was never offered as one, and keeps the ordinary non-book draft fallback above.
+
+**Page type.** Resolve it, and the status file and companion policy that follow from it, here — **book-article mode only; a non-book path, including an ordinary draft path, has no page type and skips this paragraph entirely:**
 
 ```
 Read ~/.claude/skills/workflows/page-type/SKILL.md
@@ -42,7 +44,7 @@ Read ~/.claude/skills/workflows/page-type/SKILL.md
 
 Report the resolved page type in the pre-flight report. `<issue-folder>` and `status.md` below mean the resolved paths; where this file spells out the milestone form it is written for readability, not to exclude the appendix. The page type changes which context files step 2 reads and which spec template governs — not the output filename.
 
-If the user's path resolves under `planning/book/` but matches neither glob, stop with the fragment's error text (`page-type/SKILL.md` → "Rejection is mandatory").
+If the path is offered as an issue folder (its tail matches `*/issues/<something>/`) but matches neither glob above, stop with the fragment's error text (`page-type/SKILL.md` → "Rejection is mandatory") — whatever its prefix, not only under `planning/book/`.
 
 In book-article mode, the output filename is `brief.md` (NOT `draft.md`). If the user's path ends in `draft.md`, rewrite the filename to `brief.md` and inform the user of the rewrite in the pre-flight report. No confirmation prompt — the rename is deterministic. If the user's path ends in any other filename besides `brief.md`, use it as-is. Rationale: `draft.md` is reserved for the actual article produced by Web-Claude in the subsequent step.
 
@@ -144,18 +146,18 @@ For an `appendix` page there is no "previous article". Read instead the already-
 Read CLAUDE.local.md
 ```
 
-From the companion repos table (in the book repo root), resolve the local path for the article's part. Confirm the directory exists.
+From the companion repos table (in the book repo root) — keyed by repo name, not by article part (`review-article.md` → Companion repo resolution) — resolve the repo the article notes name, and confirm the directory exists.
 
-**Appendix:** an A-page has no companion repo of its own. Resolve the repo for the part owning most of this page's Blocks column and treat it as **optional context** — an A-page's facts come from kernel documentation, datasheets, specifications, and on-device measurement, not from companion source. A missing repo is not a WARN here — note it in the pre-flight report, set the companion metadata fields to `n/a — appendix page` per step 4, and continue.
+**Appendix:** an A-page has no companion repo of its own. Resolve one only if the dependent articles' notes already name it, and treat it as **optional context** — an A-page's facts come from kernel documentation, datasheets, specifications, and on-device measurement, not from companion source. A missing repo is not a WARN here — note it in the pre-flight report, set the companion metadata fields to `n/a — appendix page` per step 4, and continue.
 
 **Main only.** If `CLAUDE.local.md` is absent or the companion repo directory does not exist, WARN and flag in brief.md §9. Include this minimal template in the WARN message to help with fresh-setup:
 
 ```markdown
 # Companion Repos
 
-| Part | Repo local path | GitHub owner/repo |
-|------|-----------------|-------------------|
-| 05   | ~/projects/g2g-part5 | astavonin/g2g-part5 |
+| Repo | Local path |
+|------|-----------------|
+| pi-bazel | ~/projects/pi-bazel |
 
 # Technical Familiarity
 

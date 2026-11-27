@@ -355,8 +355,17 @@ def spec_kind(text: str) -> str:
 
     C-3: keying on §5's number or title instead lets a spec that lost or retitled §5 read
     as a main spec and skip every check.
+
+    Raises:
+        MeasurementError: the header carries both fields. A venue's own publication-path
+            field can collide with ``**Article:**``, and returning on whichever line is
+            read first would make the resolved kind depend on header order rather than on
+            the document's own contract. Deliberately a different discriminator from
+            ``_RowBuilder.feed``'s duplicate-``**Label:**``-within-a-row check: two
+            distinct kind fields here, one field repeated there.
     """
     fences = FenceTracker()
+    found: set[str] = set()
     for line in text.splitlines():
         marker = fences.feed(line)
         if fences.is_open or marker:
@@ -365,10 +374,15 @@ def spec_kind(text: str) -> str:
             break
         label = field_label(line)
         if label == "Page":
-            return "appendix"
-        if label == "Article":
-            return "main"
-    return ""
+            found.add("appendix")
+        elif label == "Article":
+            found.add("main")
+    if len(found) > 1:
+        raise MeasurementError(
+            "spec header carries both **Page:** and **Article:**",
+            "exactly one of the two discriminator fields must select the spec's kind",
+        )
+    return next(iter(found), "")
 
 
 def _unindented(line: str) -> str:

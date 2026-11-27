@@ -29,7 +29,7 @@ Three-way planning state update (APPROVED / CHANGES REQUESTED / REJECTED) follow
 
 **Skip condition.** If `issue_folder` matches the appendix issue-folder form `planning/book/appendix/issues/A<N>-<slug>/` (per `~/.claude/skills/workflows/page-type/SKILL.md` → Resolution), skip this step and Step 2, and go directly to Step 3 (push). Its review-gate record is the `**Status:**` marker `/review-article` already writes into `article-review.md`; no separate planning-state file exists for it.
 
-Otherwise, parse `<goal>` and `milestone-XX` from `issue_folder` itself and derive `planning/<goal>/milestone-XX/status.md` — not from `planning/progress.md`, which `page-type/SKILL.md` → "Obtaining the path" states can never resolve an appendix page, so it is not a fallback path source here:
+Otherwise, parse `<goal>` and `milestone-XX` from `issue_folder` itself and derive `planning/<goal>/milestone-XX/status.md` — not from `planning/progress.md`, which `page-type/SKILL.md` → "Obtaining the path" states can resolve no article, main or appendix, so it is not a fallback path source here:
 
 Note: `milestone-XX` is a pattern — substitute the actual folder name, including any name suffix (e.g., `milestone-01-foundations`). For the article workflow, `goal=book` and the full folder name (with suffix) must be used.
 

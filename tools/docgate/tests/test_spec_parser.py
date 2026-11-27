@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from conftest import CLEAN_SPEC, load_spec
+from docgate.metrics import MeasurementError
 from docgate.specverify import (
     SpecDocument,
     backtick_spans,
@@ -72,6 +73,24 @@ def test_a_page_field_after_the_first_section_is_not_the_header() -> None:
     body = "# Spec\n\n**Status:** Draft\n\n## 1. Scope\n\n**Page:** `A3-thing`\n"
 
     assert spec_kind(body) == ""
+
+
+def test_a_header_with_both_kind_fields_raises_rather_than_picking_one() -> None:
+    # A venue's publication-path field can collide with **Article:**; returning on
+    # whichever line comes first would make the resolved kind depend on header order.
+    body = "# Spec\n\n**Page:** `A3-thing`\n\n**Article:** `docs/thing.md`\n"
+
+    with pytest.raises(MeasurementError) as excinfo:
+        spec_kind(body)
+    assert "Page" in excinfo.value.message
+    assert "Article" in excinfo.value.message
+
+
+def test_a_header_with_both_kind_fields_raises_regardless_of_order() -> None:
+    body = "# Spec\n\n**Article:** `04-thing`\n\n**Page:** `A3-thing`\n"
+
+    with pytest.raises(MeasurementError):
+        spec_kind(body)
 
 
 def test_contiguous_row_ids_report_no_break() -> None:

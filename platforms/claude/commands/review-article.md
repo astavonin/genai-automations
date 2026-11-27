@@ -16,10 +16,8 @@ Applies equally to drafts, final articles, blog posts, and any other written for
 ## Usage
 
 ```
-/review-article                                            # infers all paths from current issue context
-/review-article <issue-folder-path>                        # explicit issue folder — REQUIRED for an appendix page, since progress.md can never resolve one
-/review-article <companion-repo-path>                      # override companion repo location (main page, existing behavior)
-/review-article <issue-folder-path> <companion-repo-path>  # both, any order — disambiguated by shape: a `planning/book/...` path is the issue folder, anything else is the companion repo
+/review-article <issue-folder-path>                        # explicit issue folder — REQUIRED for every page; progress.md cannot resolve one
+/review-article <issue-folder-path> <companion-repo-path>  # also override the companion repo location — position decides which argument is which: the first is always the issue folder, the second (if given) is the companion repo path
 ```
 
 ## Verification Scopes
@@ -58,7 +56,7 @@ Consensus: **≥2 of 3 agents** to confirm a finding.
 
 The spec and the article must exist before launching any agents; stop and report which is missing. The companion repo is required for a `main` page and optional for an `appendix` page — see the resolution rule below.
 
-**Issue-folder path.** Take it from a `planning/book/...`-shaped argument when one is given; otherwise derive it from the active issue in `planning/progress.md`, which tracks main articles only — **so an appendix page must be given explicitly** (see Usage above).
+**Issue-folder path.** The first positional argument is always the issue folder — **mandatory for every page type.** `planning/progress.md` → `## Active` names no issue-folder path for either page type, so there is no derivation fallback (see Usage above). Position, not shape, decides which argument is which: a second positional argument, if one is given, is the companion-repo-path override (see Companion repo resolution below) regardless of what either argument looks like.
 
 **Page type.** Resolve it, and the status file and companion policy that follow from it:
 
@@ -66,7 +64,7 @@ The spec and the article must exist before launching any agents; stop and report
 Read ~/.claude/skills/workflows/page-type/SKILL.md
 ```
 
-`<issue-folder>` below means this resolved path. Stop with the fragment's error text on a `planning/book/` path matching neither form.
+`<issue-folder>` below means this resolved path. Stop with the fragment's error text on a path matching neither form.
 
 | File | Default location |
 |------|-----------------|
@@ -80,15 +78,17 @@ Read ~/.claude/skills/workflows/page-type/SKILL.md
 
 **Companion repo resolution:**
 
-Precondition: `CLAUDE.local.md` must exist at the repo root with a companion repos table
-(`part` and `repo-name`/`path` columns). If absent, the command must be invoked with an
-explicit `<companion-repo-path>` argument — otherwise stop and report.
+Precondition: `CLAUDE.local.md`, if present, carries a companion repos table naming each
+clone and its local path — measured shape is `Repo` and `Local path` columns, not `part`
+and `repo-name`/`path`. Neither an absent `CLAUDE.local.md` nor an absent table is a stop
+condition by itself: a repo this command cannot resolve from the table is the same case as
+no `<companion-repo-path>` argument, and falls through to step 3.
 
-**Appendix exception.** An A-page has no companion repo of its own, and its facts come from kernel documentation, datasheets, specifications, and on-device measurement rather than from source — it never cites code (`page-type/SKILL.md` → Resolution). A missing or unresolvable companion repo is **not** a stop condition for an A-page: note it and review without one. Resolve the repo for the part owning most of this page's Blocks column if one exists, and treat it as corroboration only.
+**Appendix exception.** An A-page has no companion repo of its own, and its facts come from kernel documentation, datasheets, specifications, and on-device measurement rather than from source — it never cites code (`page-type/SKILL.md` → Resolution). A missing or unresolvable companion repo is **not** a stop condition for an A-page: note it and review without one, treating any companion repo that was resolved as corroboration only.
 
-1. If `<companion-repo-path>` provided, use it directly — verify the directory exists
-2. Else read `CLAUDE.local.md`, match the article's part number, resolve path as `~/projects/<repo-name>`
-3. If ambiguous or directory missing, ask the user
+1. If `<companion-repo-path>` provided, use it directly — verify the directory exists.
+2. Else read `CLAUDE.local.md`'s companion repos table, if one exists, for context — the table is keyed by repo name, not by article part, so it does not by itself tell this command which row an article needs.
+3. With no explicit path and no table entry this command can select on its own, ask the user — unless the page type is `appendix`, where the Appendix exception above applies and the review proceeds without one.
 
 ### 2. Check for prior review
 

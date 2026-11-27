@@ -1,6 +1,6 @@
 ---
 name: page-type
-description: Shared fragment — single source for the book workflow's two page types (main article, reference appendix page). Owns the path forms, the status file, the spec template, identifier derivation, the TODO match rule, the companion-repo policy, and the unverified-claim marker. Read by spec, write, review-article, review-article-fix-loop, review-spec, and the writer agent; article-review/TODOS.md, planning/BRIEF-TEMPLATE.md, planning/APPENDIX-SPEC-TEMPLATE.md, and review-planning-update/SKILL.md also point back to it.
+description: Shared fragment — single source for the book workflow's two page types (main article, reference appendix page). Owns the path forms, the status file, the spec template, identifier derivation, the TODO match rule, the companion-repo policy, and the unverified-claim marker. Read by spec, write, review-article, review-article-fix-loop, review-spec, and the writer agent; article-review/TODOS.md, article-review/SCOPES.md, article-review/CODEX-REQUEST-TEMPLATE.md, planning/BRIEF-TEMPLATE.md, planning/APPENDIX-SPEC-TEMPLATE.md, and review-planning-update/SKILL.md also point back to it.
 allowed-tools: Bash, Glob, Grep, Read
 compatibility: claude-code
 metadata:
@@ -35,7 +35,7 @@ The **issue-folder path selects the page type**, and nothing else does. A comman
 
 **Both globs require the full folder shape.** `planning/book/appendix/issues/A<N>-<slug>/` means a child of `issues/` whose name starts with `A` followed by a digit. A folder under `appendix/issues/` not matching that form is **not** an appendix page — it falls to the rejection rule, because every downstream rule needs the `A<N>` identifier the loose glob does not guarantee.
 
-**Rejection is mandatory.** A path under `planning/book/` matching neither form is an error in every consumer. Do not guess a page type, and do not fall through to a default — picking a template by accident is how the wrong contract gets written. Error with:
+**Rejection is mandatory.** A path matching neither form is an error in every consumer, whatever it is a child of — `planning/book/` is where both forms live, so a path that is not a child of it is no more one of them than a child of `planning/book/` that matches neither glob. This rule binds a path a consumer **offers as an issue folder**; a consumer whose own detection gate has not classified the path as one has not reached this rule yet, and is free to fall through to whatever non-issue-folder handling it has (an ordinary draft path, for instance). Do not guess a page type, and do not fall through to a default — picking a template by accident is how the wrong contract gets written. Error with:
 
 ```
 Path does not match either book page type:
@@ -46,7 +46,7 @@ Got: <path>
 
 ## Appendix status.md — structures referenced
 
-No `planning/book/appendix/status.md` exists yet in any repo; `/spec` and `/write` already assume the structures below, so whoever creates the file first should use exactly these names rather than inventing new ones:
+`/spec` and `/write` assume the three structures below wherever `planning/book/appendix/status.md` exists:
 
 - **Pages** — one row per A-page (identifier, title, and whatever existence/depth notes `/write` needs).
 - **Linked from** — one row per A-page, carrying a **Blocks** column that names the main articles that depend on it.
@@ -54,9 +54,9 @@ No `planning/book/appendix/status.md` exists yet in any repo; `/spec` and `/writ
 
 ## Obtaining the path
 
-Take it from an explicit command argument when one is given; that always wins. Only when no argument is supplied, derive it from the active issue in `planning/progress.md`.
+Take it from an explicit command argument. **It is mandatory for every page type** — there is no derivation fallback.
 
-**The `progress.md` derivation cannot reach an appendix page.** Its Active section tracks main articles; A-pages appear there only as blockers on someone else's entry. A command whose sole path source is `progress.md` can never select `appendix`, so any command that supports A-pages must accept the path as an argument.
+**The `progress.md` derivation cannot reach any article, main or appendix.** No consumer below may derive an issue-folder path from `planning/progress.md` — whatever structure it holds in a given repo, that structure is never a page-type path source. A command whose sole path source is `progress.md` resolves no page type at all, so every consumer below requires the path as an explicit argument — not only the ones that support A-pages.
 
 ## Identifier derivation and TODO matching
 

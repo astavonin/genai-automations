@@ -10,8 +10,7 @@ Run the full article review cycle autonomously: initial review → fix all findi
 ## Usage
 
 ```
-/review-article-fix-loop                       # infers all paths from current issue context
-/review-article-fix-loop <issue-folder-path>    # explicit issue folder — REQUIRED for an appendix page, since progress.md can never resolve one
+/review-article-fix-loop <issue-folder-path>    # explicit issue folder, required for every page; progress.md cannot resolve one
 ```
 
 ## Agents
@@ -21,9 +20,9 @@ Run the full article review cycle autonomously: initial review → fix all findi
 
 ## Prerequisite
 
-Both `spec.md` and `draft.md` must exist in the issue folder — the argument if one was given, else derived from the active issue in `planning/progress.md` (main articles only; an appendix page must be given explicitly, per `~/.claude/skills/workflows/page-type/SKILL.md` → "Obtaining the path"). `<issue-folder>` below means this resolved path. No existing `article-review.md` required — this command produces it. If either file is missing, stop and report which is absent.
+Both `spec.md` and `draft.md` must exist in the issue folder — the argument is mandatory; `planning/progress.md` carries no issue-folder path for either page type, per `~/.claude/skills/workflows/page-type/SKILL.md` → "Obtaining the path". `<issue-folder>` below means this resolved path. No existing `article-review.md` required — this command produces it. If either file is missing, stop and report which is absent.
 
-Every `/review-article` pass below (Steps 1 and 3) receives the same issue-folder-path argument this command was invoked with, if any.
+Every `/review-article` pass below (Steps 1 and 3) receives the same issue-folder-path argument this command was invoked with.
 
 ## Protocol Deviations
 
@@ -152,7 +151,7 @@ Read ~/.claude/skills/workflows/fix-loop-round/SKILL.md
 
 Follow `/review-article` with the deviations listed above. **Pass the current `article-review.md` as prior review context** — this is intentional so agents can verify prior findings are addressed. Overwrites `article-review.md`.
 
-**This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file, and that the `### Cap-pause` message below names its report under `<issue-folder>/article-review.md` rather than a hardcoded milestone-form path — any `milestone-XX` segment, not one fixed literal. Editing the step numbering, the headings, the pointer, the report path, or the launch sentence's opening word without re-running both is how this drifts silently.
+**This file is parsed by two tests.** `tests/verify-workflow-safety.sh` asserts this Step 3 carries the fragment's `Read` pointer above, ahead of a review-pass launch sentence that begins with the word `Follow`, with no destination sentence or increment of its own, that neither this file's frontmatter nor its body still promises the deleted review pass that used to follow Step 3, that every `Step <N>` reference in this file resolves to a heading here, and that the `### Cap-pause` and `### Stall stop` headings below exist and run their procedures in the order the fragment names. `tests/verify-config-consistency.sh` asserts the `Read` pointer above resolves to a non-empty file, and that the `### Cap-pause` message below names its report under `<issue-folder>/article-review.md` rather than a hardcoded milestone-form path — any `milestone-XX` segment, not one fixed literal. The Usage block above carries the same explicit-argument mandate as this paragraph's own checks — reverting it to an optional-argument form is a drift neither test catches, so an editor must watch it by hand. Editing the step numbering, the headings, the pointer, the report path, or the launch sentence's opening word without re-running both is how this drifts silently.
 
 
 ### Stall stop

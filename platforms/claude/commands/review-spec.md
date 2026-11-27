@@ -21,7 +21,7 @@ Standalone and user-invoked. Not wired into `/spec`, not a precondition of `/wri
 Read ~/.claude/skills/workflows/page-type/SKILL.md
 ```
 
-That fragment's "Obtaining the path" and "Resolution" sections own the argument-first rule and both path forms, as they do for `/review-article`. An appendix spec must be passed explicitly — the `progress.md` derivation reaches only main articles. Stop with the fragment's error text on a `planning/book/` path matching neither form.
+That fragment's "Obtaining the path" and "Resolution" sections own the argument-first rule and both path forms, as they do for `/review-article`. Every spec must be passed explicitly — the `progress.md` derivation reaches no article, main or appendix. Stop with the fragment's error text on a path matching neither form.
 
 If `<issue-folder>/spec.md` is absent, report the missing file and stop — launch no agents.
 
@@ -31,7 +31,7 @@ If `<issue-folder>/spec.md` is absent, report the missing file and stop — laun
 Read ~/.claude/commands/review-article.md
 ```
 
-That rule owns the precondition, the argument fallback, and the ambiguity handling. Do not restate it here. It keys on the article's part number and never reads `SPEC-TEMPLATE.md`'s own `**Companion repo:**` header field, so pass the path as an argument wherever the two would disagree.
+That rule owns the precondition, the argument fallback, and the ambiguity handling. Do not restate it here. It never reads `SPEC-TEMPLATE.md`'s own `**Companion repo:**` header field, so pass the path as an argument wherever the two would disagree.
 
 ## Agents
 
@@ -69,7 +69,7 @@ Delete the review-request and the Codex raw output once `spec-review.md` is publ
 spec-verify "<issue-folder>"
 ```
 
-Its summary counters are attention direction for the reviewers, never a verdict on this review. **No `spec-verify` result blocks the run, and no `FAIL` row is cited as a finding on its own** — a `FAIL` is as often a stale corpus as a wrong spec. Exit `127` means the package is not installed (`pip install -e ./tools/docgate`); rerun after installing.
+Exit `1` is a blocker everywhere this tool runs: report the `BLOCKER:` message and stop — launch no agents. Exit `0` means the scan ran, or had nothing to scan; read its summary counters, but **no counter and no `FAIL` row is a verdict on this review** — they are attention direction for the reviewers, since a `FAIL` is as often a stale corpus as a wrong spec. Exit `127` means the package is not installed (`pip install -e ./tools/docgate`); rerun after installing.
 
 What reaches each reviewer, on the appendix branch:
 
@@ -89,7 +89,7 @@ A main spec scans nothing and exits `0` with that reason, so the main branch get
 | `**Article:**`, on a path Usage resolved to `main` | Main — SP-7, SP-8, SP-9 |
 | neither, both, or one the resolved page type contradicts | **Blocker — stop.** Report the fields found and the resolved page type, clear an `Approved` in the spec's `**Status:**` field to `Draft`, and launch no agents. |
 
-Keying on §5's presence instead would let an appendix spec that lost or retitled §5 grade as a main spec and skip the entailment criteria entirely. Both fields present is a blocker rather than a first-match win: `spec_kind()` returns on whichever line it reaches first, so the same header would select a different criteria set once its lines were reordered, and `spec-verify` does not settle the case for you.
+Keying on §5's presence instead would let an appendix spec that lost or retitled §5 grade as a main spec and skip the entailment criteria entirely. Both fields present is a blocker rather than a first-match win: `spec_kind()` raises on a header carrying both, order-independent, and `spec-verify` exits 1 printing `BLOCKER: spec header carries both **Page:** and **Article:**`. That catches the both-fields case for you; it does not catch a header field the resolved page type contradicts, since `spec_kind()` reads only the header and never the issue-folder path this command's Usage resolved the page type from — the blocker row above covers that case too, and is why it needs to.
 
 A header field the resolved page type contradicts is the same blocker on the same grounds — two sources naming different sets, with no rule that settles which wins. An appendix spec carrying `**Article:**` selects the main set, so SP-1 to SP-6 never run and SP-7 and SP-8 grade against a companion repo an appendix page does not have; the likely outcome is zero findings and `Approved`. The stop writes no report, so Step 2 item 3 never runs — clearing the field here is what keeps an `Approved` earned under the old convention from standing on a spec no reviewer could grade.
 

@@ -673,6 +673,40 @@ def test_a_main_spec_exits_zero_with_its_reason(spec_folder) -> None:
     assert summary(result.output, "FAIL") == ""
 
 
+def test_a_main_spec_skip_carries_no_summary_counter_unlike_a_clean_scan(spec_folder) -> None:
+    # A caller reading only the exit code cannot tell "not scanned" from "scanned and
+    # clean" apart — both exit 0. The output must: a clean run always prints every
+    # summary counter, so a skip is distinguishable only if it prints none of them.
+    skip_folder = spec_folder("# Spec — 04 Thing\n\n**Article:** `04-thing`\n\n## 1. Scope\n")
+    skip_result = spec_run(skip_folder)
+
+    # The clean half is asserted directly over the parsed fixture, through the mirror
+    # seam — same falsifiability as running it through a folder, with no subprocess and
+    # no real network reach for the fixture's five on-device rows.
+    document = load_spec(CLEAN_SPEC)
+    clean_output = render(
+        verify(document, runner=mirror_runner(document), fetcher=_mirror_fetcher(document))
+    )
+
+    counters = ("PASS:", "FAIL:", "SKIP:", "TOKENS:", "GRAPH:", "COVERS:")
+    assert skip_result.code == 0
+    assert not any(line.startswith(counters) for line in skip_result.output.splitlines())
+    assert all(summary(clean_output, label.rstrip(":")) != "" for label in counters)
+
+
+def test_a_spec_carrying_both_header_fields_blocks(spec_folder) -> None:
+    # The venue's publication-path field once collided with **Article:**; silently
+    # keying on whichever line came first let a reorder change the resolved kind.
+    folder = spec_folder(
+        "# Spec — X2\n\n**Page:** `x2-thing`\n\n**Article:** `docs/thing.md`\n\n## 1. Scope\n"
+    )
+
+    result = spec_run(folder)
+
+    assert result.code == 1
+    assert "both **Page:** and **Article:**" in result.output
+
+
 def test_a_spec_carrying_neither_header_field_blocks(spec_folder) -> None:
     folder = spec_folder("# Spec\n\n**Status:** Draft\n\n## 1. Scope\n")
 

@@ -1,6 +1,7 @@
 # Appendix Spec — A<N> <Page Title>
 
 **Page:** `A<N>-<slug>`
+**Publishes to:** <output path for this page on the published site — optional; omit where the page has no direct publication path>
 **Dependent articles:** <from the Blocks column in planning/book/appendix/status.md>
 **Evidence sources:** <kernel docs / datasheets / specs actually consulted>
 **Device reachable:** yes | no — <access method, or what blocked it>

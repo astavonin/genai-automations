@@ -10,10 +10,10 @@ Produce a specification for the current article issue — the **contract** `/rev
 ## Usage
 
 ```
-/spec [<issue-folder-path>]
+/spec <issue-folder-path>
 ```
 
-The path argument selects the page type and therefore the contract. Without it the folder is derived from the active issue in `planning/progress.md`, which tracks main articles only — **so an appendix page must be given explicitly.**
+The path argument selects the page type and therefore the contract, and it is **mandatory for every page type** — `planning/progress.md` → `## Active` names no issue-folder path for either page type, so there is no derivation to fall back to.
 
 ## Page type (do this first)
 
@@ -21,7 +21,7 @@ The path argument selects the page type and therefore the contract. Without it t
 Read ~/.claude/skills/workflows/page-type/SKILL.md
 ```
 
-That fragment owns the path forms, the template per type, the companion-repo policy, and the mandatory rejection rule for a `planning/book/` path matching neither form. Resolve the page type from the argument or the derivation, echo it on one line, and stop with the fragment's error text if the path matches neither form.
+That fragment owns the path forms, the template per type, the companion-repo policy, and the mandatory rejection rule for a path matching neither form. Resolve the page type from the argument, echo it on one line, and stop with the fragment's error text if the path matches neither form.
 
 **`main` — this spec is a coding contract.** It defines what the CODE must do, not what the ARTICLE should say. Article-shape decisions (theory scope, reader arc, section outline, diagrams, language-neutrality) are handled at `/write` time via the article brief (`brief.md`). The spec must not include article scope, theory scope, or reader-facing content decisions. `/review-article` Scope 1 (Code Accuracy) validates the implementation against it (`SPEC-TEMPLATE.md`).
 
@@ -41,7 +41,7 @@ That fragment owns the path forms, the template per type, the companion-repo pol
 Read ~/.claude/skills/workflows/planning/SPEC-TEMPLATE.md            # main
 Read ~/.claude/skills/workflows/planning/APPENDIX-SPEC-TEMPLATE.md   # appendix
 Read CLAUDE.local.md                         # companion repos table + technical familiarity
-cat planning/progress.md                     # identify active issue + folder
+cat planning/progress.md                     # context only — the issue folder is the mandatory argument, not derived from here
 cat planning/book/milestone-XX-<name>/status.md   # article notes (main)
 cat planning/book/appendix/status.md              # Pages + Linked from rows (appendix)
 ```
@@ -64,7 +64,7 @@ Pass extracted Type B items to the agent in Step 3 as additional requirements co
 
 ### Step 1: Locate evidence sources
 
-**main:** From the `CLAUDE.local.md` companion repos table, resolve the local path for the current article's part. Confirm the directory exists before proceeding. If the path does not exist, stop and ask the user.
+**main:** Read the `CLAUDE.local.md` companion repos table for context — it is keyed by repo name, not by article part (`review-article.md` → Companion repo resolution), so it does not by itself tell this command which row the article needs. Resolve the repo the article notes name, confirm the directory exists, and ask the user if it is ambiguous or the path does not exist.
 
 **appendix:** There is no companion repo to locate — an A-page's evidence is external. Enumerate what is reachable in this session and record it, because §5 can only cite sources that were actually available:
 
@@ -72,7 +72,7 @@ Pass extracted Type B items to the agent in Step 3 as additional requirements co
 - **Kernel and driver documentation** for the claimed subsystem (kernel.org docs, in-tree `Documentation/`, man pages).
 - **Vendor documentation** — datasheets, TRMs, errata — for any SoC, sensor, or peripheral claim.
 - **Specifications** — RFCs, ITU-T, ISO, OASIS — for any protocol or format claim.
-- **Companion repo, optional.** Resolve the repo for the part owning most of this page's Blocks column if one exists. It is corroboration, never the authority: an A-page documents what the hardware and specification do, not what one implementation happens to assume.
+- **Companion repo, optional.** Resolve one only if the dependent articles already name it. It is corroboration, never the authority: an A-page documents what the hardware and specification do, not what one implementation happens to assume.
 
 Do not stop when a source is unavailable. Record the gap and let §2 carry the claim as unverified — a spec that halts produces nothing, and a spec that silently drops the claim is how the fabrication got in.
 
